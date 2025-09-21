@@ -1,4 +1,4 @@
-# DeepLearningForExoskeleton
+# AutomationForExoskeleton
 Final Year Project: Robotic Exoskeleton for Load Transportation (Department of Mechanical and Automation Engineering, The Chinese University of Hong Kong)
 Sep 2025 – May 2026 at CUHK, Shatin, Hong Kong
 
