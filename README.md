@@ -1,6 +1,6 @@
 # DeepLearningForExoskeleton
 Final Year Project: Robotic Exoskeleton for Load Transportation (Department of Mechanical and Automation Engineering, The Chinese University of Hong Kong)
-Sep 2025 – May 2026  CUHK, Shatin, Hong Kong
+Sep 2025 – May 2026 at CUHK, Shatin, Hong Kong
 
 Project awarded Hong Kong Science and Technology Parks (HKSTP) Tech FYP Sponsorship.
 - Developing intention detection algorithm using MATLAB to predict user locomotion modes (walking, stair ascent/descent) and state transitions (sit-to-stand).
