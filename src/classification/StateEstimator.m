@@ -1,4 +1,4 @@
-%% RealtimeFsm.m
+%% StateEstimator.m
 % --------------------------------------------------------------------------
 % FUNCTION: [command, state] = updateFSM(new_label, current_state)
 % PURPOSE: Implements the Finite State Machine (FSM) to manage transitions between locomotion modes and generate exoskeleton control commands.
@@ -14,7 +14,7 @@
 % - The output `command` is a simple low-level signal (e.g., 0=stand, 1=walk gait).
 % --------------------------------------------------------------------------
 
-function [command, next_state] = RealtimeFsm(new_label, current_state)
+function [command, next_state] = StateEstimator(new_label, current_state)
 
 % --- Configuration Parameters ---
 persistent state_counter % Persist across calls to track consecutive labels

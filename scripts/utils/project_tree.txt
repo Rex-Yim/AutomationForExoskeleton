@@ -1,10 +1,13 @@
 AutomationForExoskeleton/
+├── config/
+│   └── ExoConfig.m
 ├── data/
+│   ├── interim/
 │   ├── processed/
 │   ├── public/
 │   │   ├── HuGaDB/
 │   │   │   ├── HuGaDB_v2_raw/
-│   │   │   │   ├── ... (truncated: many raw data files)
+│   │   │   │   └── ... (truncated: many raw data files)
 │   │   │   ├── LoadHuGaDB.m
 │   │   │   └── hugadb_dataset.mat
 │   │   └── USC-HAD/
@@ -48,20 +51,35 @@ AutomationForExoskeleton/
 │           ├── GyroscopeUncalibrated.csv
 │           └── Metadata.csv
 ├── docs/
+│   ├── architecture/
 │   ├── LICENSE
 │   └── README.md
+├── models/
+├── notebooks/
+├── reports/
+│   ├── figures/
+│   ├── final_report.txt
+│   └── interim_report.txt
 ├── results/
+├── scripts/
+│   ├── utils/
+│   │   ├── ConcatenateCode.m
+│   │   ├── GenerateProjectTree.m
+│   │   ├── concatenated_code.txt
+│   │   └── project_tree.txt
+│   ├── RunExoskeletonPipeline.m
+│   └── TestPipelinePerformance.m
 ├── src/
 │   ├── acquisition/
-│   │   └── ImportData.m
+│   │   ├── ImportData.m
+│   │   └── PrepareTrainingData.m
 │   ├── classification/
-│   │   ├── Features.m
-│   │   ├── RealtimeFsm.m
-│   │   └── TrainSvmBinary.m
-│   ├── fusion/
-│   │   └── FusionKalman.m
-│   └── models/
-├── ConcatenateCode.m
-├── GenerateProjectTree.m
-├── concatenated_code.txt
-└── project_tree.txt
+│   │   ├── Classifier.m
+│   │   └── StateEstimator.m
+│   ├── features/
+│   │   └── Features.m
+│   └── fusion/
+│       └── FusionKalman.m
+└── tests/
+    ├── acquisition_test.m
+    └── classification_test.m

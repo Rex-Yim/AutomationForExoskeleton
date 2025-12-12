@@ -1,67 +1,78 @@
 %% ImportData.m
 % --------------------------------------------------------------------------
-% FUNCTION: [back, hipL, hipR] = import_data(sessionID)
-% PURPOSE: Implements the Data Acquisition Protocol, reading raw CSV data from three IMU locations (Back, Hip L/R).
+% FUNCTION: [back, hipL, hipR, annotations] = ImportData(activityName)
+% PURPOSE: Implements the Data Acquisition Protocol, reading raw CSV data from 
+% a specified activity folder (assuming a single IMU on the back).
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-11
-% LAST MODIFIED: 2025-12-13
+% LAST MODIFIED: 2025-12-13 (Fixed dummy data sizing for hipL/hipR)
 % --------------------------------------------------------------------------
 % DEPENDENCIES: 
-%   - process_imu_table (Nested function)
+% - process_imu_table (Nested function)
 % --------------------------------------------------------------------------
 % NOTES:
-%   - Assumes raw CSV files are named sessionX_back.csv, etc., in '../data/raw/'.
-%   - Includes basic column mapping for Accel, Gyro, and Mag.
-%   - Implements the Data Acquisition Protocol described in Interim Report Section 4.1
+% - Assumes raw CSV files are named Accelerometer.csv, Gyroscope.csv, etc. 
+% within the '../data/raw/<activityName>/' folder.
+% - This function is currently adapted to load the *single* IMU data found in 
+% the raw directory and assigns it to the 'back' sensor. 
+% - 'hipL' and 'hipR' are returned as zero arrays for pipeline compatibility.
 % --------------------------------------------------------------------------
 
-function [back, hipL, hipR] = ImportData(sessionID)
-    % Define paths
-    baseDir = '../data/raw/';
-    
-    % Filenames based on your specific export format (adjust as needed)
-    fileBack = fullfile(baseDir, sprintf('session%s_back.csv', sessionID));
-    fileHipL = fullfile(baseDir, sprintf('session%s_hipL.csv', sessionID));
-    fileHipR = fullfile(baseDir, sprintf('session%s_hipR.csv', sessionID));
+function [back, hipL, hipR, annotations] = ImportData(activityName)
+% Define path to the specific activity folder
+baseDir = '../data/raw/';
+activityPath = fullfile(baseDir, activityName);
 
-    % Check files exist
-    if ~isfile(fileBack), error('Back IMU file not found: %s', fileBack); end
+% Filenames
+fileAcc = fullfile(activityPath, 'Accelerometer.csv');
+fileGyro = fullfile(activityPath, 'Gyroscope.csv');
+fileAnnot = fullfile(activityPath, 'Annotation.csv'); % Includes ground truth labels
 
-    % Import Table
-    opts = detectImportOptions(fileBack);
-    opts.VariableNamingRule = 'preserve';
-    
-    rawBack = readtable(fileBack, opts);
-    rawHipL = readtable(fileHipL, opts);
-    rawHipR = readtable(fileHipR, opts);
-
-    % Pre-process and Synchronize (Simple approach: Trim to shortest duration)
-    % Converting tables to standardized structs
-    back = process_imu_table(rawBack);
-    hipL = process_imu_table(rawHipL);
-    hipR = process_imu_table(rawHipR);
-    
-    disp(['Data imported successfully for Session: ', sessionID]);
+% Check files exist
+if ~isfolder(activityPath)
+error('Activity folder not found: %s', activityPath);
+end
+if ~isfile(fileAcc) || ~isfile(fileGyro)
+error('IMU data files not found in: %s', activityPath);
 end
 
-function data = process_imu_table(tbl)
-    % Map columns (Adjust 'AccelerationX', etc. to your app's header names)
-    % Supports standard mobile export formats
-    
-    % Extract arrays
-    data.time = tbl.time; % Ensure this is in seconds
-    
-    % Accelerometer (m/s^2)
-    data.acc = [tbl.ax, tbl.ay, tbl.az]; 
-    
-    % Gyroscope (rad/s)
-    data.gyro = [tbl.gx, tbl.gy, tbl.gz];
-    
-    % Magnetometer (uT) - As claimed in 
-    if ismember('mx', tbl.Properties.VariableNames)
-        data.mag = [tbl.mx, tbl.my, tbl.mz];
-    else
-        % Fallback if mag is noisy/missing (Robustness)
-        data.mag = zeros(height(tbl), 3); 
-    end
+% --- 1. Import Raw Tables ---
+opts = detectImportOptions(fileAcc);
+accTable = readtable(fileAcc, opts);
+
+opts = detectImportOptions(fileGyro);
+gyroTable = readtable(fileGyro, opts);
+
+if isfile(fileAnnot)
+opts = detectImportOptions(fileAnnot);
+annotations = readtable(fileAnnot, opts);
+else
+warning('Annotation file not found. Returning empty table.');
+annotations = table();
+end
+
+% --- 2. Process and Assign Data ---
+back = process_imu_table(accTable, gyroTable);
+N_samples = size(back.acc, 1);
+
+% Fix: Create dummy zero data with correct N_samples size
+hipL.acc = zeros(N_samples, 3);
+hipL.gyro = zeros(N_samples, 3);
+hipR.acc = zeros(N_samples, 3);
+hipR.gyro = zeros(N_samples, 3);
+
+fprintf('Imported %d samples of IMU data for activity "%s".\n', N_samples, activityName);
+end
+
+%% --- NESTED FUNCTION (Utility for Table Processing) ---
+function imu = process_imu_table(accTable, gyroTable)
+% Converts imported tables to standard IMU data structure (Nx3 arrays).
+
+% Error checking for missing data (as dummy creation is now handled by the caller)
+if isempty(accTable) || isempty(gyroTable)
+    error('process_imu_table: Called without data. Data loading failed.');
+end
+
+imu.acc = table2array(accTable);
+imu.gyro = table2array(gyroTable);
 end

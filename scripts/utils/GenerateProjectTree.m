@@ -1,10 +1,10 @@
 %% GenerateProjectTree.m
 % --------------------------------------------------------------------------
-% FUNCTION: [] = ConcatenateCode()
+% FUNCTION: [] = GenerateProjectTree()
 % PURPOSE: Recursively scans the project directory and prints the folder/file structure to project_tree.txt.
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-12
-% LAST MODIFIED: 2025-12-12
+% LAST MODIFIED: 2025-12-13
 % --------------------------------------------------------------------------
 % DEPENDENCIES: 
 %   - MATLAB built-in functions (dir, fprintf, diary, fileparts)
@@ -12,32 +12,40 @@
 % NOTES:
 %   - Excludes hidden folders (starting with '.').
 %   - Truncates raw data folders with >200 files for readability.
+%   - FIX: Script correctly determines the project root by traversing two 
+%     levels up from the execution directory (e.g., .../scripts/utils/).
 % --------------------------------------------------------------------------
 
-root_directory = pwd; % Uses the current working directory.
-output_filename = 'project_tree.txt'; % *** RENAMED HERE ***
+% --- Define Paths ---
+output_dir = pwd;                              % Location to save the output file (e.g., .../scripts/utils/)
+output_filename = 'project_tree.txt';
+output_full_path = fullfile(output_dir, output_filename); % Full path for the output file
+
+% FIX: Project root is now two levels up from pwd
+scripts_dir = fileparts(output_dir);           % Goes from 'utils' to 'scripts'
+project_root = fileparts(scripts_dir);         % Goes from 'scripts' to 'AutomationForExoskeleton' (the true root)
 % ---------------------
 
 % Line 1: Output only to Command Window (pre-execution message)
 fprintf('Starting project structure generation...\n');
 
 % 0. EXPLICIT OVERWRITE FIX: Delete the output file if it exists to guarantee a clean overwrite.
-if exist(output_filename, 'file')
-    delete(output_filename);
+if exist(output_full_path, 'file')
+    delete(output_full_path);
 end
 
 % 1. Start capturing the Command Window output to the specified file
-diary(output_filename);
+diary(output_full_path);
 
 try
     % Lines that are saved to the file:
 
     % Display the root name followed by '/'.
-    [~, root_name, ~] = fileparts(root_directory);
+    [~, root_name, ~] = fileparts(project_root); % Get the name of the true project root
     fprintf('%s/\n', root_name);
 
     % 2. Start the recursive drawing process
-    drawTreeLevel(root_directory, '');
+    drawTreeLevel(project_root, ''); % Start scanning from the true project root
     
 catch ME
     % Ensure diary is turned off even if an error occurs
@@ -52,7 +60,7 @@ end
 diary off;
 
 % Line 2: Output only to Command Window (post-execution success message)
-fprintf('\nScan completed and saved to %s.\n', output_filename);
+fprintf('\nScan completed and saved to %s.\n', output_full_path);
 
 %% --- NESTED FUNCTION (The Recursive Logic) ---
 
@@ -120,7 +128,7 @@ for i = 1:N
         sub_entries_count = length(sub_listing(~ismember({sub_listing.name}, {'.', '..'})));
         
         if sub_entries_count > 200 && contains(entry.name, 'raw', 'IgnoreCase', true)
-            fprintf('%s%s%s\n', new_prefix, connector, '... (truncated: many raw data files)');
+            fprintf('%s%s%s\n', new_prefix, '└── ', '... (truncated: many raw data files)');
         else
             drawTreeLevel(new_path, new_prefix);
         end
