@@ -1,0 +1,65 @@
+AutomationForExoskeleton/
+├── data/
+│   ├── processed/
+│   ├── public/
+│   │   ├── HuGaDB/
+│   │   │   ├── HuGaDB_v2_raw/
+│   │   │   │   ├── ... (truncated: many raw data files)
+│   │   │   ├── LoadHuGaDB.m
+│   │   │   └── hugadb_dataset.mat
+│   │   └── USC-HAD/
+│   │       ├── USC-HAD_raw/
+│   │       ├── ImportUschadSingleImu.m
+│   │       └── LoadUSCHAD.m
+│   └── raw/
+│       ├── downstairs/
+│       │   ├── Accelerometer.csv
+│       │   ├── AccelerometerUncalibrated.csv
+│       │   ├── Annotation.csv
+│       │   ├── Gyroscope.csv
+│       │   ├── GyroscopeUncalibrated.csv
+│       │   └── Metadata.csv
+│       ├── sit_still/
+│       │   ├── Accelerometer.csv
+│       │   ├── AccelerometerUncalibrated.csv
+│       │   ├── Annotation.csv
+│       │   ├── Gyroscope.csv
+│       │   ├── GyroscopeUncalibrated.csv
+│       │   └── Metadata.csv
+│       ├── sit_to_stand/
+│       │   ├── Accelerometer.csv
+│       │   ├── AccelerometerUncalibrated.csv
+│       │   ├── Annotation.csv
+│       │   ├── Gyroscope.csv
+│       │   ├── GyroscopeUncalibrated.csv
+│       │   └── Metadata.csv
+│       ├── upstairs/
+│       │   ├── Accelerometer.csv
+│       │   ├── AccelerometerUncalibrated.csv
+│       │   ├── Annotation.csv
+│       │   ├── Gyroscope.csv
+│       │   ├── GyroscopeUncalibrated.csv
+│       │   └── Metadata.csv
+│       └── walking_straight/
+│           ├── Accelerometer.csv
+│           ├── AccelerometerUncalibrated.csv
+│           ├── Annotation.csv
+│           ├── Gyroscope.csv
+│           ├── GyroscopeUncalibrated.csv
+│           └── Metadata.csv
+├── docs/
+│   ├── LICENSE
+│   └── README.md
+├── results/
+├── src/
+│   ├── acquisition/
+│   │   └── ImportData.m
+│   ├── classification/
+│   │   ├── Features.m
+│   │   ├── RealtimeFsm.m
+│   │   └── TrainSvmBinary.m
+│   ├── fusion/
+│   │   └── FusionKalman.m
+│   └── models/
+├── GenerateProjectTree.m
+└── project_tree.txt

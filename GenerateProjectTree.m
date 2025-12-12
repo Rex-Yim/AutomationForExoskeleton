@@ -1,18 +1,17 @@
 %% GenerateProjectTree.m
 % A single-file script to draw the project folder/file structure and 
-% automatically save a CLEAN output to 'folder_structure.txt', 
+% automatically save a CLEAN output to 'project_tree.txt', 
 % explicitly ensuring the old file is deleted.
 
 % --- CONFIGURATION ---
 root_directory = pwd; % Uses the current working directory.
-output_filename = 'folder_structure.txt';
+output_filename = 'project_tree.txt'; % *** RENAMED HERE ***
 % ---------------------
 
 % Line 1: Output only to Command Window (pre-execution message)
 fprintf('Starting project structure generation...\n');
 
-% 0. **EXPLICIT OVERWRITE FIX**
-% Delete the output file if it exists to guarantee a clean overwrite.
+% 0. EXPLICIT OVERWRITE FIX: Delete the output file if it exists to guarantee a clean overwrite.
 if exist(output_filename, 'file')
     delete(output_filename);
 end
@@ -23,7 +22,7 @@ diary(output_filename);
 try
     % Lines that are saved to the file:
 
-    % Line 1 (Root Display): Display the root name followed by '/'.
+    % Display the root name followed by '/'.
     [~, root_name, ~] = fileparts(root_directory);
     fprintf('%s/\n', root_name);
 
