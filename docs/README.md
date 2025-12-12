@@ -117,6 +117,14 @@ AutomationForExoskeleton/
     ├── features/       # Feature extraction logic
     └── fusion/         # Sensor fusion logic (Kalman)
 ```
+---
+
+📚 References
+The data structures and experimental context for this project were informed by the following public datasets:
+
+[1] Chereshnev, R., Kertész-Farkas, A. (2018). HuGaDB: Human Gait Database for Activity Recognition from Wearable Inertial Sensor Networks. In: van der Aalst, W., et al. Analysis of Images, Social Networks and Texts. AIST 2017. Lecture Notes in Computer Science(), vol 10716. Springer, Cham. https://doi.org/10.1007/978-3-319-73013-4_12
+
+[2] Zhang, M., & Sawchuk, A. A. (2012). USC-HAD: A daily activity dataset for ubiquitous activity recognition using wearable sensors. In Proceedings of the 2012 ACM Conference on Ubiquitous Computing (UbiComp '12) (pp. 1036–1043). ACM. https://doi.org/10.1145/2370216.2370438
 
 ---
 
