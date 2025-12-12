@@ -272,7 +272,7 @@ end
 % PURPOSE: Loads all raw HuGaDB text files, parses the data according to the database format, and saves it to a single .mat file.
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-12
-% LAST MODIFIED: 2025-12-12
+% LAST MODIFIED: 2025-12-13
 % --------------------------------------------------------------------------
 % DEPENDENCIES: 
 %   - dlmread (MATLAB built-in)
@@ -283,7 +283,7 @@ end
 % --------------------------------------------------------------------------
 
 clear; clc;
-dataDir = 'HuGaDB_v2_various';  % Path to .txt files
+dataDir = 'HuGaDB_v2_raw';  % Path to .txt files
 
 files = dir(fullfile(dataDir, '*.txt'));
 hugadb_data = struct();  % Store all sessions
@@ -364,7 +364,7 @@ end
 % PURPOSE: Loads all raw USC-HAD `.mat` files, normalizes the structure, and saves all trials into a single `usc_had_dataset.mat` file.
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-12
-% LAST MODIFIED: 2025-12-12
+% LAST MODIFIED: 2025-12-13
 % --------------------------------------------------------------------------
 % DEPENDENCIES: 
 %   - MATLAB built-in functions (dir, load, regexp)
@@ -429,7 +429,7 @@ end
 % PURPOSE: Implements the Data Acquisition Protocol, reading raw CSV data from three IMU locations (Back, Hip L/R).
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-11
-% LAST MODIFIED: 2025-12-12
+% LAST MODIFIED: 2025-12-13
 % --------------------------------------------------------------------------
 % DEPENDENCIES: 
 %   - process_imu_table (Nested function)
@@ -499,8 +499,8 @@ end
 % FUNCTION: [features_out] = extractFeatures(windowAcc, windowGyro, Fs)
 % PURPOSE: Calculates time-domain and frequency-domain features from IMU data windows for use in the locomotion classifier.
 % --------------------------------------------------------------------------
-% DATE CREATED: 2025-12-12
-% LAST MODIFIED: 2025-12-12
+% DATE CREATED: 2025-12-11
+% LAST MODIFIED: 2025-12-13
 % --------------------------------------------------------------------------
 % DEPENDENCIES: 
 % - MATLAB built-in functions (fft, abs, mean, var, max)
@@ -561,8 +561,8 @@ end
 % FUNCTION: [command, state] = updateFSM(new_label, current_state)
 % PURPOSE: Implements the Finite State Machine (FSM) to manage transitions between locomotion modes and generate exoskeleton control commands.
 % --------------------------------------------------------------------------
-% DATE CREATED: 2025-09-21
-% LAST MODIFIED: 2025-12-12
+% DATE CREATED: 2025-12-11
+% LAST MODIFIED: 2025-12-13
 % --------------------------------------------------------------------------
 % DEPENDENCIES: 
 % - None (Self-contained logic)
@@ -644,8 +644,8 @@ end
 % FUNCTION: [] = TrainSvmBinary()
 % PURPOSE: Loads IMU data, extracts time-domain features using a sliding window, and trains a Support Vector Machine (SVM) model for binary locomotion classification (Walking vs. Standing).
 % --------------------------------------------------------------------------
-% DATE CREATED: 2025-12-12
-% LAST MODIFIED: 2025-12-12
+% DATE CREATED: 2025-12-11
+% LAST MODIFIED: 2025-12-13
 % --------------------------------------------------------------------------
 % DEPENDENCIES: 
 % - ImportData.m (from src/acquisition)
@@ -698,7 +698,7 @@ end
 % PURPOSE: Implements a Kalman Filter for sensor fusion (Accel/Gyro) to estimate low-latency joint angles for exoskeleton control.
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-11
-% LAST MODIFIED: 2025-12-12
+% LAST MODIFIED: 2025-12-13
 % --------------------------------------------------------------------------
 % DEPENDENCIES: 
 %   - import_data (from ImportData.m)

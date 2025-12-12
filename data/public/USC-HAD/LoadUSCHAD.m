@@ -4,7 +4,7 @@
 % PURPOSE: Loads all raw USC-HAD `.mat` files, normalizes the structure, and saves all trials into a single `usc_had_dataset.mat` file.
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-12
-% LAST MODIFIED: 2025-12-12
+% LAST MODIFIED: 2025-12-13
 % --------------------------------------------------------------------------
 % DEPENDENCIES: 
 %   - MATLAB built-in functions (dir, load, regexp)

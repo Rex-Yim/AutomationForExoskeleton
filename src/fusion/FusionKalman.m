@@ -4,7 +4,7 @@
 % PURPOSE: Implements a Kalman Filter for sensor fusion (Accel/Gyro) to estimate low-latency joint angles for exoskeleton control.
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-11
-% LAST MODIFIED: 2025-12-12
+% LAST MODIFIED: 2025-12-13
 % --------------------------------------------------------------------------
 % DEPENDENCIES: 
 %   - import_data (from ImportData.m)

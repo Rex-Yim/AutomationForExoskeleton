@@ -1,10 +1,10 @@
 %% Features.m
 % --------------------------------------------------------------------------
-% FUNCTION: [features_out] = extractFeatures(windowAcc, windowGyro, Fs)
+% FUNCTION: [features_out] = Features(windowAcc, windowGyro, Fs)
 % PURPOSE: Calculates time-domain and frequency-domain features from IMU data windows for use in the locomotion classifier.
 % --------------------------------------------------------------------------
-% DATE CREATED: 2025-12-12
-% LAST MODIFIED: 2025-12-12
+% DATE CREATED: 2025-12-11
+% LAST MODIFIED: 2025-12-14 (Header fix)
 % --------------------------------------------------------------------------
 % DEPENDENCIES: 
 % - MATLAB built-in functions (fft, abs, mean, var, max)
@@ -12,6 +12,7 @@
 % NOTES:
 % - Calculates mean/variance of acceleration magnitude and the dominant frequency.
 % - Dominant frequency is crucial for distinguishing steady-state walking (1-2 Hz).
+% - Currently ignores windowGyro input (~).
 % --------------------------------------------------------------------------
 
 function [features_out] = Features(windowAcc, ~, Fs)
@@ -30,9 +31,9 @@ feat_var_mag = var(mag_acc);
 % 2. Frequency-Domain Features
 N = length(windowAcc);
 if N < 2
-    % Handle edge case of very small window
-    features_out = [feat_mean_mag, feat_var_mag, 0];
-    return; 
+% Handle edge case of very small window
+features_out = [feat_mean_mag, feat_var_mag, 0];
+return; 
 end
 
 % Perform Fast Fourier Transform (FFT) on the raw Z-axis of acceleration

@@ -4,7 +4,7 @@
 % PURPOSE: Implements the Data Acquisition Protocol, reading raw CSV data from three IMU locations (Back, Hip L/R).
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-11
-% LAST MODIFIED: 2025-12-12
+% LAST MODIFIED: 2025-12-13
 % --------------------------------------------------------------------------
 % DEPENDENCIES: 
 %   - process_imu_table (Nested function)

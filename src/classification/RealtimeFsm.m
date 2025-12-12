@@ -3,8 +3,8 @@
 % FUNCTION: [command, state] = updateFSM(new_label, current_state)
 % PURPOSE: Implements the Finite State Machine (FSM) to manage transitions between locomotion modes and generate exoskeleton control commands.
 % --------------------------------------------------------------------------
-% DATE CREATED: 2025-09-21
-% LAST MODIFIED: 2025-12-12
+% DATE CREATED: 2025-12-11
+% LAST MODIFIED: 2025-12-13
 % --------------------------------------------------------------------------
 % DEPENDENCIES: 
 % - None (Self-contained logic)

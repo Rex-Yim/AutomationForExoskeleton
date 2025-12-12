@@ -4,7 +4,7 @@
 % PURPOSE: Loads all raw HuGaDB text files, parses the data according to the database format, and saves it to a single .mat file.
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-12
-% LAST MODIFIED: 2025-12-12
+% LAST MODIFIED: 2025-12-13
 % --------------------------------------------------------------------------
 % DEPENDENCIES: 
 %   - dlmread (MATLAB built-in)
