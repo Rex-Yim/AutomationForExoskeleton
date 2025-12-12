@@ -34,3 +34,6 @@ This protocol ensures accessibility and fosters collaboration in wearable techno
 5. Train models with `train_svm_binary.m`.
 
 For contributions or issues, see LICENSE (CC0) and contact the author.
+
+### References
+[1] Chereshnev, R., Kertész-Farkas, A. (2018). HuGaDB: Human Gait Database for Activity Recognition from Wearable Inertial Sensor Networks. In: van der Aalst, W., et al. Analysis of Images, Social Networks and Texts. AIST 2017. Lecture Notes in Computer Science(), vol 10716. Springer, Cham. https://doi.org/10.1007/978-3-319-73013-4_12
