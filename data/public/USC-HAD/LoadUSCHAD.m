@@ -1,11 +1,20 @@
-function usc = loadUSCHAD(rawDir)
-% LOADUSCHAD Batch-load entire USC-HAD into a single struct similar to hugadb_data
-%   usc.subjectX_activityY_trialZ = struct with fields:
-%       .acc    (Nx3)  [m/s²]
-%       .gyro   (Nx3xN)  [rad/s]  note: USC-HAD stores gyro as 3×N
-%       .label  scalar activity ID (1-12)
-%       .subject scalar
-%       .fs     100 Hz
+%% LoadUSCHAD.m
+% --------------------------------------------------------------------------
+% FUNCTION: [usc] = loadUSCHAD(rawDir)
+% PURPOSE: Loads all raw USC-HAD `.mat` files, normalizes the structure, and saves all trials into a single `usc_had_dataset.mat` file.
+% --------------------------------------------------------------------------
+% DATE CREATED: 2025-12-12
+% LAST MODIFIED: 2025-12-12
+% --------------------------------------------------------------------------
+% DEPENDENCIES: 
+%   - MATLAB built-in functions (dir, load, regexp)
+% --------------------------------------------------------------------------
+% NOTES:
+%   - Converts USC-HAD's gyro format (3xN) to standard (Nx3).
+%   - Saves the activity name and label (1-12) for each trial.
+% --------------------------------------------------------------------------
+
+function usc = LoadUSCHAD(rawDir)
 
 if nargin < 1
     rawDir = fullfile('data/public/USC-HAD/RawData');

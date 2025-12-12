@@ -61,5 +61,7 @@ AutomationForExoskeleton/
 │   ├── fusion/
 │   │   └── FusionKalman.m
 │   └── models/
+├── ConcatenateCode.m
 ├── GenerateProjectTree.m
+├── concatenated_code.txt
 └── project_tree.txt

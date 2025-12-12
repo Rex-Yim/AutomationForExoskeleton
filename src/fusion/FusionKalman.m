@@ -1,6 +1,20 @@
-% fusion_kalman.m
-% Implements Kalman Filter Sensor Fusion Pipeline 
-% Estimates joint angles with low latency (<200ms) 
+%% FusionKalman.m
+% --------------------------------------------------------------------------
+% FUNCTION: [hipFlexionAngle] = run_fusion_kalman(sessionID)
+% PURPOSE: Implements a Kalman Filter for sensor fusion (Accel/Gyro) to estimate low-latency joint angles for exoskeleton control.
+% --------------------------------------------------------------------------
+% DATE CREATED: 2025-12-11
+% LAST MODIFIED: 2025-12-12
+% --------------------------------------------------------------------------
+% DEPENDENCIES: 
+%   - import_data (from ImportData.m)
+%   - MATLAB Sensor Fusion Toolbox (imufilter)
+% --------------------------------------------------------------------------
+% NOTES:
+%   - Tuned for real-time operation (incremental updates).
+%   - Estimates Left Hip Flexion Angle by calculating the relative orientation between the Back and Left Hip IMUs.
+%   - Estimates joint angles with low latency (<200ms) 
+% --------------------------------------------------------------------------
 
 clc; clear; close all;
 

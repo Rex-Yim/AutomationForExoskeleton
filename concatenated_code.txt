@@ -1,0 +1,791 @@
+--- CONCATENATED CODE FROM PROJECT: /Users/rexyim/Documents/MATLAB/AutomationForExoskeleton ---
+
+### START OF FILE: ConcatenateCode.m
+### FILE Path: /Users/rexyim/Documents/MATLAB/AutomationForExoskeleton/ConcatenateCode.m
+%% ConcatenateCode.m
+% --------------------------------------------------------------------------
+% FUNCTION: [] = ConcatenateCode()
+% PURPOSE: Generates a single, structured file (concatenated_code.txt) containing the source code of the entire project.
+% --------------------------------------------------------------------------
+% DATE CREATED: 2025-12-12
+% LAST MODIFIED: 2025-12-12
+% --------------------------------------------------------------------------
+% DEPENDENCIES: 
+%   - MATLAB built-in file I/O and utility functions.
+% --------------------------------------------------------------------------
+% NOTES:
+%   - Uses '###' headers to ensure visibility in the MATLAB Command Window.
+%   - Hardcodes the base path prefix for file path standardization.
+% --------------------------------------------------------------------------
+
+root_directory = pwd; 
+output_filename = 'concatenated_code.txt';
+
+fprintf('Starting code concatenation for copying...\n');
+
+% 1. Find all .m files recursively and filter hidden folders
+search_path = fullfile(root_directory, '**', '*.m');
+listing = dir(search_path);
+
+files_to_concatenate = [];
+for i = 1:length(listing)
+    full_path = fullfile(listing(i).folder, listing(i).name);
+    
+    % Get the path relative to the root
+    rel_path = extractAfter(full_path, root_directory);
+    if startsWith(rel_path, filesep)
+        rel_path = extractAfter(rel_path, filesep);
+    end
+    
+    % Check if any part of the path starts with a '.' (e.g., .git/...)
+    parts = strsplit(rel_path, filesep);
+    if ~any(startsWith(parts, '.'))
+        files_to_concatenate = [files_to_concatenate; listing(i)];
+    end
+end
+
+if isempty(files_to_concatenate)
+    fprintf('No .m files found in visible project directories.\n');
+    return;
+end
+
+% --- CUSTOM SORTING: Ensure correct file order (Root files first, then subfolders by path) ---
+files_to_sort = files_to_concatenate; 
+
+% 1. Calculate the relative path for every file
+relative_paths = cell(length(files_to_sort), 1);
+for i = 1:length(files_to_sort)
+    full_path_abs = fullfile(files_to_sort(i).folder, files_to_sort(i).name);
+    
+    % Get the path relative to the root for sorting
+    rel_path = extractAfter(full_path_abs, root_directory);
+    if startsWith(rel_path, filesep)
+        rel_path = extractAfter(rel_path, filesep);
+    end
+    
+    % Add a special prefix to root files to force them to sort first
+    if isempty(fileparts(rel_path))
+        relative_paths{i} = ['!', rel_path]; 
+    else
+        relative_paths{i} = rel_path;
+    end
+end
+
+% 2. Sort the files based on the relative path strings
+[~, idx] = sort(relative_paths);
+files_to_concatenate = files_to_sort(idx);
+% --------------------------------------------------------------------------------------------
+
+
+% 2. Open the output file for writing (will overwrite if it exists)
+fileID = fopen(output_filename, 'wt', 'n', 'UTF-8');
+if fileID == -1
+    error('Could not open file for writing: %s', output_filename);
+end
+
+% 3. Process and print/write each file
+fprintf('\n--- CONCATENATED CODE START ---\n\n');
+
+% Write the global header to the file (only to file)
+fprintf(fileID, '--- CONCATENATED CODE FROM PROJECT: %s ---\n\n', root_directory);
+
+for i = 1:length(files_to_concatenate)
+    file_info = files_to_concatenate(i);
+    
+    full_path_abs = fullfile(file_info.folder, file_info.name);
+    
+    % Construct the desired 'FILE Path' using the hardcoded prefix
+    rel_path_segment = extractAfter(full_path_abs, root_directory);
+    if startsWith(rel_path_segment, filesep)
+        rel_path_segment = extractAfter(rel_path_segment, filesep);
+    end
+    % CRITICAL: Use the hardcoded prefix structure requested by the user
+    file_path_output = sprintf('/Users/rexyim/Documents/MATLAB/AutomationForExoskeleton/%s', rel_path_segment);
+    
+    % Read the content of the file
+    file_content = fileread(full_path_abs);
+    
+    % --- Generate Custom Structured Header (USING 3 HASH SIGNS) ---
+    header_start_line1 = sprintf('### START OF FILE: %s\n', file_info.name);
+    header_start_line2 = sprintf('### FILE Path: %s\n', file_path_output);
+    header_end = sprintf('### END OF FILE: %s\n\n', file_info.name);
+    
+    % Print structured output to Command Window
+    fprintf(header_start_line1);
+    fprintf(header_start_line2);
+    fprintf('%s\n', file_content); 
+    fprintf(header_end);
+    
+    % Write structured output to the text file
+    fprintf(fileID, header_start_line1);
+    fprintf(fileID, header_start_line2);
+    fprintf(fileID, '%s\n', file_content);
+    fprintf(fileID, header_end);
+end
+
+% 4. Close the file and finalize output
+fclose(fileID);
+
+fprintf('\n--- CONCATENATED CODE END ---\n');
+fprintf('Content printed to terminal for immediate copy/paste.\n');
+fprintf('A consolidated version has also been saved to: %s\n', output_filename);
+### END OF FILE: ConcatenateCode.m
+
+### START OF FILE: GenerateProjectTree.m
+### FILE Path: /Users/rexyim/Documents/MATLAB/AutomationForExoskeleton/GenerateProjectTree.m
+%% GenerateProjectTree.m
+% --------------------------------------------------------------------------
+% FUNCTION: [] = ConcatenateCode()
+% PURPOSE: Recursively scans the project directory and prints the folder/file structure to project_tree.txt.
+% --------------------------------------------------------------------------
+% DATE CREATED: 2025-12-12
+% LAST MODIFIED: 2025-12-12
+% --------------------------------------------------------------------------
+% DEPENDENCIES: 
+%   - MATLAB built-in functions (dir, fprintf, diary, fileparts)
+% --------------------------------------------------------------------------
+% NOTES:
+%   - Excludes hidden folders (starting with '.').
+%   - Truncates raw data folders with >200 files for readability.
+% --------------------------------------------------------------------------
+
+root_directory = pwd; % Uses the current working directory.
+output_filename = 'project_tree.txt'; % *** RENAMED HERE ***
+% ---------------------
+
+% Line 1: Output only to Command Window (pre-execution message)
+fprintf('Starting project structure generation...\n');
+
+% 0. EXPLICIT OVERWRITE FIX: Delete the output file if it exists to guarantee a clean overwrite.
+if exist(output_filename, 'file')
+    delete(output_filename);
+end
+
+% 1. Start capturing the Command Window output to the specified file
+diary(output_filename);
+
+try
+    % Lines that are saved to the file:
+
+    % Display the root name followed by '/'.
+    [~, root_name, ~] = fileparts(root_directory);
+    fprintf('%s/\n', root_name);
+
+    % 2. Start the recursive drawing process
+    drawTreeLevel(root_directory, '');
+    
+catch ME
+    % Ensure diary is turned off even if an error occurs
+    diary off;
+    
+    % Display error message to the console
+    warning('An error occurred during script execution. Diary was turned off.');
+    rethrow(ME);
+end
+
+% 3. Stop capturing the Command Window output
+diary off;
+
+% Line 2: Output only to Command Window (post-execution success message)
+fprintf('\nScan completed and saved to %s.\n', output_filename);
+
+%% --- NESTED FUNCTION (The Recursive Logic) ---
+
+function drawTreeLevel(current_path, prefix)
+% Recursively draws the content of the current folder.
+
+% 1. Get all entries (files and folders) in the current directory
+listing = dir(current_path);
+
+% 2. Filter system entries ('.', '..')
+is_valid_entry = ~ismember({listing.name}, {'.', '..'});
+entries = listing(is_valid_entry);
+
+% 3. Filter hidden directories (starting with '.')
+is_not_hidden = ~startsWith({entries.name}, '.');
+entries = entries(is_not_hidden);
+
+% 4. Split into subfolders and files, sort alphabetically
+folders = entries([entries.isdir]);
+files = entries(~[entries.isdir]);
+
+[~, folder_idx] = sort({folders.name});
+folders = folders(folder_idx);
+
+[~, file_idx] = sort({files.name});
+files = files(file_idx);
+
+sorted_entries = [folders; files];
+
+if isempty(sorted_entries)
+    return;
+end
+
+N = length(sorted_entries);
+
+% 5. Iterate and draw each entry
+for i = 1:N
+    entry = sorted_entries(i);
+    is_last = (i == N);
+    
+    % --- Determine Connectors and Next Prefix Segment ---
+    if is_last
+        connector = '└── ';
+        new_prefix_segment = '    '; 
+    else
+        connector = '├── ';
+        new_prefix_segment = '│   '; 
+    end
+    
+    % Build the full line to print
+    name_suffix = entry.name;
+    if entry.isdir
+        name_suffix = [name_suffix, '/'];
+    end
+    
+    fprintf('%s%s%s\n', prefix, connector, name_suffix);
+    
+    % 6. If the entry is a folder, recurse into it
+    if entry.isdir
+        new_path = fullfile(current_path, entry.name);
+        new_prefix = [prefix, new_prefix_segment];
+
+        % Truncation check for massive raw data folders (over 200 files)
+        sub_listing = dir(new_path);
+        sub_entries_count = length(sub_listing(~ismember({sub_listing.name}, {'.', '..'})));
+        
+        if sub_entries_count > 200 && contains(entry.name, 'raw', 'IgnoreCase', true)
+            fprintf('%s%s%s\n', new_prefix, connector, '... (truncated: many raw data files)');
+        else
+            drawTreeLevel(new_path, new_prefix);
+        end
+    end
+end
+end
+### END OF FILE: GenerateProjectTree.m
+
+### START OF FILE: LoadHuGaDB.m
+### FILE Path: /Users/rexyim/Documents/MATLAB/AutomationForExoskeleton/data/public/HuGaDB/LoadHuGaDB.m
+%% LoadHuGaDB.m
+% --------------------------------------------------------------------------
+% FUNCTION: [] = LoadHuGaDB()
+% PURPOSE: Loads all raw HuGaDB text files, parses the data according to the database format, and saves it to a single .mat file.
+% --------------------------------------------------------------------------
+% DATE CREATED: 2025-12-12
+% LAST MODIFIED: 2025-12-12
+% --------------------------------------------------------------------------
+% DEPENDENCIES: 
+%   - dlmread (MATLAB built-in)
+% --------------------------------------------------------------------------
+% NOTES:
+%   - Skips 4 header lines using dlmread.
+%   - Column indices are hardcoded based on the standard HuGaDB format (39 columns).
+% --------------------------------------------------------------------------
+
+clear; clc;
+dataDir = 'HuGaDB_v2_various';  % Path to .txt files
+
+files = dir(fullfile(dataDir, '*.txt'));
+hugadb_data = struct();  % Store all sessions
+
+for i = 1:length(files)
+    filePath = fullfile(dataDir, files(i).name);
+    rawMatrix = dlmread(filePath, '\t', 4, 0);  % Skips 4 header lines
+    
+    % Parse into struct (column indices based on standard HuGaDB format)
+    data.acc_rf = rawMatrix(:, 1:3);    % Right foot accel (x,y,z)
+    data.gyro_rf = rawMatrix(:, 4:6);   % Right foot gyro (x,y,z)
+    data.acc_rs = rawMatrix(:, 7:9);    % Right shin accel
+    data.gyro_rs = rawMatrix(:, 10:12); % Right shin gyro
+    data.acc_rt = rawMatrix(:, 13:15);  % Right thigh accel
+    data.gyro_rt = rawMatrix(:, 16:18); % Right thigh gyro
+    data.acc_lf = rawMatrix(:, 19:21);  % Left foot accel
+    data.gyro_lf = rawMatrix(:, 22:24); % Left foot gyro
+    data.acc_ls = rawMatrix(:, 25:27);  % Left shin accel
+    data.gyro_ls = rawMatrix(:, 28:30); % Left shin gyro
+    data.acc_lt = rawMatrix(:, 31:33);  % Left thigh accel
+    data.gyro_lt = rawMatrix(:, 34:36); % Left thigh gyro
+    data.emg_r = rawMatrix(:, 37);      % Right EMG
+    data.emg_l = rawMatrix(:, 38);      % Left EMG
+    data.labels = rawMatrix(:, 39);     % Activity label
+    
+    sessionID = files(i).name(1:end-4);  % e.g., 'HuGaDB_v2_various_01_00'
+    hugadb_data.(sessionID) = data;
+end
+
+save('hugadb_dataset.mat', 'hugadb_data');
+disp('HuGaDB saved as hugadb_dataset.mat');
+
+### END OF FILE: LoadHuGaDB.m
+
+### START OF FILE: ImportUschadSingleImu.m
+### FILE Path: /Users/rexyim/Documents/MATLAB/AutomationForExoskeleton/data/public/USC-HAD/ImportUschadSingleImu.m
+%% ImportUschadSingleImu.m
+% --------------------------------------------------------------------------
+% FUNCTION: [back, hipL, hipR] = import_uschad_for_pipeline(trialFieldName)
+% PURPOSE: Adapts the single-IMU USC-HAD data format to match the project's three-IMU pipeline, assigning the real data to the 'back' sensor.
+% --------------------------------------------------------------------------
+% DATE CREATED: 2025-12-12
+% LAST MODIFIED: 2025-12-12
+% --------------------------------------------------------------------------
+% DEPENDENCIES: 
+%   - usc_had_dataset.mat
+% --------------------------------------------------------------------------
+% NOTES:
+%   - `hipL` and `hipR` are returned as dummy zero arrays to satisfy pipeline function signatures.
+%   - Used for pipeline validation when only one IMU is required.
+% --------------------------------------------------------------------------
+
+function [back, hipL, hipR] = ImportUschadSingleImu(trialFieldName)
+
+load('data/public/USC-HAD/usc_had_dataset.mat', 'usc');
+
+trial = usc.(trialFieldName);
+
+back.acc  = trial.acc;
+back.gyro = trial.gyro;
+
+% Dummy placeholders (your Kalman/SVM only uses back for many tests anyway)
+hipL.acc  = zeros(size(back.acc));
+hipL.gyro = zeros(size(back.gyro));
+hipR.acc  = zeros(size(back.acc));
+hipR.gyro = zeros(size(back.gyro));
+
+fprintf('Loaded USC-HAD trial %s → back sensor (label = %d: %s)\n', ...
+        trialFieldName, trial.label, trial.activityName);
+end
+### END OF FILE: ImportUschadSingleImu.m
+
+### START OF FILE: LoadUSCHAD.m
+### FILE Path: /Users/rexyim/Documents/MATLAB/AutomationForExoskeleton/data/public/USC-HAD/LoadUSCHAD.m
+%% LoadUSCHAD.m
+% --------------------------------------------------------------------------
+% FUNCTION: [usc] = loadUSCHAD(rawDir)
+% PURPOSE: Loads all raw USC-HAD `.mat` files, normalizes the structure, and saves all trials into a single `usc_had_dataset.mat` file.
+% --------------------------------------------------------------------------
+% DATE CREATED: 2025-12-12
+% LAST MODIFIED: 2025-12-12
+% --------------------------------------------------------------------------
+% DEPENDENCIES: 
+%   - MATLAB built-in functions (dir, load, regexp)
+% --------------------------------------------------------------------------
+% NOTES:
+%   - Converts USC-HAD's gyro format (3xN) to standard (Nx3).
+%   - Saves the activity name and label (1-12) for each trial.
+% --------------------------------------------------------------------------
+
+function usc = LoadUSCHAD(rawDir)
+
+if nargin < 1
+    rawDir = fullfile('data/public/USC-HAD/RawData');
+end
+
+if ~isfolder(rawDir)
+    error('USC-HAD RawData folder not found: %s', rawDir);
+end
+
+files = dir(fullfile(rawDir, '*.mat'));
+usc = struct();
+
+activityNames = {'WalkForward','WalkLeft','WalkRight','GoUpstairs',...
+                 'GoDownstairs','RunForward','Jump','Sit','Stand',...
+                 'Sleep','ElevatorUp','ElevatorDown'};
+
+fprintf('Loading %d USC-HAD trials...\n', length(files));
+
+for i = 1:length(files)
+    filepath = fullfile(rawDir, files(i).name);
+    tmp = load(filepath);               % contains 'sensor_data'
+    
+    % Extract fields
+    acc  = tmp.sensor_data.acc;         % Nx3  (already in m/s²)
+    gyro = tmp.sensor_data.gyro';       % 3xN → Nx3 (rad/s)
+    
+    % Parse filename: e.g., a1_t2_s3.mat → activity 1, trial 2, subject 3
+    tokens = regexp(files(i).name, 'a(?<act>\d+)_t(?<trial>\d+)_s(?<subj>\d+)', 'names');
+    actID  = str2double(tokens.act);
+    subjID = str2double(tokens.subj(2:end));  % filename has 'sX' but field is just number
+    
+    fieldName = sprintf('subject%d_activity%d_trial%d', subjID, actID, str2double(tokens.trial));
+    
+    usc.(fieldName).acc   = acc;
+    usc.(fieldName).gyro  = gyro;
+    usc.(fieldName).label = actID;              % 1-12
+    usc.(fieldName).subject = subjID;
+    usc.(fieldName).activityName = activityNames{actID};
+    usc.(fieldName).fs = 100;
+end
+
+save('data/public/USC-HAD/usc_had_dataset.mat', 'usc', '-v7.3');
+fprintf('USC-HAD saved as usc_had_dataset.mat (%d trials)\n', length(files));
+end
+### END OF FILE: LoadUSCHAD.m
+
+### START OF FILE: ImportData.m
+### FILE Path: /Users/rexyim/Documents/MATLAB/AutomationForExoskeleton/src/acquisition/ImportData.m
+%% ImportData.m
+% --------------------------------------------------------------------------
+% FUNCTION: [back, hipL, hipR] = import_data(sessionID)
+% PURPOSE: Implements the Data Acquisition Protocol, reading raw CSV data from three IMU locations (Back, Hip L/R).
+% --------------------------------------------------------------------------
+% DATE CREATED: 2025-12-11
+% LAST MODIFIED: 2025-12-12
+% --------------------------------------------------------------------------
+% DEPENDENCIES: 
+%   - process_imu_table (Nested function)
+% --------------------------------------------------------------------------
+% NOTES:
+%   - Assumes raw CSV files are named sessionX_back.csv, etc., in '../data/raw/'.
+%   - Includes basic column mapping for Accel, Gyro, and Mag.
+%   - Implements the Data Acquisition Protocol described in Interim Report Section 4.1
+% --------------------------------------------------------------------------
+
+function [back, hipL, hipR] = ImportData(sessionID)
+    % Define paths
+    baseDir = '../data/raw/';
+    
+    % Filenames based on your specific export format (adjust as needed)
+    fileBack = fullfile(baseDir, sprintf('session%s_back.csv', sessionID));
+    fileHipL = fullfile(baseDir, sprintf('session%s_hipL.csv', sessionID));
+    fileHipR = fullfile(baseDir, sprintf('session%s_hipR.csv', sessionID));
+
+    % Check files exist
+    if ~isfile(fileBack), error('Back IMU file not found: %s', fileBack); end
+
+    % Import Table
+    opts = detectImportOptions(fileBack);
+    opts.VariableNamingRule = 'preserve';
+    
+    rawBack = readtable(fileBack, opts);
+    rawHipL = readtable(fileHipL, opts);
+    rawHipR = readtable(fileHipR, opts);
+
+    % Pre-process and Synchronize (Simple approach: Trim to shortest duration)
+    % Converting tables to standardized structs
+    back = process_imu_table(rawBack);
+    hipL = process_imu_table(rawHipL);
+    hipR = process_imu_table(rawHipR);
+    
+    disp(['Data imported successfully for Session: ', sessionID]);
+end
+
+function data = process_imu_table(tbl)
+    % Map columns (Adjust 'AccelerationX', etc. to your app's header names)
+    % Supports standard mobile export formats
+    
+    % Extract arrays
+    data.time = tbl.time; % Ensure this is in seconds
+    
+    % Accelerometer (m/s^2)
+    data.acc = [tbl.ax, tbl.ay, tbl.az]; 
+    
+    % Gyroscope (rad/s)
+    data.gyro = [tbl.gx, tbl.gy, tbl.gz];
+    
+    % Magnetometer (uT) - As claimed in 
+    if ismember('mx', tbl.Properties.VariableNames)
+        data.mag = [tbl.mx, tbl.my, tbl.mz];
+    else
+        % Fallback if mag is noisy/missing (Robustness)
+        data.mag = zeros(height(tbl), 3); 
+    end
+end
+### END OF FILE: ImportData.m
+
+### START OF FILE: Features.m
+### FILE Path: /Users/rexyim/Documents/MATLAB/AutomationForExoskeleton/src/classification/Features.m
+%% Features.m
+% --------------------------------------------------------------------------
+% FUNCTION: [features_out] = extractFeatures(windowAcc, windowGyro, Fs)
+% PURPOSE: Calculates time-domain and frequency-domain features from IMU data windows for use in the locomotion classifier.
+% --------------------------------------------------------------------------
+% DATE CREATED: 2025-12-12
+% LAST MODIFIED: 2025-12-12
+% --------------------------------------------------------------------------
+% DEPENDENCIES: 
+% - MATLAB built-in functions (fft, abs, mean, var, max)
+% --------------------------------------------------------------------------
+% NOTES:
+% - Calculates mean/variance of acceleration magnitude and the dominant frequency.
+% - Dominant frequency is crucial for distinguishing steady-state walking (1-2 Hz).
+% --------------------------------------------------------------------------
+
+function [features_out] = Features(windowAcc, ~, Fs)
+
+% 1. Time-Domain Features (Used in TrainSvmBinary.m)
+% Calculate magnitude of acceleration vector (net force)
+mag_acc = sqrt(sum(windowAcc.^2, 2));
+
+% Feature 1: Mean of Acceleration Magnitude
+feat_mean_mag = mean(mag_acc);
+
+% Feature 2: Variance of Acceleration Magnitude
+feat_var_mag = var(mag_acc);
+
+
+% 2. Frequency-Domain Features
+N = length(windowAcc);
+if N < 2
+    % Handle edge case of very small window
+    features_out = [feat_mean_mag, feat_var_mag, 0];
+    return; 
+end
+
+% Perform Fast Fourier Transform (FFT) on the raw Z-axis of acceleration
+% Z-axis (vertical/gravity) often has the clearest gait signature
+acc_z = windowAcc(:, 3); % Assuming Z is the 3rd column
+
+Y = fft(acc_z);
+P2 = abs(Y/N);
+P1 = P2(1:floor(N/2)+1); % Single-sided spectrum
+P1(2:end-1) = 2*P1(2:end-1);
+
+% Frequency vector
+f = Fs*(0:floor(N/2))/N;
+
+% Feature 3: Dominant Frequency (excluding DC component at f(1)=0)
+[~, idx] = max(P1(2:end)); % Find peak amplitude index, starting from index 2
+feat_dom_freq = f(idx + 1); % Adjust index back to frequency vector f
+
+% 3. Output
+% Combine all features into a single row vector
+features_out = [feat_mean_mag, feat_var_mag, feat_dom_freq];
+
+end
+### END OF FILE: Features.m
+
+### START OF FILE: RealtimeFsm.m
+### FILE Path: /Users/rexyim/Documents/MATLAB/AutomationForExoskeleton/src/classification/RealtimeFsm.m
+%% RealtimeFsm.m
+% --------------------------------------------------------------------------
+% FUNCTION: [command, state] = updateFSM(new_label, current_state)
+% PURPOSE: Implements the Finite State Machine (FSM) to manage transitions between locomotion modes and generate exoskeleton control commands.
+% --------------------------------------------------------------------------
+% DATE CREATED: 2025-09-21
+% LAST MODIFIED: 2025-12-12
+% --------------------------------------------------------------------------
+% DEPENDENCIES: 
+% - None (Self-contained logic)
+% --------------------------------------------------------------------------
+% NOTES:
+% - State smoothing: requires 3 consecutive labels to confirm a state change.
+% - The output `command` is a simple low-level signal (e.g., 0=stand, 1=walk gait).
+% --------------------------------------------------------------------------
+
+function [command, next_state] = RealtimeFsm(new_label, current_state)
+
+% --- Configuration Parameters ---
+persistent state_counter % Persist across calls to track consecutive labels
+if isempty(state_counter)
+    state_counter = 0; % 0: Consecutive label counter
+end
+
+% Required consecutive labels to confirm a state transition
+CONFIRMATION_THRESHOLD = 3; 
+
+% --- State Definitions ---
+% Use descriptive integer codes
+STATE_STANDING = 0;
+STATE_WALKING = 1;
+
+% Assuming new_label comes from SVM (0=Stand, 1=Walk)
+
+% Initialize next state and command to current values
+next_state = current_state;
+command = current_state; % Command is typically the same as the final state
+
+% ----------------------------------------------------------------
+% 1. CHECK FOR CONSISTENCY (Smoothing)
+% ----------------------------------------------------------------
+
+if new_label == next_state
+    % Label matches current state, reset counter
+    state_counter = 0;
+    return; % No state change needed
+end
+
+% ----------------------------------------------------------------
+% 2. CHECK FOR TRANSITION
+% ----------------------------------------------------------------
+
+if new_label ~= next_state
+    % Label suggests a change; increment counter
+    state_counter = state_counter + 1;
+
+    if state_counter >= CONFIRMATION_THRESHOLD
+        % Threshold reached: Execute the transition
+        
+        if current_state == STATE_STANDING && new_label == STATE_WALKING
+            % Transition: STANDING -> WALKING
+            next_state = STATE_WALKING;
+            command = 1; % Low-level command to initiate walking gait
+            fprintf('FSM Transition: STANDING -> WALKING\n');
+
+        elseif current_state == STATE_WALKING && new_label == STATE_STANDING
+            % Transition: WALKING -> STANDING
+            next_state = STATE_STANDING;
+            command = 0; % Low-level command to lock/stop exoskeleton
+            fprintf('FSM Transition: WALKING -> STANDING\n');
+        end
+
+        % Reset counter after successful transition
+        state_counter = 0;
+    end
+end
+
+% If the threshold was not reached, next_state remains current_state
+end
+### END OF FILE: RealtimeFsm.m
+
+### START OF FILE: TrainSvmBinary.m
+### FILE Path: /Users/rexyim/Documents/MATLAB/AutomationForExoskeleton/src/classification/TrainSvmBinary.m
+%% TrainSvmBinary.m
+% --------------------------------------------------------------------------
+% FUNCTION: [] = TrainSvmBinary()
+% PURPOSE: Loads IMU data, extracts time-domain features using a sliding window, and trains a Support Vector Machine (SVM) model for binary locomotion classification (Walking vs. Standing).
+% --------------------------------------------------------------------------
+% DATE CREATED: 2025-12-12
+% LAST MODIFIED: 2025-12-12
+% --------------------------------------------------------------------------
+% DEPENDENCIES: 
+% - ImportData.m (from src/acquisition)
+% - Statistics and Machine Learning Toolbox (fitcsvm, crossval, kfoldPredict, confusionchart)
+% --------------------------------------------------------------------------
+% NOTES:
+% - Uses 'rbf' kernel for non-linear separation.
+% - Simulates ground truth labels based on time segments for initial testing.
+% - Includes cross-validation and confusion matrix generation for performance assessment.
+% --------------------------------------------------------------------------
+
+% Locomotion Mode Classification: Walking vs. Standing 
+% Uses Statistics and Machine Learning Toolbox
+
+% --- Inside the main RealtimeLoop.m ---
+% ... SVM loading and windowing setup ...
+
+% Initialize FSM state
+current_fsm_state = 0; % Start as STANDING (0)
+
+for i = 1:windowSize:(length(back.acc) - windowSize)
+    % 1. Extract Window and Features
+    windowAcc = back.acc(i:i+windowSize-1, :);
+    
+    % NOTE: You should use the new extractFeatures function here!
+    % features_vec = extractFeatures(windowAcc, windowGyro, Fs); 
+    
+    % --- For simple testing, use the two features you defined ---
+    mag = sqrt(sum(windowAcc.^2, 2));
+    features_vec = [mean(mag), var(mag)];
+    % ----------------------------------------------------------
+
+    % 2. Classify (Predict the next label)
+    new_label = predict(SVMModel, features_vec); 
+
+    % 3. Update FSM and get command
+    [exoskeleton_command, current_fsm_state] = updateFSM(new_label, current_fsm_state);
+    
+    % 4. Send command to hardware (Conceptual)
+    % send_to_serial(exoskeleton_command); 
+
+end
+### END OF FILE: TrainSvmBinary.m
+
+### START OF FILE: FusionKalman.m
+### FILE Path: /Users/rexyim/Documents/MATLAB/AutomationForExoskeleton/src/fusion/FusionKalman.m
+%% FusionKalman.m
+% --------------------------------------------------------------------------
+% FUNCTION: [hipFlexionAngle] = run_fusion_kalman(sessionID)
+% PURPOSE: Implements a Kalman Filter for sensor fusion (Accel/Gyro) to estimate low-latency joint angles for exoskeleton control.
+% --------------------------------------------------------------------------
+% DATE CREATED: 2025-12-11
+% LAST MODIFIED: 2025-12-12
+% --------------------------------------------------------------------------
+% DEPENDENCIES: 
+%   - import_data (from ImportData.m)
+%   - MATLAB Sensor Fusion Toolbox (imufilter)
+% --------------------------------------------------------------------------
+% NOTES:
+%   - Tuned for real-time operation (incremental updates).
+%   - Estimates Left Hip Flexion Angle by calculating the relative orientation between the Back and Left Hip IMUs.
+%   - Estimates joint angles with low latency (<200ms) 
+% --------------------------------------------------------------------------
+
+clc; clear; close all;
+
+% 1. Load Data
+[back, hipL, hipR] = import_data('01'); % Assumes you have session01 files
+
+% Input validation
+validateIMUData(back, 'Back');
+validateIMUData(hipL, 'Left Hip');
+validateIMUData(hipR, 'Right Hip');  % If needed
+
+% 2. Initialize Kalman Filter (Sensor Fusion Toolbox)
+% Tuning parameters to achieve RMSE < 5 deg 
+Fs = 100; % Sample rate (Hz)
+fuse = imufilter('SampleRate', Fs, ...
+                 'AccelerometerNoise', 0.01, ...
+                 'GyroscopeNoise', 0.005, ...
+                 'ReferenceFrame', 'ENU');
+
+realTimeMode = true;  % Flag: true for incremental updates (real-time), false for batch
+
+if realTimeMode
+    % 3. Process in loop for real-time (incremental updates)
+    orientBack = zeros(length(back.acc), 1, 'quaternion');
+    orientHipL = zeros(length(hipL.acc), 1, 'quaternion');
+    
+    for i = 1:length(back.acc)
+        orientBack(i) = fuse(back.acc(i,:), back.gyro(i,:));
+        reset(fuse);  % Optional reset per side; adjust based on needs
+        orientHipL(i) = fuse(hipL.acc(i,:), hipL.gyro(i,:));
+    end
+else
+    % Original batch mode
+    [orientBack, ~] = fuse(back.acc, back.gyro);
+    reset(fuse);
+    [orientHipL, ~] = fuse(hipL.acc, hipL.gyro);
+end
+
+% 4. Compute Relative Joint Angle (Hip Flexion)
+eulBack = quat2eul(orientBack, 'ZYX');
+eulHipL = quat2eul(orientHipL, 'ZYX');
+hipFlexionAngle = (eulHipL(:,2) - eulBack(:,2)) * (180/pi); 
+
+% 5. Test RMSE against ground truth (example: load from file or simulate)
+% Assume true_angles is a vector from Vicon or validation data
+true_angles = zeros(length(hipFlexionAngle), 1);  % Placeholder: replace with actual
+rmse = sqrt(mean((hipFlexionAngle - true_angles).^2));
+fprintf('RMSE: %.2f degrees\n', rmse);
+if rmse > 5
+    warning('RMSE exceeds target threshold of 5 degrees.');
+end
+
+% 6. Visualization 
+figure('Name', 'Real-time Joint Kinematics');
+t = (1:length(hipFlexionAngle)) / Fs;
+plot(t, hipFlexionAngle, 'LineWidth', 1.5);
+grid on;
+title('Estimated Left Hip Flexion Angle (Kalman Fusion)');
+xlabel('Time (s)');
+ylabel('Angle (deg)');
+legend('Hip Flexion');
+
+% Save result for report evidence
+saveas(gcf, '../results/joint_angles_rmse.png');
+disp('Kinematics estimation complete. Plot saved.');
+
+% Helper function for validation
+function validateIMUData(data, label)
+    requiredFields = {'acc', 'gyro'};
+    for f = requiredFields
+        if ~isfield(data, f{1}) || size(data.(f{1}), 2) ~= 3
+            error('%s IMU data missing or invalid: %s field.', label, f{1});
+        end
+    end
+    if size(data.acc, 1) ~= size(data.gyro, 1)
+        error('%s IMU data size mismatch between acc and gyro.', label);
+    end
+end
+### END OF FILE: FusionKalman.m
+

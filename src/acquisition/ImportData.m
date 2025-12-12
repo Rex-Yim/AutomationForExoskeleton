@@ -1,9 +1,21 @@
-% import_data.m
-% Implements the Data Acquisition Protocol described in Interim Report Section 4.1
-% 
-% Reads CSV files from 3 mobile phones (Back, Left Hip, Right Hip)
+%% ImportData.m
+% --------------------------------------------------------------------------
+% FUNCTION: [back, hipL, hipR] = import_data(sessionID)
+% PURPOSE: Implements the Data Acquisition Protocol, reading raw CSV data from three IMU locations (Back, Hip L/R).
+% --------------------------------------------------------------------------
+% DATE CREATED: 2025-12-11
+% LAST MODIFIED: 2025-12-12
+% --------------------------------------------------------------------------
+% DEPENDENCIES: 
+%   - process_imu_table (Nested function)
+% --------------------------------------------------------------------------
+% NOTES:
+%   - Assumes raw CSV files are named sessionX_back.csv, etc., in '../data/raw/'.
+%   - Includes basic column mapping for Accel, Gyro, and Mag.
+%   - Implements the Data Acquisition Protocol described in Interim Report Section 4.1
+% --------------------------------------------------------------------------
 
-function [back, hipL, hipR] = import_data(sessionID)
+function [back, hipL, hipR] = ImportData(sessionID)
     % Define paths
     baseDir = '../data/raw/';
     

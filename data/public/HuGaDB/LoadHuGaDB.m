@@ -1,6 +1,21 @@
-% Batch load and save HuGaDB as .mat
+%% LoadHuGaDB.m
+% --------------------------------------------------------------------------
+% FUNCTION: [] = LoadHuGaDB()
+% PURPOSE: Loads all raw HuGaDB text files, parses the data according to the database format, and saves it to a single .mat file.
+% --------------------------------------------------------------------------
+% DATE CREATED: 2025-12-12
+% LAST MODIFIED: 2025-12-12
+% --------------------------------------------------------------------------
+% DEPENDENCIES: 
+%   - dlmread (MATLAB built-in)
+% --------------------------------------------------------------------------
+% NOTES:
+%   - Skips 4 header lines using dlmread.
+%   - Column indices are hardcoded based on the standard HuGaDB format (39 columns).
+% --------------------------------------------------------------------------
+
 clear; clc;
-dataDir = 'HuGaDB_v2_various';  % Path to .txt files
+dataDir = 'HuGaDB_v2_raw';  % Path to .txt files
 
 files = dir(fullfile(dataDir, '*.txt'));
 hugadb_data = struct();  % Store all sessions

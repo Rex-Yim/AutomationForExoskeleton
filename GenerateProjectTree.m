@@ -1,9 +1,19 @@
 %% GenerateProjectTree.m
-% A single-file script to draw the project folder/file structure and 
-% automatically save a CLEAN output to 'project_tree.txt', 
-% explicitly ensuring the old file is deleted.
+% --------------------------------------------------------------------------
+% FUNCTION: [] = ConcatenateCode()
+% PURPOSE: Recursively scans the project directory and prints the folder/file structure to project_tree.txt.
+% --------------------------------------------------------------------------
+% DATE CREATED: 2025-12-12
+% LAST MODIFIED: 2025-12-12
+% --------------------------------------------------------------------------
+% DEPENDENCIES: 
+%   - MATLAB built-in functions (dir, fprintf, diary, fileparts)
+% --------------------------------------------------------------------------
+% NOTES:
+%   - Excludes hidden folders (starting with '.').
+%   - Truncates raw data folders with >200 files for readability.
+% --------------------------------------------------------------------------
 
-% --- CONFIGURATION ---
 root_directory = pwd; % Uses the current working directory.
 output_filename = 'project_tree.txt'; % *** RENAMED HERE ***
 % ---------------------
