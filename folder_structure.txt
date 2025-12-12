@@ -1,0 +1,26 @@
+AutomationForExoskeleton/
+├── data/
+│   ├── processed/
+│   ├── public/
+│   │   └── HuGaDB/
+│   │   │   ├── HuGaDB_v2_various/
+│   │   │   │   └── HuGaDB_v2_various_01_00.txt
+│   │   │   ├── hugadb_dataset.mat  
+│   │   │   └── loadDataFromFile.m
+│   │   └── USC-HAD/
+│   └── raw/
+├── docs/
+│   ├── LICENSE
+│   └── README.md
+├── results/
+├── src/
+│   ├── acquisition/
+│   │   └── import_data.m
+│   ├── classification/
+│   │   ├── features.m
+│   │   └── realtime_fsm.m
+│   │   ├── train_svm_binary.m  
+│   ├── fusion/
+│   │   └── fusion_kalman.m
+│   └── models/  # New: For saved ML models
+└── folder_structure.txt 
