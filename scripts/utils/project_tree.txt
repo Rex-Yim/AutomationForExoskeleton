@@ -53,13 +53,10 @@ AutomationForExoskeleton/
 ├── docs/
 │   ├── architecture/
 │   ├── LICENSE
+│   ├── README.asv
 │   └── README.md
 ├── models/
 ├── notebooks/
-├── reports/
-│   ├── figures/
-│   ├── final_report.txt
-│   └── interim_report.txt
 ├── results/
 ├── scripts/
 │   ├── utils/

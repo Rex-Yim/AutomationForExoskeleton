@@ -1,41 +1,125 @@
-# AutomationForExoskeleton
-Final Year Project: Robotic Exoskeleton for Load Transportation (Department of Mechanical and Automation Engineering, The Chinese University of Hong Kong)
-Sep 2025 – May 2026 at CUHK, Shatin, Hong Kong
+# 🤖 AutomationForExoskeleton
 
-## Project Description
-Project partnered with ExoTechHK Limited (HKSTP)
-- Developing intention detection algorithm using MATLAB to predict user locomotion modes (walking, stair ascent/descent) and state transitions (sit-to-stand).
-- Engineering multi-sensor data processing pipeline: Fused IMU data (accelerometer, gyroscope) via Kalman filtering (imufilter) to estimate accurate hips and lower back kinematics.
-- Training and deploying machine learning models (SVM, LSTM) using MATLAB's Statistics & ML and Deep Learning Toolboxes, achieving high classification accuracy.
-- Potential Results: Enabled proactive and seamless power assistance by translating predicted user intent into control signals for the exoskeleton's actuators, enhancing stability and reducing metabolic cost for the user.
+This project implements a complete, simulated real-time control system for a powered lower-limb exoskeleton using Inertial Measurement Unit (IMU) data. The pipeline integrates Sensor Fusion, Locomotion Classification, and a Finite State Machine (FSM) to generate stable, continuous control commands (e.g., Stand/Walk).
 
-## Data Collection Protocol
-The data acquisition prototype uses three mobile phones as IMUs (leveraging built-in accelerometers, gyroscopes, and magnetometers) to simulate sensor placement on the lower limbs and back. This setup enables real-time data collection with the following standardized protocol:
-- Attach phones to the left hip, right hip, and lower back.
-- Perform controlled tasks: Walk 10 m on flat ground, climb 10 steps, navigate uneven surfaces, or perform sit-to-stand transitions at self-selected speeds.
-- Export data as CSV files containing: 1) Accelerometer (m/s²), 2) Gyroscope (rad/s), and 3) Magnetometer (µT) readings.
-- Testing includes preliminary simulations to verify data integrity and reproducibility, allowing other researchers to leverage the datasets for biomechanics studies.
+## 🚀 Key Features
 
-This protocol ensures accessibility and fosters collaboration in wearable technology research.
+  * **Integrated Pipeline:** Simulates the entire real-time data flow from sensor acquisition to command generation.
+  * **Sensor Fusion (Kalman Filter):** Provides robust estimation of joint kinematics (e.g., hip flexion angle) from raw accelerometer and gyroscope data.
+  * **Locomotion Classification (SVM):** Uses a pre-trained Support Vector Machine on a sliding window to detect instantaneous activity (e.g., preparing to walk).
+  * **Finite State Machine (FSM):** Stabilizes the classifier output to produce smooth, non-flickering control commands suitable for an exoskeleton motor controller.
+  * **Performance Testing:** Dedicated script for evaluating end-to-end system metrics (Accuracy, Precision, Recall) against ground truth data.
 
-## MATLAB Toolboxes/Dependencies
-- MATLAB (core environment for scripting and simulation)
-- Signal Processing Toolbox (for filtering and signal processing of IMU data)
-- Statistics and Machine Learning Toolbox (for feature extraction, SVM training)
-- Sensor Fusion and Tracking Toolbox (for IMU data fusion and Kalman filters)
-- Deep Learning Toolbox (for LSTM models in sequential prediction)
-- ROS Toolbox (for hardware integration and simulation with exoskeleton frames)
+## 🧱 Project Architecture & Data Flow
 
-## Installation and Usage
-1. Clone the repository: `git clone <repo-url>`
-2. Ensure required toolboxes are installed in MATLAB.
-3. Run `loadDataFromFile.m` to process HuGaDB data.
-4. Execute `fusion_kalman.m` for sensor fusion and visualization.
-5. Train models with `train_svm_binary.m`.
+The control system is built as a sequential pipeline, running on a fixed sampling rate ($FS$) and processing data in windows ($W$) that step by a defined amount ($S$).
 
-For contributions or issues, see LICENSE (CC0) and contact the author.
+IMU Data → (Sensor Fusion/Kalman) → Estimated Angle → (Feature Extraction) → Feature Vector → (SVM Model) → Locomotion Label → (FSM) → Exoskeleton Command
 
-### References
-[1] Chereshnev, R., Kertész-Farkas, A. (2018). HuGaDB: Human Gait Database for Activity Recognition from Wearable Inertial Sensor Networks. In: van der Aalst, W., et al. Analysis of Images, Social Networks and Texts. AIST 2017. Lecture Notes in Computer Science(), vol 10716. Springer, Cham. https://doi.org/10.1007/978-3-319-73013-4_12
+### Core Component Files
 
-[2] Zhang, M., & Sawchuk, A. A. (2012). USC-HAD: A daily activity dataset for ubiquitous activity recognition using wearable sensors. In Proceedings of the 2012 ACM Conference on Ubiquitous Computing (UbiComp '12) (pp. 1036–1043). ACM. https://doi.org/10.1145/2370216.2370438
+| Path | Component | Purpose |
+| :--- | :--- | :--- |
+| `src/fusion/FusionKalman.m` | Kalman Filter | Estimates sensor orientation and joint angles (e.g., hip flexion) for state estimation. |
+| `src/features/Features.m` | Feature Extraction | Calculates time-domain and frequency-domain features from the sliding window IMU data. |
+| `models/Binary_SVM_Model.mat` | Trained Model | The pre-trained SVM used for binary classification (Locomotion vs. Non-Locomotion). |
+| `src/classification/RealtimeFsm.m` | Finite State Machine | Takes the raw SVM output and current state to issue a robust motor command (0: Stand, 1: Walk). |
+
+-----
+
+## 🛠️ Setup and Prerequisites
+
+### 1\. Environment
+
+This project requires **MATLAB R2019b or later**. The following toolboxes are likely necessary (ensure they are installed):
+
+  * Signal Processing Toolbox
+  * Statistics and Machine Learning Toolbox
+
+### 2\. Configuration
+
+All critical parameters (Sampling Frequency, Window Size, Step Size, File Paths) are managed in:
+
+  * `config/ExoConfig.m`
+
+### 3\. Data & Model Preparation (Crucial)
+
+Before running the simulation scripts, the project requires **two** main dependencies:
+
+#### A. Raw Data
+
+Raw IMU data must be placed in the `data/raw/` directory, organized by activity type (e.g., `walking_straight`). The simulation scripts rely on `ImportData.m` to access `.csv` files within these subdirectories.
+
+#### B. Trained SVM Model
+
+The pipeline relies on a pre-trained SVM model: `models/Binary_SVM_Model.mat`.
+
+**If this file is missing, you must first run the training script:**
+
+```matlab
+>> TrainSvmBinary
+```
+
+*(Note: If `TrainSvmBinary.m` is not present, you will need to write it, utilizing `PrepareTrainingData.m` and `Classifier.m` to generate the model.)*
+
+-----
+
+## ▶️ Execution
+
+### 1\. Run the Pipeline Simulation
+
+To visualize the system's output (estimated angle, FSM command) against ground truth:
+
+```matlab
+>> RunExoskeletonPipeline
+```
+
+**Output:** A plot is saved to `results/realtime_pipeline_output.png` showing Kinematics, Control Command, and Ground Truth over time.
+
+### 2\. Test Performance
+
+To run the simulation and calculate quantitative classification metrics:
+
+```matlab
+>> TestPipelinePerformance
+```
+
+**Output:** Prints a detailed table to the Command Window, including **Accuracy**, **Precision**, **Recall**, and **Specificity** for the simulated activity.
+
+### 3\. Utility Scripts
+
+For documentation and sharing, use the helper scripts located in `scripts/utils/`:
+
+| Utility Function | Command | Purpose |
+| :--- | :--- | :--- |
+| `GenerateProjectTree.m` | `>> GenerateProjectTree` | Scans the project structure and saves a text tree file (`project_tree.txt`). |
+| `ConcatenateCode.m` | `>> ConcatenateCode` | Merges all `.m` source files into a single, structured file (`concatenated_code.txt`) for easy sharing. |
+
+-----
+
+## 📂 File Structure Summary
+
+The project adheres to a standard data science/MLOps structure:
+
+```
+AutomationForExoskeleton/
+├── config/             # System configuration file (ExoConfig.m)
+├── data/               # Input data (raw, interim, processed)
+├── models/             # Trained machine learning models (.mat files)
+├── results/            # Pipeline output images and metrics
+├── scripts/            # Executable top-level scripts
+│   ├── utils/          # Utility scripts (code concatenation, tree generation)
+│   ├── RunExoskeletonPipeline.m
+│   └── TestPipelinePerformance.m
+└── src/                # Core logic functions
+    ├── acquisition/    # Data import and loading functions
+    ├── classification/ # SVM and FSM logic
+    ├── features/       # Feature extraction logic
+    └── fusion/         # Sensor fusion logic (Kalman)
+```
+
+---
+
+🤝 Acknowledgements
+This README documentation was drafted and refined with the assistance of an AI language model (specifically, the Gemini model built by Google). The final content, structure, and technical accuracy were verified and approved by the project author.
+
