@@ -3,11 +3,14 @@ AutomationForExoskeleton/
 │   ├── processed/
 │   ├── public/
 │   │   └── HuGaDB/
-│   │   │   ├── HuGaDB_v2_various/
+│   │   │   ├── HuGaDB_v2_raw/
 │   │   │   │   └── HuGaDB_v2_various_01_00.txt
 │   │   │   ├── hugadb_dataset.mat  
-│   │   │   └── loadDataFromFile.m
+│   │   │   └── loadHuGaDB.m
 │   │   └── USC-HAD/
+│   │       ├── RawData/              
+│   │       ├── usc_had_dataset.mat    
+│   │       └── loadUSCHAD.m           
 │   └── raw/
 ├── docs/
 │   ├── LICENSE
