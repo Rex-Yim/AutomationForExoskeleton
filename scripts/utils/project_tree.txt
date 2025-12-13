@@ -53,7 +53,6 @@ AutomationForExoskeleton/
 ├── docs/
 │   ├── architecture/
 │   ├── LICENSE
-│   ├── README.asv
 │   └── README.md
 ├── models/
 ├── notebooks/
@@ -65,18 +64,22 @@ AutomationForExoskeleton/
 │   │   ├── concatenated_code.txt
 │   │   └── project_tree.txt
 │   ├── RunExoskeletonPipeline.m
-│   └── TestPipelinePerformance.m
+│   ├── TestPipelinePerformance.m
+│   └── TrainSvmBinary.m
 ├── src/
 │   ├── acquisition/
 │   │   ├── ImportData.m
 │   │   └── PrepareTrainingData.m
 │   ├── classification/
 │   │   ├── Classifier.m
+│   │   ├── RealtimeFsm.m
 │   │   └── StateEstimator.m
 │   ├── features/
 │   │   └── Features.m
 │   └── fusion/
 │       └── FusionKalman.m
-└── tests/
-    ├── acquisition_test.m
-    └── classification_test.m
+├── tests/
+│   ├── acquisition_test.m
+│   └── classification_test.m
+├── concatenated_code.txt
+└── project_tree.txt

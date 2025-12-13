@@ -139,5 +139,3 @@ end
 
 saveas(gcf, 'results/realtime_pipeline_output.png');
 fprintf('Output plot saved to results/realtime_pipeline_output.png\n');
-
-end

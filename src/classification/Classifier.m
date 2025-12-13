@@ -1,4 +1,4 @@
-%% EvaluateClassifier.m
+%% Classifier.m
 % --------------------------------------------------------------------------
 % FUNCTION: [performance] = EvaluateClassifier(test_trial_name)
 % PURPOSE: Loads a trained SVM and tests its performance on a specific, 
@@ -16,7 +16,7 @@
 % - Calculates window-by-window classification accuracy.
 % --------------------------------------------------------------------------
 
-function [performance] = EvaluateClassifier(test_trial_name)
+function [performance] = Classifier(test_trial_name)
 
 clc;
 cfg = ExoConfig();
@@ -113,77 +113,5 @@ fprintf('Accuracy: %.2f%%\n', Accuracy * 100);
 fprintf('Precision: %.2f%%\n', Precision * 100);
 fprintf('Recall: %.2f%%\n', Recall * 100);
 fprintf('------------------------------------------\n');
-
-end
-
-%% TrainSvmBinary.m
-% --------------------------------------------------------------------------
-% FUNCTION: [SVMModel] = TrainSvmBinary()
-% PURPOSE: Orchestrates the loading of data, feature extraction, and trains 
-%          a Support Vector Machine (SVM) model for binary locomotion 
-%          classification (Walking vs. Non-Walking/Standing).
-% --------------------------------------------------------------------------
-% DATE CREATED: 2025-12-11
-% LAST MODIFIED: 2025-12-14 (Refactored to use EvaluateClassifier.m)
-% --------------------------------------------------------------------------
-% DEPENDENCIES: 
-% - ExoConfig.m
-% - PrepareTrainingData.m (from src/acquisition)
-% - EvaluateClassifier.m (new)
-% - Statistics and Machine Learning Toolbox (fitcsvm)
-% --------------------------------------------------------------------------
-% NOTES:
-% - Uses configuration from ExoConfig.m.
-% - Saves the trained model to 'results/'.
-% - ExoConfig.m is now located in the root directory for direct access.
-% --------------------------------------------------------------------------
-
-function [SVMModel] = TrainSvmBinary()
-
-% Load configuration
-cfg = ExoConfig();
-
-% --- 1. Data Preparation and Feature Extraction ---
-fprintf('Starting data preparation using %s dataset...\n', 'USC-HAD');
-
-WALKING_LABEL = cfg.DS.USCHAD.WALKING_LABELS;
-NON_WALKING_LABELS = cfg.DS.USCHAD.NON_WALKING_LABELS;
-
-try
-    [X, Y, ~] = PrepareTrainingData('USC-HAD', WALKING_LABEL, NON_WALKING_LABELS, cfg.WINDOW_SIZE, cfg.STEP_SIZE);
-catch ME
-    error('Data preparation failed: %s', ME.message);
-end
-
-fprintf('Walking windows (Label 1): %d\n', sum(Y==1));
-fprintf('Non-Walking windows (Label 0): %d\n', sum(Y==0));
-
-
-% --- 2. Model Training ---
-rng(1); % For reproducibility
-
-fprintf('Starting SVM Training (%s Kernel)...\n', cfg.SVM_KERNEL);
-
-% Train the SVM model
-SVMModel = fitcsvm(X, Y, ...
-    'KernelFunction', cfg.SVM_KERNEL, ...
-    'Standardize', cfg.SVM_STANDARDIZE, ... 
-    'ClassNames', [cfg.STATE_STANDING, cfg.STATE_WALKING]); 
-
-% --- 3. Model Evaluation (Cross-Validation) ---
-[accuracy, classLoss, ~] = EvaluateClassifier(SVMModel, X, Y, 5); % Use 5-Fold CV
-
-% --- 4. Save the Trained Model ---
-model_save_path = cfg.FILE.SVM_MODEL;
-save(model_save_path, 'SVMModel');
-fprintf('Trained SVM Model saved to: %s\n', model_save_path);
-
-% Optional: Plotting the features (for visualization)
-figure('Name', 'Feature Space Visualization');
-gscatter(X(:,1), X(:,2), Y, 'br', 'o*');
-xlabel('Feature 1: Mean Accel Magnitude');
-ylabel('Feature 2: Variance Accel Magnitude');
-title('2D Feature Space (Walking vs. Non-Walking)');
-saveas(gcf, 'results/feature_space.png');
 
 end
