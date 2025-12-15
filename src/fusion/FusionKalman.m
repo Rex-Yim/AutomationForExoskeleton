@@ -6,7 +6,7 @@
 %          used for sensor fusion (Accel/Gyro) to estimate joint angles.
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-11
-% LAST MODIFIED: 2025-12-14 (Refactored to provide modular filter objects)
+% LAST MODIFIED: 2025-12-15 (Refactored to provide modular filter objects)
 % --------------------------------------------------------------------------
 % DEPENDENCIES: 
 % - MATLAB Sensor Fusion Toolbox (imufilter, quat2eul)
@@ -18,55 +18,43 @@
 % --------------------------------------------------------------------------
 
 function [fuse_back, fuse_hipL] = initializeFilters(Fs)
-% Initializes two independent IMU filter objects (one for the back, one for the hip).
+    % Tuning parameters (optimized for exoskeleton kinematics)
+    ACCEL_NOISE = 0.01; 
+    GYRO_NOISE = 0.005;
 
-% Tuning parameters (optimized for exoskeleton kinematics)
-ACCEL_NOISE = 0.01; 
-GYRO_NOISE = 0.005;
+    fprintf('Initializing Kalman IMU Filters (SampleRate: %d Hz)...\n', Fs);
+    
+    % Initialize filter for the Back IMU (Standard MATLAB imufilter)
+    fuse_back = imufilter('SampleRate', Fs, ...
+        'AccelerometerNoise', ACCEL_NOISE, ...
+        'GyroscopeNoise', GYRO_NOISE, ...
+        'ReferenceFrame', 'ENU');
 
-fprintf('Initializing Kalman IMU Filters (SampleRate: %d Hz)...\n', Fs);
-
-% Initialize filter for the Back IMU
-fuse_back = imufilter('SampleRate', Fs, ...
-    'AccelerometerNoise', ACCEL_NOISE, ...
-    'GyroscopeNoise', GYRO_NOISE, ...
-    'ReferenceFrame', 'ENU'); % East-North-Up reference frame
-
-% Initialize filter for the Left Hip IMU
-fuse_hipL = imufilter('SampleRate', Fs, ...
-    'AccelerometerNoise', ACCEL_NOISE, ...
-    'GyroscopeNoise', GYRO_NOISE, ...
-    'ReferenceFrame', 'ENU'); 
-
+    % Initialize filter for the Left Hip IMU
+    fuse_hipL = imufilter('SampleRate', Fs, ...
+        'AccelerometerNoise', ACCEL_NOISE, ...
+        'GyroscopeNoise', GYRO_NOISE, ...
+        'ReferenceFrame', 'ENU');
 end
-
 
 function hipFlexionAngle = estimateAngle(orientBack, orientHipL)
-% Computes the relative joint angle (Left Hip Flexion) from the two quaternion orientations.
-% This function is called once per time step in the real-time loop.
+    % PURPOSE: Computes relative joint angle from two orientation quaternions.
+    % INPUTS: orientBack, orientHipL (1x4 quaternions or quaternion objects)
+    
+    % 1. Data Safety: Ensure inputs are valid
+    if any(isnan(orientBack)) || any(isnan(orientHipL))
+        hipFlexionAngle = 0;
+        return;
+    end
 
-% Convert orientation quaternions to Euler angles (ZYX sequence: Yaw-Pitch-Roll)
-% Pitch (Y-axis, index 2) typically represents the sagittal plane rotation (flexion/extension)
-eulBack = quat2eul(orientBack, 'ZYX'); % [Yaw, Pitch, Roll]
-eulHipL = quat2eul(orientHipL, 'ZYX');
+    % 2. Convert to Euler Angles (ZYX: Yaw, Pitch, Roll)
+    % Note: Pitch (index 2) usually corresponds to flexion/extension
+    eulBack = quat2eul(orientBack, 'ZYX');
+    eulHipL = quat2eul(orientHipL, 'ZYX');
 
-% Hip Flexion Angle is the difference in Pitch angle between the two segments
-% Convert from radians to degrees
-hipFlexionAngle = (eulHipL(2) - eulBack(2)) * (180/pi); 
-
-end
-
-% --- Original Helper Function kept for general IMU data validation ---
-
-function validateIMUData(data, label)
-% Checks if the required IMU fields are present and correctly sized.
-requiredFields = {'acc', 'gyro'};
-for f = requiredFields
-if ~isfield(data, f{1}) || size(data.(f{1}), 2) ~= 3
-error('%s IMU data missing or invalid: %s field.', label, f{1});
-end
-end
-if size(data.acc, 1) ~= size(data.gyro, 1)
-error('%s IMU data size mismatch between acc and gyro.', label);
-end
+    % 3. Calculate Relative Angle (Difference in Pitch)
+    angle_rad = eulHipL(2) - eulBack(2);
+    
+    % 4. Convert to degrees
+    hipFlexionAngle = angle_rad * (180/pi);
 end
