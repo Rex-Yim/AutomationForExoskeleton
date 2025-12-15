@@ -51,9 +51,11 @@ AutomationForExoskeleton/
 │           ├── GyroscopeUncalibrated.csv
 │           └── Metadata.csv
 ├── docs/
-│   ├── architecture/
+│   ├── Final_Report.txt
+│   ├── Interim_Report.pdf
 │   ├── LICENSE
-│   └── README.md
+│   ├── README.md
+│   └── System_Design.pdf
 ├── models/
 ├── notebooks/
 ├── results/
@@ -61,7 +63,6 @@ AutomationForExoskeleton/
 │   ├── utils/
 │   │   ├── ConcatenateCode.m
 │   │   ├── GenerateProjectTree.m
-│   │   ├── concatenated_code.txt
 │   │   └── project_tree.txt
 │   ├── RunExoskeletonPipeline.m
 │   ├── TestPipelinePerformance.m
@@ -78,8 +79,6 @@ AutomationForExoskeleton/
 │   │   └── Features.m
 │   └── fusion/
 │       └── FusionKalman.m
-├── tests/
-│   ├── acquisition_test.m
-│   └── classification_test.m
-├── concatenated_code.txt
-└── project_tree.txt
+└── tests/
+    ├── acquisition_test.m
+    └── classification_test.m

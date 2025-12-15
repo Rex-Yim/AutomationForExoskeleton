@@ -5,39 +5,52 @@
 %          containing the source code of the entire project.
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-12
-% LAST MODIFIED: 2025-12-13
+% LAST MODIFIED: 2025-12-15 (Fixed path logic to be location-independent)
 % --------------------------------------------------------------------------
 % DEPENDENCIES: 
-%   - MATLAB built-in file I/O and utility functions.
+%   - MATLAB built-in file I/O and utility functions (mfilename, fileparts, fullfile, mkdir).
 % --------------------------------------------------------------------------
 % NOTES:
+%   - This version automatically determines the project root by locating the 
+%     'scripts/utils' folder (where this script resides) and navigating two 
+%     levels up.
+%   - The script will work correctly no matter where it is called from, as 
+%     long as it remains in 'scripts/utils/'.
 %   - Uses '###' headers for visibility and structure.
-%   - Output is saved to the directory from which the script is executed.
-%   - Uses dynamic path resolution for cross-platform compatibility.
+%   - Output is saved to: [Project Root]/scripts/utils/concatenated_code.txt
 % --------------------------------------------------------------------------
 
-root_directory = pwd; 
+% --- Define Paths (Location-Independent Logic) ---
+
+% 1. Get the full path to the currently running script (ConcatenateCode.m)
+this_script_path = mfilename('fullpath');
+if isempty(this_script_path)
+    error('Could not determine script path. Ensure it is saved and on the MATLAB path.');
+end
+
+% 2. Determine the project root by traversing up two levels from the script's folder:
+%    /scripts/utils/ConcatenateCode.m -> /scripts/utils/ -> /scripts/ -> /AutomationForExoskeleton/
+output_dir = fileparts(this_script_path);    % Gets the /scripts/utils/ folder (where output is saved)
+scripts_dir = fileparts(output_dir);         % Gets the /scripts/ folder
+search_root = fileparts(scripts_dir);        % Gets the /AutomationForExoskeleton/ folder (the project root)
+
+% 3. Extract the project name from the root folder
+[~, project_name, ~] = fileparts(search_root);
+project_name = strrep(project_name, filesep, '');
+
+% 4. Define the output file path (output_dir is already /scripts/utils/)
 output_filename = 'concatenated_code.txt';
-% The output path is now set to the current directory (where the script is run)
-% and the output filename.
-output_full_path = fullfile(root_directory, output_filename);
+output_full_path = fullfile(output_dir, output_filename);
+
+% Ensure the output directory exists
+if ~exist(output_dir, 'dir')
+    mkdir(output_dir);
+end
+% --------------------------------------------------
 
 fprintf('Starting code concatenation for copying...\n');
 
-% Dynamically extract the project name from the current working directory's parent
-% This assumes the user is running the script from the 'utils' folder, 
-% and the project root is the parent folder.
-[parent_dir, project_name, ~] = fileparts(fileparts(root_directory));
-% Handle cases where 'pwd' might be the project root itself for robustness
-if isempty(project_name) || strcmpi(project_name, root_directory)
-    [~, project_name, ~] = fileparts(root_directory);
-end
-% Ensure the project name is clean
-project_name = strrep(project_name, filesep, '');
-
 % 1. Find all .m files recursively and filter hidden folders
-% Search from the PARENT directory to capture all project files
-search_root = fileparts(root_directory); 
 search_path = fullfile(search_root, '**', '*.m');
 listing = dir(search_path);
 
@@ -96,6 +109,7 @@ end
 
 % 3. Process and print/write each file
 fprintf('\n--- CONCATENATED CODE START ---\n\n');
+
 % Write the global header to the file (only to file)
 fprintf(fileID, '--- CONCATENATED CODE FROM PROJECT: %s ---\n\n', project_name);
 
@@ -136,6 +150,7 @@ end
 
 % 4. Close the file and finalize output
 fclose(fileID);
+
 fprintf('\n--- CONCATENATED CODE END ---\n');
 fprintf('Content printed to terminal for immediate copy/paste.\n');
 fprintf('A consolidated version has also been saved to: %s\n', output_full_path);

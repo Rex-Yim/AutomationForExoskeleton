@@ -4,26 +4,45 @@
 % PURPOSE: Recursively scans the project directory and prints the folder/file structure to project_tree.txt.
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-12
-% LAST MODIFIED: 2025-12-13
+% LAST MODIFIED: 2025-12-15 (Fixed path logic to be location-independent)
 % --------------------------------------------------------------------------
 % DEPENDENCIES: 
-%   - MATLAB built-in functions (dir, fprintf, diary, fileparts)
+%   - MATLAB built-in functions (dir, fprintf, diary, fileparts, mfilename, mkdir)
 % --------------------------------------------------------------------------
 % NOTES:
+%   - This version automatically determines the project root by locating the 
+%     'scripts/utils' folder (where this script resides) and navigating two 
+%     levels up.
+%   - The script will work correctly no matter where it is called from, as 
+%     long as it remains in 'scripts/utils/'.
 %   - Excludes hidden folders (starting with '.').
-%   - Truncates raw data folders with >200 files for readability.
-%   - FIX: Script correctly determines the project root by traversing two 
-%     levels up from the execution directory (e.g., .../scripts/utils/).
+%   - Truncates massive raw data folders (>200 files) for readability.
+%   - Output is saved to: [Project Root]/scripts/utils/project_tree.txt
 % --------------------------------------------------------------------------
 
-% --- Define Paths ---
-output_dir = pwd;                              % Location to save the output file (e.g., .../scripts/utils/)
-output_filename = 'project_tree.txt';
-output_full_path = fullfile(output_dir, output_filename); % Full path for the output file
+% --- Define Paths (Location-Independent Logic) ---
 
-% FIX: Project root is now two levels up from pwd
-scripts_dir = fileparts(output_dir);           % Goes from 'utils' to 'scripts'
-project_root = fileparts(scripts_dir);         % Goes from 'scripts' to 'AutomationForExoskeleton' (the true root)
+% 1. Get the full path to the currently running script (ConcatenateCode.m)
+% Note: mfilename('fullpath') works if the file is on the path or run directly.
+this_script_path = mfilename('fullpath');
+if isempty(this_script_path)
+    error('Could not determine script path. Ensure it is saved and on the MATLAB path.');
+end
+
+% 2. Determine the project root by traversing up two levels from the script's folder:
+%    /scripts/utils/ConcatenateCode.m -> /scripts/utils/ -> /scripts/ -> /AutomationForExoskeleton/
+output_dir = fileparts(this_script_path);    % Gets the /scripts/utils/ folder
+scripts_dir = fileparts(output_dir);         % Gets the /scripts/ folder
+project_root = fileparts(scripts_dir);       % Gets the /AutomationForExoskeleton/ folder (the true project root)
+
+% 3. Define the output file path (output_dir is already /scripts/utils/)
+output_filename = 'project_tree.txt';
+output_full_path = fullfile(output_dir, output_filename);
+
+% Ensure the output directory exists
+if ~exist(output_dir, 'dir')
+    mkdir(output_dir);
+end
 % ---------------------
 
 % Line 1: Output only to Command Window (pre-execution message)
