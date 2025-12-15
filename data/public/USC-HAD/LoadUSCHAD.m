@@ -17,12 +17,11 @@
 function usc = LoadUSCHAD(rawDir)
 
 if nargin < 1
-% Fix: Corrected folder name from 'RawData' to 'USC-HAD_raw'
-rawDir = fullfile('data/public/USC-HAD/USC-HAD_raw'); 
+rawDir = fullfile('data/public/USC-HAD'); 
 end
 
 if ~isfolder(rawDir)
-error('USC-HAD RawData folder not found: %s', rawDir);
+error('USC-HAD folder not found: %s', rawDir);
 end
 
 files = dir(fullfile(rawDir, '*.mat'));

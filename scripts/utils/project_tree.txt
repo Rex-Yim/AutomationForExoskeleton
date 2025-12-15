@@ -7,13 +7,17 @@ AutomationForExoskeleton/
 │   ├── public/
 │   │   ├── HuGaDB/
 │   │   │   ├── HuGaDB_v2_raw/
-│   │   │   │   └── ... (truncated: many raw data files)
+│   │   │   │   └── ... (truncated: too many raw data files)
 │   │   │   ├── LoadHuGaDB.m
 │   │   │   └── hugadb_dataset.mat
 │   │   └── USC-HAD/
 │   │       ├── USC-HAD_raw/
+│   │       │   └── ... (truncated: too many raw data files)
 │   │       ├── ImportUschadSingleImu.m
-│   │       └── LoadUSCHAD.m
+│   │       ├── LoadUSCHAD.m
+│   │       ├── Readme.txt
+│   │       ├── displayData_acc.m
+│   │       └── displayData_gyro.m
 │   └── raw/
 │       ├── downstairs/
 │       │   ├── Accelerometer.csv
@@ -57,12 +61,12 @@ AutomationForExoskeleton/
 │   ├── README.md
 │   └── System_Design.pdf
 ├── models/
-├── notebooks/
 ├── results/
 ├── scripts/
 │   ├── utils/
 │   │   ├── ConcatenateCode.m
 │   │   ├── GenerateProjectTree.m
+│   │   ├── concatenated_code.txt
 │   │   └── project_tree.txt
 │   ├── RunExoskeletonPipeline.m
 │   ├── TestPipelinePerformance.m

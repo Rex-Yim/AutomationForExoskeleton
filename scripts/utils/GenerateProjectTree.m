@@ -146,8 +146,8 @@ for i = 1:N
         sub_listing = dir(new_path);
         sub_entries_count = length(sub_listing(~ismember({sub_listing.name}, {'.', '..'})));
         
-        if sub_entries_count > 200 && contains(entry.name, 'raw', 'IgnoreCase', true)
-            fprintf('%s%s%s\n', new_prefix, '└── ', '... (truncated: many raw data files)');
+        if sub_entries_count > 10
+            fprintf('%s%s%s\n', new_prefix, '└── ', '... (truncated: too many raw data files)');
         else
             drawTreeLevel(new_path, new_prefix);
         end
