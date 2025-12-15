@@ -1,62 +1,118 @@
 %% LoadUSCHAD.m
 % --------------------------------------------------------------------------
-% FUNCTION: [usc] = loadUSCHAD(rawDir)
-% PURPOSE: Loads all raw USC-HAD `.mat` files, normalizes the structure, and saves all trials into a single `usc_had_dataset.mat` file.
+% FUNCTION: usc = LoadUSCHAD(rawDir)
+% PURPOSE: Loads all raw USC-HAD .mat files (recursively from subfolders),
+%          normalizes the structure, and saves all trials into a single
+%          usc_had_dataset.mat file.
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-12
-% LAST MODIFIED: 2025-12-15 (Fixed rawDir path and subject ID parsing)
+% LAST MODIFIED: 2025-12-16 (Fixed for sensor_readings, units, regex; extract subj from folder)
 % --------------------------------------------------------------------------
 % DEPENDENCIES: 
 % - MATLAB built-in functions (dir, load, regexp)
 % --------------------------------------------------------------------------
 % NOTES:
-% - Converts USC-HAD's gyro format (3xN) to standard (Nx3).
-% - Saves the activity name and label (1-12) for each trial.
+% - Extracts from 'sensor_readings' (Nx6: acc_xyz, gyro_xyz).
+% - Converts units: acc g→m/s², gyro dps→rad/s.
+% - Filenames: a<act>t<trial>.mat (no _); subj from folder.
+% - Recursively searches subfolders (e.g., SubjectX/) for .mat files.
+% - Call without arguments to use default path.
 % --------------------------------------------------------------------------
 
 function usc = LoadUSCHAD(rawDir)
+    if nargin < 1
+        rawDir = fullfile('USC-HAD_raw');
+    end
 
-if nargin < 1
-rawDir = fullfile('data/public/USC-HAD'); 
-end
+    if ~isfolder(rawDir)
+        error('USC-HAD raw folder not found: %s', rawDir);
+    end
 
-if ~isfolder(rawDir)
-error('USC-HAD folder not found: %s', rawDir);
-end
+    % Recursive search for all .mat files in subfolders
+    files = dir(fullfile(rawDir, '**/*.mat')); % '**' enables recursive search
 
-files = dir(fullfile(rawDir, '*.mat'));
-usc = struct();
+    if isempty(files)
+        error('No raw USC-HAD .mat files found in %s or its subfolders.', rawDir);
+    end
 
-activityNames = {'WalkForward','WalkLeft','WalkRight','GoUpstairs',...
-'GoDownstairs','RunForward','Jump','Sit','Stand',...
-'Sleep','ElevatorUp','ElevatorDown'};
+    usc = struct();
+    activityNames = {'WalkForward','WalkLeft','WalkRight','GoUpstairs',...
+                     'GoDownstairs','RunForward','Jump','Sit','Stand',...
+                     'Sleep','ElevatorUp','ElevatorDown'};
 
-fprintf('Loading %d USC-HAD trials...\n', length(files));
+    fprintf('Loading %d USC-HAD trials...\n', length(files));
+    skipped = 0;
 
-for i = 1:length(files)
-filepath = fullfile(rawDir, files(i).name);
-tmp = load(filepath); % contains 'sensor_data'
+    for i = 1:length(files)
+        % Construct full filepath
+        filepath = fullfile(files(i).folder, files(i).name);
+        tmp = load(filepath);
 
-% Extract fields
-acc = tmp.sensor_data.acc; % Nx3 (already in m/s²)
-gyro = tmp.sensor_data.gyro'; % 3xN → Nx3 (rad/s)
+        % --- Extract Sensor Data ---
+        if isfield(tmp, 'sensor_readings')
+            readings = tmp.sensor_readings;
+            
+            % Assume Nx6: columns 1-3 acc (g), 4-6 gyro (dps)
+            % Check size and orient as Nx3
+            if size(readings, 2) == 6  % Standard case
+                acc = readings(:, 1:3);  % Nx3
+                gyro = readings(:, 4:6); % Nx3
+            elseif size(readings, 2) == 7  % If time column (col 1)
+                acc = readings(:, 2:4);
+                gyro = readings(:, 5:7);
+            else
+                warning('Skipping file %s: Unexpected sensor_readings size (%dx%d).', files(i).name, size(readings));
+                skipped = skipped + 1;
+                continue;
+            end
+            
+            % If data is transposed (unlikely)
+            if size(acc, 1) < size(acc, 2)
+                acc = acc';
+                gyro = gyro';
+            end
+            
+            % Unit conversions
+            acc = acc * 9.80665;      % g → m/s²
+            gyro = deg2rad(gyro);     % dps → rad/s
+        else
+            warning('Skipping file %s: Missing ''sensor_readings'' field.', files(i).name);
+            skipped = skipped + 1;
+            continue;
+        end
 
-% Parse filename: e.g., a1_t2_s3.mat → activity 1, trial 2, subject 3
-tokens = regexp(files(i).name, 'a(?<act>\d+)_t(?<trial>\d+)_s(?<subj>\d+)', 'names');
-actID = str2double(tokens.act);
-% Fix: Removed incorrect indexing that stripped the first digit (e.g., s10 would become 0)
-subjID = str2double(tokens.subj); 
+        % --- Parse Filename and Folder ---
+        % Filename: a<act>t<trial>.mat (no underscores)
+        tokens = regexp(files(i).name, 'a(?<act>\d+)t(?<trial>\d+)', 'names');
+        if isempty(tokens)
+            warning('Skipping invalid filename: %s', files(i).name);
+            skipped = skipped + 1;
+            continue;
+        end
 
-fieldName = sprintf('subject%d_activity%d_trial%d', subjID, actID, str2double(tokens.trial));
+        % Extract subject from folder (e.g., 'Subject3' → subj=3)
+        folder_tokens = regexp(files(i).folder, 'Subject(?<subj>\d+)', 'names');
+        if isempty(folder_tokens)
+            warning('Skipping file %s: Unable to parse subject from folder %s.', files(i).name, files(i).folder);
+            skipped = skipped + 1;
+            continue;
+        end
 
-usc.(fieldName).acc = acc;
-usc.(fieldName).gyro = gyro;
-usc.(fieldName).label = actID; % 1-12
-usc.(fieldName).subject = subjID;
-usc.(fieldName).activityName = activityNames{actID};
-usc.(fieldName).fs = 100;
-end
+        act = str2double(tokens.act);
+        trial = str2double(tokens.trial);
+        subj = str2double(folder_tokens.subj);
 
-save('data/public/USC-HAD/usc_had_dataset.mat', 'usc', '-v7.3');
-fprintf('USC-HAD saved as usc_had_dataset.mat (%d trials)\n', length(files));
+        usc_field = sprintf('s%s_a%s_t%s', num2str(subj), tokens.act, tokens.trial);
+
+        % Store in usc struct
+        usc.(usc_field).acc = acc;
+        usc.(usc_field).gyro = gyro;
+        usc.(usc_field).label = act;
+        usc.(usc_field).activityName = activityNames{act};
+        usc.(usc_field).fs = 100;  % USC-HAD is 100 Hz
+    end
+
+    outputFile = 'usc_had_dataset.mat';
+    save(outputFile, 'usc', '-v7.3');
+    fprintf('USC-HAD saved as %s (%d trials loaded, %d skipped).\n', outputFile, length(files) - skipped, skipped);
 end
