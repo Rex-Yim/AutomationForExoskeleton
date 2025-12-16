@@ -14,8 +14,6 @@ AutomationForExoskeleton/
 │   │   │   ├── hugadb_dataset.mat
 │   │   │   └── LoadHuGaDB.m
 │   │   └── USC-HAD/
-│   │       ├── results/
-│   │       │   └── Binary_SVM_Model.mat
 │   │       ├── USC-HAD_raw/
 │   │       │   ├── Subject1/
 │   │       │   ├── Subject10/
@@ -70,8 +68,8 @@ AutomationForExoskeleton/
 │   ├── System_Design.pdf
 │   └── System_Design_Summary.txt
 ├── models/
+│   └── Binary_SVM_Model.mat
 ├── results/
-│   ├── Binary_SVM_Model.mat
 │   ├── pipeline_output.png
 │   └── realtime_pipeline_output.png
 ├── scripts/
