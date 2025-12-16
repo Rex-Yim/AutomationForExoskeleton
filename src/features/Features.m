@@ -1,59 +1,62 @@
 %% Features.m
 % --------------------------------------------------------------------------
 % FUNCTION: [features_out] = Features(windowAcc, windowGyro, Fs)
-% PURPOSE: Calculates time-domain and frequency-domain features from IMU data windows for use in the locomotion classifier.
+% PURPOSE: Extracts a feature vector from a window of IMU data.
+% --------------------------------------------------------------------------
+% INPUTS:
+%   - windowAcc:  Nx3 matrix of Accelerometer data (m/s^2)
+%   - windowGyro: Nx3 matrix of Gyroscope data (rad/s)
+%   - Fs:         Sampling Frequency (Hz)
+% OUTPUTS:
+%   - features_out: 1x5 vector [AccMean, AccVar, GyroMean, GyroVar, DomFreq]
+% --------------------------------------------------------------------------
+% LOCATION: src/features/Features.m
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-11
-% LAST MODIFIED: 2025-12-14 (Header fix)
-% --------------------------------------------------------------------------
-% DEPENDENCIES: 
-% - MATLAB built-in functions (fft, abs, mean, var, max)
-% --------------------------------------------------------------------------
-% NOTES:
-% - Calculates mean/variance of acceleration magnitude and the dominant frequency.
-% - Dominant frequency is crucial for distinguishing steady-state walking (1-2 Hz).
-% - Currently ignores windowGyro input (~).
+% LAST MODIFIED: 2025-12-17
 % --------------------------------------------------------------------------
 
-function [features_out] = Features(windowAcc, ~, Fs)
+function [features_out] = Features(windowAcc, windowGyro, Fs)
 
-% 1. Time-Domain Features (Used in TrainSvmBinary.m)
-% Calculate magnitude of acceleration vector (net force)
-mag_acc = sqrt(sum(windowAcc.^2, 2));
+    % --- 1. Accelerometer Features ---
+    % Calculate magnitude of acceleration vector (net force)
+    mag_acc = sqrt(sum(windowAcc.^2, 2));
+    
+    feat_mean_acc = mean(mag_acc); % Mean intensity
+    feat_var_acc  = var(mag_acc);  % Variability/Energy
 
-% Feature 1: Mean of Acceleration Magnitude
-feat_mean_mag = mean(mag_acc);
+    % --- 2. Gyroscope Features (NEW) ---
+    % Calculate magnitude of rotational velocity
+    mag_gyro = sqrt(sum(windowGyro.^2, 2));
+    
+    feat_mean_gyro = mean(mag_gyro); % Is the body rotating?
+    feat_var_gyro  = var(mag_gyro);  % How erratic is the rotation?
 
-% Feature 2: Variance of Acceleration Magnitude
-feat_var_mag = var(mag_acc);
+    % --- 3. Frequency-Domain Features ---
+    N = length(windowAcc);
+    
+    % Edge case protection for tiny windows
+    if N < 2
+        features_out = [feat_mean_acc, feat_var_acc, feat_mean_gyro, feat_var_gyro, 0];
+        return; 
+    end
 
+    % Perform FFT on Z-axis acceleration (Gravity axis usually has strongest gait signal)
+    acc_z = windowAcc(:, 3); 
+    
+    Y = fft(acc_z);
+    P2 = abs(Y/N);
+    P1 = P2(1:floor(N/2)+1); % Single-sided spectrum
+    P1(2:end-1) = 2*P1(2:end-1);
 
-% 2. Frequency-Domain Features
-N = length(windowAcc);
-if N < 2
-% Handle edge case of very small window
-features_out = [feat_mean_mag, feat_var_mag, 0];
-return; 
-end
+    % Frequency vector
+    f = Fs*(0:floor(N/2))/N;
 
-% Perform Fast Fourier Transform (FFT) on the raw Z-axis of acceleration
-% Z-axis (vertical/gravity) often has the clearest gait signature
-acc_z = windowAcc(:, 3); % Assuming Z is the 3rd column
+    % Find Dominant Frequency (exclude DC component at index 1)
+    [~, idx] = max(P1(2:end)); 
+    feat_dom_freq = f(idx + 1); 
 
-Y = fft(acc_z);
-P2 = abs(Y/N);
-P1 = P2(1:floor(N/2)+1); % Single-sided spectrum
-P1(2:end-1) = 2*P1(2:end-1);
-
-% Frequency vector
-f = Fs*(0:floor(N/2))/N;
-
-% Feature 3: Dominant Frequency (excluding DC component at f(1)=0)
-[~, idx] = max(P1(2:end)); % Find peak amplitude index, starting from index 2
-feat_dom_freq = f(idx + 1); % Adjust index back to frequency vector f
-
-% 3. Output
-% Combine all features into a single row vector
-features_out = [feat_mean_mag, feat_var_mag, feat_dom_freq];
+    % --- 4. Assemble Output ---
+    features_out = [feat_mean_acc, feat_var_acc, feat_mean_gyro, feat_var_gyro, feat_dom_freq];
 
 end

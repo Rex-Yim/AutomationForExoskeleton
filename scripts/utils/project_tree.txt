@@ -21,8 +21,6 @@ AutomationForExoskeleton/
 │   │       │   └── ... (truncated: 11 more items)
 │   │       ├── displayData_acc.m
 │   │       ├── displayData_gyro.m
-│   │       ├── ImportUschadSingleImu.m
-│   │       ├── LoadUSCHAD.asv
 │   │       ├── LoadUSCHAD.m
 │   │       ├── Readme.txt
 │   │       └── usc_had_dataset.mat
@@ -91,6 +89,7 @@ AutomationForExoskeleton/
 │   │   └── Features.m
 │   └── fusion/
 │       └── FusionKalman.m
-└── tests/
-    ├── acquisition_test.m
-    └── classification_test.m
+├── tests/
+│   ├── acquisition_test.m
+│   └── classification_test.m
+└── startup.m

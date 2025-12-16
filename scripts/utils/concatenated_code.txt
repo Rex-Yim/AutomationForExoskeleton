@@ -1,50 +1,139 @@
 --- CONCATENATED CODE FROM PROJECT: AutomationForExoskeleton ---
 
+### START OF FILE: startup.m
+### FILE Path: AutomationForExoskeleton/startup.m
+%% startup.m
+% -------------------------------------------------------------------------
+% PURPOSE: Initialize the AutomationForExoskeleton Project
+% -------------------------------------------------------------------------
+
+function startup()
+    clc;
+    fprintf('===========================================================\n');
+    fprintf('   Initializing AutomationForExoskeleton Project Environment\n');
+    fprintf('===========================================================\n');
+
+    %% 1. Path Management
+    % Get project root
+    projectRoot = fileparts(mfilename('fullpath'));
+    fprintf('Project Root: %s\n', projectRoot);
+    
+    % Define paths individually to avoid concatenation errors
+    configPath  = fullfile(projectRoot, 'config');
+    scriptsPath = fullfile(projectRoot, 'scripts');
+    utilsPath   = fullfile(projectRoot, 'scripts', 'utils');
+    testsPath   = fullfile(projectRoot, 'tests');
+    srcPath     = fullfile(projectRoot, 'src');
+    
+    % Initialize list with standard folders
+    pathsToAdd = {configPath; scriptsPath; utilsPath; testsPath};
+
+    % Add 'src' and all its subfolders (if it exists)
+    if exist(srcPath, 'dir')
+        % genpath returns a single long string of paths separated by colons/semicolons
+        % We add it as a single entry; addpath handles the delimiters.
+        pathsToAdd{end+1, 1} = genpath(srcPath); 
+    end
+
+    fprintf('Setting up paths...\n');
+    
+    % Add paths safely
+    for i = 1:length(pathsToAdd)
+        p = pathsToAdd{i};
+        if ~isempty(p)
+            addpath(p);
+        end
+    end
+    
+    % (Optional) Save path so you don't have to run this every time
+    % savepath; 
+
+    fprintf('  [OK] Source, Config, and Script paths added.\n');
+
+    %% 2. Environment Setup
+    % Ensure 'results' folder exists
+    resultsDir = fullfile(projectRoot, 'results');
+    if ~exist(resultsDir, 'dir')
+        mkdir(resultsDir);
+        fprintf('  [OK] Created missing ''results'' directory.\n');
+    end
+
+    %% 3. Check Toolboxes
+    fprintf('Checking dependencies...\n');
+    requiredToolboxes = {
+        'Statistics and Machine Learning Toolbox', 'fitcsvm';
+        'Sensor Fusion and Tracking Toolbox',      'imufilter';
+        'Signal Processing Toolbox',               'fft'
+    };
+    
+    missingCount = 0;
+    for k = 1:size(requiredToolboxes, 1)
+        tbName = requiredToolboxes{k, 1};
+        funcCheck = requiredToolboxes{k, 2};
+        
+        if isempty(which(funcCheck))
+            fprintf('  [WARNING] Missing: %s (needed for %s)\n', tbName, funcCheck);
+            missingCount = missingCount + 1;
+        else
+            fprintf('  [OK] Found: %s\n', tbName);
+        end
+    end
+
+    %% 4. Sanity Check
+    try
+        cfg = ExoConfig();
+        fprintf('  [OK] Configuration loaded (Fs=%d).\n', cfg.FS);
+    catch
+        fprintf('  [NOTE] ExoConfig not found or errored. (Normal if project is empty)\n');
+    end
+
+    fprintf('===========================================================\n');
+    fprintf(' Initialization Complete.\n');
+end
+### END OF FILE: startup.m
+
 ### START OF FILE: ExoConfig.m
 ### FILE Path: AutomationForExoskeleton/config/ExoConfig.m
 %% ExoConfig.m
 % --------------------------------------------------------------------------
-% PURPOSE: Defines all global configuration parameters, constants, and 
-% hyperparameters for the exoskeleton control pipeline.
+% CLASS: ExoConfig
+% PURPOSE: Central configuration for parameters, constants, and paths.
+% --------------------------------------------------------------------------
+% LOCATION: config/ExoConfig.m
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-13
-% LAST MODIFIED: 2025-12-13 (Updated USC-HAD labels)
-% --------------------------------------------------------------------------
-% NOTES:
-% - Edit this file to tune the system (e.g., Fs, window size, Kalman noise).
-% - All other scripts should load these variables using a function call.
+% LAST MODIFIED: 2025-12-17
 % --------------------------------------------------------------------------
 
-function cfg = ExoConfig()
-% --- General System Parameters ---
-cfg.FS = 100; % Sample Rate (Hz) - Matches USC-HAD
-cfg.ACTIVITY_SIMULATION = 'walking_straight'; % Default raw folder for pipeline simulation
-% --- Classification Parameters (Locomotion Mode) ---
-cfg.WINDOW_SIZE_S = 1.0; % Window duration in seconds
-cfg.STEP_SIZE_S = 0.5; % Step duration in seconds (50% overlap)
-cfg.WINDOW_SIZE = round(cfg.WINDOW_SIZE_S * cfg.FS);
-cfg.STEP_SIZE = round(cfg.STEP_SIZE_S * cfg.FS);
-% SVM Model Parameters
-cfg.SVM_KERNEL = 'rbf';
-cfg.SVM_STANDARDIZE = true;
-% FSM Parameters
-cfg.FSM_CONFIRMATION_THRESHOLD = 3; % Consecutive labels required for state change
-cfg.STATE_STANDING = 0;
-cfg.STATE_WALKING = 1;
-% Dataset Specific Labels (USC-HAD)
-% Fix: Expanded labels to cover all activities (1-6 locomotion, 7-12 non-locomotion)
-cfg.DS.USCHAD.WALKING_LABELS = [1, 2, 3, 4, 5, 6]; % WalkForward, WalkLeft, WalkRight, Upstairs, Downstairs, RunForward
-cfg.DS.USCHAD.NON_WALKING_LABELS = [7, 8, 9, 10, 11, 12]; % Jump, Sit, Stand, Sleep, ElevatorUp, ElevatorDown
-% --- Sensor Fusion Parameters (Kalman Filter) ---
-% Tuning parameters to achieve RMSE < 5 deg
-cfg.KALMAN.ACCEL_NOISE = 0.01; 
-cfg.KALMAN.GYRO_NOISE = 0.005;
-% --- File Paths & Names ---
-cfg.FILE.SVM_MODEL = 'results/Binary_SVM_Model.mat';
-cfg.FILE.USCHAD_DATA = 'data/public/USC-HAD/usc_had_dataset.mat';
-% CRITICAL FIX: Added the missing configuration variable for the raw data folder
-cfg.FILE.USCHAD_FOLDER = 'data/public/USC-HAD/USC-HAD_raw';
-cfg.FILE.HUGADB_DATA = 'data/public/HuGaDB/hugadb_dataset.mat';
+classdef ExoConfig < handle
+    properties (Constant)
+        % ---------------- System Parameters ----------------
+        FS = 100;               % Sampling Frequency (Hz)
+        WINDOW_SIZE = 100;      % Sliding window size (1.0 second)
+        STEP_SIZE = 50;         % Sliding window step (0.5 second)
+        
+        % ---------------- File Paths -----------------------
+        % Uses relative paths from the project root
+        FILE = struct(...
+            'SVM_MODEL', fullfile('results', 'Binary_SVM_Model.mat'), ...
+            'USCHAD_DATA', fullfile('data', 'public', 'USC-HAD', 'usc_had_dataset.mat') ...
+        );
+        
+        % ---------------- Dataset Definitions --------------
+        DS = struct(...
+            'USCHAD', struct(...
+                'WALKING_LABELS', [1, 2, 3, 4, 5, 6], ...
+                'NON_WALKING_LABELS', [7, 8, 9, 10, 11, 12] ...
+            )...
+        );
+        
+        % ---------------- State Machine --------------------
+        STATE_STANDING = 0;
+        STATE_WALKING = 1;
+        
+        % ---------------- Simulation -----------------------
+        ACTIVITY_SIMULATION = 'walking_straight';
+    end
 end
 ### END OF FILE: ExoConfig.m
 
@@ -124,44 +213,6 @@ end
 save(outputFile, 'hugadb_data', '-v7.3');
 fprintf('HuGaDB saved as %s (%d trials) with pipeline-compatible structure.\n', outputFile, length(files));
 ### END OF FILE: LoadHuGaDB.m
-
-### START OF FILE: ImportUschadSingleImu.m
-### FILE Path: AutomationForExoskeleton/data/public/USC-HAD/ImportUschadSingleImu.m
-%% ImportUschadSingleImu.m
-% --------------------------------------------------------------------------
-% FUNCTION: [back, hipL, hipR] = import_uschad_for_pipeline(trialFieldName)
-% PURPOSE: Adapts the single-IMU USC-HAD data format to match the project's three-IMU pipeline, assigning the real data to the 'back' sensor.
-% --------------------------------------------------------------------------
-% DATE CREATED: 2025-12-12
-% LAST MODIFIED: 2025-12-12
-% --------------------------------------------------------------------------
-% DEPENDENCIES: 
-%   - usc_had_dataset.mat
-% --------------------------------------------------------------------------
-% NOTES:
-%   - `hipL` and `hipR` are returned as dummy zero arrays to satisfy pipeline function signatures.
-%   - Used for pipeline validation when only one IMU is required.
-% --------------------------------------------------------------------------
-
-function [back, hipL, hipR] = ImportUschadSingleImu(trialFieldName)
-
-load('data/public/USC-HAD/usc_had_dataset.mat', 'usc');
-
-trial = usc.(trialFieldName);
-
-back.acc  = trial.acc;
-back.gyro = trial.gyro;
-
-% Dummy placeholders (your Kalman/SVM only uses back for many tests anyway)
-hipL.acc  = zeros(size(back.acc));
-hipL.gyro = zeros(size(back.gyro));
-hipR.acc  = zeros(size(back.acc));
-hipR.gyro = zeros(size(back.gyro));
-
-fprintf('Loaded USC-HAD trial %s → back sensor (label = %d: %s)\n', ...
-        trialFieldName, trial.label, trial.activityName);
-end
-### END OF FILE: ImportUschadSingleImu.m
 
 ### START OF FILE: LoadUSCHAD.m
 ### FILE Path: AutomationForExoskeleton/data/public/USC-HAD/LoadUSCHAD.m
@@ -775,164 +826,71 @@ end
 ### FILE Path: AutomationForExoskeleton/scripts/TrainSvmBinary.m
 %% TrainSvmBinary.m
 % --------------------------------------------------------------------------
-% FUNCTION: [SVMModel, metrics] = TrainSvmBinary()
-% PURPOSE: Trains a binary Support Vector Machine (SVM) classifier for
-% Locomotion (1) vs. Static (0) using data from the USC-HAD dataset,
-% and saves the model for the real-time pipeline.
+% SCRIPT: TrainSvmBinary
+% PURPOSE: Trains the binary SVM (Walking vs. Standing) and saves the model.
+% --------------------------------------------------------------------------
+% LOCATION: scripts/TrainSvmBinary.m
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-13
-% LAST MODIFIED: 2025-12-13 (Fixed subject-wise splitting logic)
+% LAST MODIFIED: 2025-12-17
 % --------------------------------------------------------------------------
-% DEPENDENCIES:
-% - ExoConfig.m
-% - LoadUSCHAD.m (or any data loading function that returns IMU data)
-% - PrepareTrainingData.m
-% - Features.m
-% --------------------------------------------------------------------------
-% NOTES:
-% - Uses a 70/30 Subject-wise split for training/testing.
-% - Classification is Locomotion (1) vs. Non-Locomotion (0).
-% --------------------------------------------------------------------------
-function [SVMModel, metrics] = TrainSvmBinary()
+
 clc; clear; close all;
-% --- 1. Configuration and Setup ---
+
+% Initialize Configuration
 cfg = ExoConfig();
-% Training parameters
-FS = cfg.FS;
-WINDOW_SIZE = cfg.WINDOW_SIZE;
-STEP_SIZE = cfg.STEP_SIZE;
-C_SVM = 1;               % SVM Box Constraint
-KERNEL_FUNCTION = 'linear'; % Or 'rbf' for a non-linear boundary
-% File paths for data and model saving
-model_save_path = cfg.FILE.SVM_MODEL;
 
-fprintf('--- Starting Binary SVM Training Pipeline ---\n');
-fprintf('Activity Window: %d samples (%.2f s), Step: %d samples\n', WINDOW_SIZE, WINDOW_SIZE/FS, STEP_SIZE);
-fprintf('Kernel Function: %s, Box Constraint (C): %.1f\n', KERNEL_FUNCTION, C_SVM);
+fprintf('===========================================================\n');
+fprintf('   Training SVM Binary Classifier (Walk vs. Stand)\n');
+fprintf('===========================================================\n');
 
-% --- 2. Data Acquisition and Splitting (LOGIC FIX APPLIED HERE) ---
+% --- 1. Prepare Data ---
 try
-    % FIX: Load the pre-processed .mat file, which should contain the 'usc' structure
-    data_file = cfg.FILE.USCHAD_DATA;
-    fprintf('Loading USC-HAD data from: %s...\n', data_file);
-
-    if ~exist(data_file, 'file')
-        error('Pre-processed data file not found. Please run LoadUSCHAD.m first to generate it.');
-    end
-    
-    loaded = load(data_file, 'usc');
-    all_trials_struct = loaded.usc;
-
+    % This function now handles all loading, windowing, and feature extraction
+    [featuresAll, labelsAll, ModelMetadata] = PrepareTrainingData(cfg);
 catch ME
-    error('Data loading failed. Error: %s', ME.message);
+    error('Data preparation failed: %s', ME.message);
 end
 
-% Extract unique subject IDs for subject-wise splitting
-all_field_names = fieldnames(all_trials_struct);
-% Extract subject ID (e.g., 3 from 'subject3_activity...')
-subject_ids_per_trial = cellfun(@(x) sscanf(x, 'subject%d_activity%*d_trial%*d', 1), all_field_names);
-unique_subjects = unique(subject_ids_per_trial);
+if isempty(featuresAll)
+    error('No features extracted. Ensure "LoadUSCHAD" has been run and data is valid.');
+end
 
-n_subjects = length(unique_subjects);
-rng(1); % For reproducibility
+% --- 2. Train SVM Model ---
+fprintf('\nTraining SVM (RBF Kernel, Standardized)...\n');
 
-% Perform subject-wise split
-cv_split = cvpartition(n_subjects, 'Holdout', 0.3);
-train_subject_indices = find(cv_split.training);
-test_subject_indices = find(cv_split.test);
-
-train_subjects = unique_subjects(train_subject_indices);
-test_subjects = unique_subjects(test_subject_indices);
-
-fprintf('Total subjects found: %d. Training subjects: %d, Testing subjects: %d.\n', ...
-    n_subjects, length(train_subjects), length(test_subjects));
-
-% Select the field names belonging to the training/testing subjects
-train_trial_names = all_field_names(ismember(subject_ids_per_trial, train_subjects));
-test_trial_names = all_field_names(ismember(subject_ids_per_trial, test_subjects));
-
-% Reorganize the data into a cell array of trial structs for PrepareTrainingData
-all_train_trials = cellfun(@(name) all_trials_struct.(name), train_trial_names, 'UniformOutput', false);
-all_test_trials = cellfun(@(name) all_trials_struct.(name), test_trial_names, 'UniformOutput', false);
-
-% --- 3. Feature Extraction and Label Preparation ---
-fprintf('Extracting features from training data...\n');
-% PrepareTrainingData now correctly receives a cell array of trial structs
-[X_train, Y_train] = PrepareTrainingData(all_train_trials, cfg, FS, WINDOW_SIZE, STEP_SIZE);
-
-fprintf('Training Data Matrix (X_train) size: %s\n', mat2str(size(X_train)));
-fprintf('Training Label Vector (Y_train) size: %s\n', mat2str(size(Y_train)));
-
-% Check for data balance (important for binary classification)
-n_locomotion = sum(Y_train == cfg.STATE_WALKING);
-n_static = sum(Y_train == cfg.STATE_STANDING);
-fprintf('Training Samples: Locomotion (1): %d, Static (0): %d\n', n_locomotion, n_static);
-
-% --- 4. Model Training (Support Vector Machine) ---
-fprintf('Starting SVM training...\n');
-% Train a binary classifier
-t_start = tic;
-SVMModel = fitcsvm(X_train, Y_train, ...
-    'KernelFunction', KERNEL_FUNCTION, ...
-    'BoxConstraint', C_SVM, ...
+% Fit binary SVM
+% - Kernel: RBF (Gaussian) is typically best for non-linear IMU boundaries
+% - Standardize: Critical because features (Acc vs Gyro) have different scales
+SVMModel = fitcsvm(featuresAll, labelsAll, ...
+    'KernelFunction', 'rbf', ...
     'Standardize', true, ...
-    'ClassNames', [cfg.STATE_STANDING, cfg.STATE_WALKING]); % Ensure classes are recognized as 0 and 1
-t_elapsed = toc(t_start);
-fprintf('SVM training completed in %.2f seconds.\n', t_elapsed);
+    'BoxConstraint', 1.0, ...
+    'ClassNames', [0, 1]);
 
-% --- 5. Model Testing (Evaluation on Holdout Set) ---
-fprintf('Extracting features from testing data...\n');
-% PrepareTrainingData now correctly receives a cell array of trial structs
-[X_test, Y_test] = PrepareTrainingData(all_test_trials, cfg, FS, WINDOW_SIZE, STEP_SIZE);
+% --- 3. Evaluate Performance (Cross-Validation) ---
+fprintf('Performing 5-Fold Cross-Validation...\n');
+cvModel = crossval(SVMModel, 'KFold', 5);
+cvError = kfoldLoss(cvModel);
+cvAccuracy = (1 - cvError) * 100;
 
-% Predict labels on the test set
-Y_pred = predict(SVMModel, X_test);
+fprintf('-----------------------------------------------------------\n');
+fprintf('   Model Accuracy (5-Fold CV): %.2f%%\n', cvAccuracy);
+fprintf('-----------------------------------------------------------\n');
 
-% Calculate Performance Metrics
-TP = sum(Y_test == cfg.STATE_WALKING & Y_pred == cfg.STATE_WALKING);
-TN = sum(Y_test == cfg.STATE_STANDING & Y_pred == cfg.STATE_STANDING);
-FP = sum(Y_test == cfg.STATE_STANDING & Y_pred == cfg.STATE_WALKING);
-FN = sum(Y_test == cfg.STATE_WALKING & Y_pred == cfg.STATE_STANDING);
+% --- 4. Save Model ---
+savePath = cfg.FILE.SVM_MODEL;
 
-Accuracy = (TP + TN) / (TP + TN + FP + FN);
-Precision = TP / (TP + FP);
-Recall = TP / (TP + FN); % Sensitivity
-Specificity = TN / (TN + FP);
-
-metrics.TP = TP;
-metrics.TN = TN;
-metrics.FP = FP;
-metrics.FN = FN;
-metrics.Accuracy = Accuracy;
-metrics.Precision = Precision;
-metrics.Recall = Recall;
-metrics.Specificity = Specificity;
-
-fprintf('\n--- Test Set Performance Summary (Holdout Subjects) ---\n');
-fprintf('Total Test Samples: %d\n', length(Y_test));
-fprintf('------------------------------------------\n');
-fprintf('True Positives (TP): %d\n', TP);
-fprintf('True Negatives (TN): %d\n', TN);
-fprintf('False Positives (FP): %d\n', FP);
-fprintf('False Negatives (FN): %d\n', FN);
-fprintf('------------------------------------------\n');
-fprintf('Accuracy: %.2f%%\n', Accuracy * 100);
-fprintf('Precision (Walk): %.2f%%\n', Precision * 100);
-fprintf('Recall (Walk): %.2f%%\n', Recall * 100);
-fprintf('Specificity (Stand): %.2f%%\n', Specificity * 100);
-fprintf('------------------------------------------\n');
-
-% --- 6. Save the Model and Metadata ---
-% Metadata needed by the real-time pipeline scripts
-ModelMetadata.fs = FS;
-ModelMetadata.windowSize = WINDOW_SIZE;
-ModelMetadata.stepSize = STEP_SIZE;
-ModelMetadata.trainSubjects = train_subjects;
-ModelMetadata.testSubjects = test_subjects;
-save(model_save_path, 'SVMModel', 'ModelMetadata');
-
-fprintf('\nTrained SVM Model and Metadata saved successfully to: %s\n', model_save_path);
+% Ensure results directory exists
+[saveDir, ~] = fileparts(savePath);
+if ~exist(saveDir, 'dir')
+    mkdir(saveDir);
 end
+
+% Save both the Model object and the Metadata
+save(savePath, 'SVMModel', 'ModelMetadata');
+fprintf('Model saved successfully to:\n  -> %s\n', savePath);
+fprintf('===========================================================\n');
 ### END OF FILE: TrainSvmBinary.m
 
 ### START OF FILE: ConcatenateCode.m
@@ -1342,77 +1300,83 @@ end
 %% PrepareTrainingData.m
 % --------------------------------------------------------------------------
 % FUNCTION: [features, labels_binary, ModelMetadata] = PrepareTrainingData(cfg)
-% PURPOSE: Loads data, extracts features in sliding windows, and binarizes 
-% the labels for binary SVM training (WALKING=1, STANDING=0).
+% PURPOSE: Iterates through the USC-HAD dataset, extracts features using
+%          the standardized pipeline logic, and binarizes labels.
+% --------------------------------------------------------------------------
+% LOCATION: src/acquisition/PrepareTrainingData.m
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-13
-% LAST MODIFIED: 2025-12-13 (Added ModelMetadata output)
-% --------------------------------------------------------------------------
-% DEPENDENCIES: 
-% - ExoConfig.m
-% - LoadUSCHAD.m (to ensure data is processed)
-% - ImportUschadSingleImu.m
-% - Features.m
+% LAST MODIFIED: 2025-12-17
 % --------------------------------------------------------------------------
 
 function [features, labels_binary, ModelMetadata] = PrepareTrainingData(cfg)
 
-if nargin < 1
-    cfg = ExoConfig();
-end
-
-% --- 1. Load USC-HAD Data Structure ---
-% NOTE: Assuming LoadUSCHAD has been run and usc_had_dataset.mat exists
-load(cfg.FILE.USCHAD_DATA, 'usc');
-
-% Prepare lists for feature vectors and corresponding binary labels
-features = [];
-labels_binary = [];
-all_trial_names = fieldnames(usc);
-
-fprintf('Starting feature extraction on %d USC-HAD trials...\n', length(all_trial_names));
-
-% --- 2. Iterate through all trials ---
-for i = 1:length(all_trial_names)
-    trial_name = all_trial_names{i};
-    trial = usc.(trial_name);
-    
-    % Use only the 'back' IMU data (single IMU pipeline simulation)
-    acc = trial.acc;
-    gyro = trial.gyro;
-    raw_label = trial.label;
-    
-    n_samples = size(acc, 1);
-    
-    % Binarize the single trial label
-    is_walking = ismember(raw_label, cfg.DS.USCHAD.WALKING_LABELS);
-    trial_label_binary = double(is_walking);
-
-    % --- Sliding Window Feature Extraction ---
-    for k = 1:cfg.STEP_SIZE:(n_samples - cfg.WINDOW_SIZE + 1)
-        window_start = k;
-        window_end = k + cfg.WINDOW_SIZE - 1;
-        
-        windowAcc = acc(window_start:window_end, :);
-        windowGyro = gyro(window_start:window_end, :);
-
-        % Extract Features (pass both Accel and Gyro)
-        feature_vector = Features(windowAcc, windowGyro, cfg.FS);
-        
-        features = [features; feature_vector]; %#ok<AGROW>
-        labels_binary = [labels_binary; trial_label_binary]; %#ok<AGROW>
+    if nargin < 1
+        cfg = ExoConfig();
     end
-end
 
-% --- 3. Prepare Metadata ---
-ModelMetadata.fs = cfg.FS;
-ModelMetadata.windowSize = cfg.WINDOW_SIZE;
-ModelMetadata.stepSize = cfg.STEP_SIZE;
-% Fix: Save the raw multi-class labels used for binarization (CRITICAL for evaluation scripts)
-ModelMetadata.WALKING_LABELS_RAW = cfg.DS.USCHAD.WALKING_LABELS; 
-ModelMetadata.NON_WALKING_LABELS_RAW = cfg.DS.USCHAD.NON_WALKING_LABELS;
+    % --- 1. Load USC-HAD Data Structure ---
+    % Checks if the dataset exists. If not, prompts user to run LoadUSCHAD.
+    if ~exist(cfg.FILE.USCHAD_DATA, 'file')
+        error('USC-HAD dataset not found at: %s. \nPlease run "LoadUSCHAD" first.', cfg.FILE.USCHAD_DATA);
+    end
+    
+    loadedData = load(cfg.FILE.USCHAD_DATA, 'usc');
+    usc = loadedData.usc;
 
-fprintf('Feature extraction complete. Total %d windows generated.\n', size(features, 1));
+    features = [];
+    labels_binary = [];
+    all_trial_names = fieldnames(usc);
+
+    fprintf('Preparing Training Data: Extracting features from %d trials...\n', length(all_trial_names));
+
+    % --- 2. Iterate through all trials ---
+    for i = 1:length(all_trial_names)
+        trial_name = all_trial_names{i};
+        trial = usc.(trial_name);
+        
+        % Data Access
+        acc = trial.acc;
+        gyro = trial.gyro;
+        raw_label = trial.label;
+        n_samples = size(acc, 1);
+        
+        % Skip trials shorter than one window
+        if n_samples < cfg.WINDOW_SIZE
+            continue; 
+        end
+        
+        % --- Label Binarization ---
+        % Convert specific USC-HAD Activity ID to Binary (1=Walk, 0=Stand)
+        is_walking = ismember(raw_label, cfg.DS.USCHAD.WALKING_LABELS);
+        trial_label_binary = double(is_walking);
+
+        % --- Sliding Window Feature Extraction ---
+        for k = 1:cfg.STEP_SIZE:(n_samples - cfg.WINDOW_SIZE + 1)
+            window_start = k;
+            window_end = k + cfg.WINDOW_SIZE - 1;
+            
+            windowAcc = acc(window_start:window_end, :);
+            windowGyro = gyro(window_start:window_end, :);
+
+            % Extract Features (Using updated 5-feature logic)
+            feature_vector = Features(windowAcc, windowGyro, cfg.FS);
+            
+            features = [features; feature_vector]; %#ok<AGROW>
+            labels_binary = [labels_binary; trial_label_binary]; %#ok<AGROW>
+        end
+    end
+
+    % --- 3. Prepare Metadata ---
+    % This ensures the Real-time pipeline knows how to match the model
+    ModelMetadata.fs = cfg.FS;
+    ModelMetadata.windowSize = cfg.WINDOW_SIZE;
+    ModelMetadata.stepSize = cfg.STEP_SIZE;
+    ModelMetadata.featureCount = size(features, 2);
+    ModelMetadata.dateTrained = char(datetime('now'));
+
+    fprintf('Feature extraction complete. Generated %d windows with %d features each.\n', ...
+        size(features, 1), size(features, 2));
 end
 ### END OF FILE: PrepareTrainingData.m
 
@@ -1723,60 +1687,63 @@ end
 %% Features.m
 % --------------------------------------------------------------------------
 % FUNCTION: [features_out] = Features(windowAcc, windowGyro, Fs)
-% PURPOSE: Calculates time-domain and frequency-domain features from IMU data windows for use in the locomotion classifier.
+% PURPOSE: Extracts a feature vector from a window of IMU data.
+% --------------------------------------------------------------------------
+% INPUTS:
+%   - windowAcc:  Nx3 matrix of Accelerometer data (m/s^2)
+%   - windowGyro: Nx3 matrix of Gyroscope data (rad/s)
+%   - Fs:         Sampling Frequency (Hz)
+% OUTPUTS:
+%   - features_out: 1x5 vector [AccMean, AccVar, GyroMean, GyroVar, DomFreq]
+% --------------------------------------------------------------------------
+% LOCATION: src/features/Features.m
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-11
-% LAST MODIFIED: 2025-12-14 (Header fix)
-% --------------------------------------------------------------------------
-% DEPENDENCIES: 
-% - MATLAB built-in functions (fft, abs, mean, var, max)
-% --------------------------------------------------------------------------
-% NOTES:
-% - Calculates mean/variance of acceleration magnitude and the dominant frequency.
-% - Dominant frequency is crucial for distinguishing steady-state walking (1-2 Hz).
-% - Currently ignores windowGyro input (~).
+% LAST MODIFIED: 2025-12-17
 % --------------------------------------------------------------------------
 
-function [features_out] = Features(windowAcc, ~, Fs)
+function [features_out] = Features(windowAcc, windowGyro, Fs)
 
-% 1. Time-Domain Features (Used in TrainSvmBinary.m)
-% Calculate magnitude of acceleration vector (net force)
-mag_acc = sqrt(sum(windowAcc.^2, 2));
+    % --- 1. Accelerometer Features ---
+    % Calculate magnitude of acceleration vector (net force)
+    mag_acc = sqrt(sum(windowAcc.^2, 2));
+    
+    feat_mean_acc = mean(mag_acc); % Mean intensity
+    feat_var_acc  = var(mag_acc);  % Variability/Energy
 
-% Feature 1: Mean of Acceleration Magnitude
-feat_mean_mag = mean(mag_acc);
+    % --- 2. Gyroscope Features (NEW) ---
+    % Calculate magnitude of rotational velocity
+    mag_gyro = sqrt(sum(windowGyro.^2, 2));
+    
+    feat_mean_gyro = mean(mag_gyro); % Is the body rotating?
+    feat_var_gyro  = var(mag_gyro);  % How erratic is the rotation?
 
-% Feature 2: Variance of Acceleration Magnitude
-feat_var_mag = var(mag_acc);
+    % --- 3. Frequency-Domain Features ---
+    N = length(windowAcc);
+    
+    % Edge case protection for tiny windows
+    if N < 2
+        features_out = [feat_mean_acc, feat_var_acc, feat_mean_gyro, feat_var_gyro, 0];
+        return; 
+    end
 
+    % Perform FFT on Z-axis acceleration (Gravity axis usually has strongest gait signal)
+    acc_z = windowAcc(:, 3); 
+    
+    Y = fft(acc_z);
+    P2 = abs(Y/N);
+    P1 = P2(1:floor(N/2)+1); % Single-sided spectrum
+    P1(2:end-1) = 2*P1(2:end-1);
 
-% 2. Frequency-Domain Features
-N = length(windowAcc);
-if N < 2
-% Handle edge case of very small window
-features_out = [feat_mean_mag, feat_var_mag, 0];
-return; 
-end
+    % Frequency vector
+    f = Fs*(0:floor(N/2))/N;
 
-% Perform Fast Fourier Transform (FFT) on the raw Z-axis of acceleration
-% Z-axis (vertical/gravity) often has the clearest gait signature
-acc_z = windowAcc(:, 3); % Assuming Z is the 3rd column
+    % Find Dominant Frequency (exclude DC component at index 1)
+    [~, idx] = max(P1(2:end)); 
+    feat_dom_freq = f(idx + 1); 
 
-Y = fft(acc_z);
-P2 = abs(Y/N);
-P1 = P2(1:floor(N/2)+1); % Single-sided spectrum
-P1(2:end-1) = 2*P1(2:end-1);
-
-% Frequency vector
-f = Fs*(0:floor(N/2))/N;
-
-% Feature 3: Dominant Frequency (excluding DC component at f(1)=0)
-[~, idx] = max(P1(2:end)); % Find peak amplitude index, starting from index 2
-feat_dom_freq = f(idx + 1); % Adjust index back to frequency vector f
-
-% 3. Output
-% Combine all features into a single row vector
-features_out = [feat_mean_mag, feat_var_mag, feat_dom_freq];
+    % --- 4. Assemble Output ---
+    features_out = [feat_mean_acc, feat_var_acc, feat_mean_gyro, feat_var_gyro, feat_dom_freq];
 
 end
 ### END OF FILE: Features.m
@@ -1785,63 +1752,61 @@ end
 ### FILE Path: AutomationForExoskeleton/src/fusion/FusionKalman.m
 %% FusionKalman.m
 % --------------------------------------------------------------------------
-% FUNCTION: [fuse_back, fuse_hipL] = initializeFilters(Fs)
-% FUNCTION: [hipFlexionAngle] = estimateAngle(orientBack, orientHipL)
-% PURPOSE: Provides configuration and helper functions for the Kalman Filter 
-%          used for sensor fusion (Accel/Gyro) to estimate joint angles.
+% CLASS: FusionKalman
+% PURPOSE: Static helper class for Kinematics and Sensor Fusion.
+%          Contains methods to initialize filters and calculate joint angles.
+% --------------------------------------------------------------------------
+% LOCATION: src/fusion/FusionKalman.m
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-11
-% LAST MODIFIED: 2025-12-15 (Refactored to provide modular filter objects)
-% --------------------------------------------------------------------------
-% DEPENDENCIES: 
-% - MATLAB Sensor Fusion Toolbox (imufilter, quat2eul)
-% --------------------------------------------------------------------------
-% NOTES:
-% - The filter objects must be initialized once and updated incrementally 
-%   by the main pipeline script.
-% - Tuning parameters are defined here to achieve the desired RMSE.
+% LAST MODIFIED: 2025-12-17
 % --------------------------------------------------------------------------
 
-function [fuse_back, fuse_hipL] = initializeFilters(Fs)
-    % Tuning parameters (optimized for exoskeleton kinematics)
-    ACCEL_NOISE = 0.01; 
-    GYRO_NOISE = 0.005;
+classdef FusionKalman
+    methods (Static)
+        function [fuse_back, fuse_hipL] = initializeFilters(Fs)
+            % initializeFilters: Sets up IMU filters for Back and Hip.
+            % Tuning parameters (Optimized for human motion)
+            ACCEL_NOISE = 0.01; 
+            GYRO_NOISE = 0.005;
 
-    fprintf('Initializing Kalman IMU Filters (SampleRate: %d Hz)...\n', Fs);
-    
-    % Initialize filter for the Back IMU (Standard MATLAB imufilter)
-    fuse_back = imufilter('SampleRate', Fs, ...
-        'AccelerometerNoise', ACCEL_NOISE, ...
-        'GyroscopeNoise', GYRO_NOISE, ...
-        'ReferenceFrame', 'ENU');
+            fprintf('Initializing Kalman IMU Filters (SampleRate: %d Hz)...\n', Fs);
+            
+            % Filter for Back IMU
+            fuse_back = imufilter('SampleRate', Fs, ...
+                'AccelerometerNoise', ACCEL_NOISE, ...
+                'GyroscopeNoise', GYRO_NOISE, ...
+                'ReferenceFrame', 'ENU');
 
-    % Initialize filter for the Left Hip IMU
-    fuse_hipL = imufilter('SampleRate', Fs, ...
-        'AccelerometerNoise', ACCEL_NOISE, ...
-        'GyroscopeNoise', GYRO_NOISE, ...
-        'ReferenceFrame', 'ENU');
-end
-
-function hipFlexionAngle = estimateAngle(orientBack, orientHipL)
-    % PURPOSE: Computes relative joint angle from two orientation quaternions.
-    % INPUTS: orientBack, orientHipL (1x4 quaternions or quaternion objects)
-    
-    % 1. Data Safety: Ensure inputs are valid
-    if any(isnan(orientBack)) || any(isnan(orientHipL))
-        hipFlexionAngle = 0;
-        return;
+            % Filter for Left Hip IMU
+            fuse_hipL = imufilter('SampleRate', Fs, ...
+                'AccelerometerNoise', ACCEL_NOISE, ...
+                'GyroscopeNoise', GYRO_NOISE, ...
+                'ReferenceFrame', 'ENU');
+        end
+        
+        function hipFlexionAngle = estimateAngle(orientBack, orientHipL)
+            % estimateAngle: Computes relative joint angle (flexion/pitch) 
+            % between the Back and the Hip.
+            
+            % Input check
+            if any(isnan(orientBack)) || any(isnan(orientHipL))
+                hipFlexionAngle = 0;
+                return;
+            end
+        
+            % Convert Quaternions to Euler Angles (ZYX order)
+            % Index 2 corresponds to Pitch (Y-axis rotation), usually Flexion/Extension
+            eulBack = quat2eul(orientBack, 'ZYX');
+            eulHipL = quat2eul(orientHipL, 'ZYX');
+        
+            % Calculate Relative Angle
+            angle_rad = eulHipL(2) - eulBack(2);
+            
+            % Convert to Degrees
+            hipFlexionAngle = angle_rad * (180/pi);
+        end
     end
-
-    % 2. Convert to Euler Angles (ZYX: Yaw, Pitch, Roll)
-    % Note: Pitch (index 2) usually corresponds to flexion/extension
-    eulBack = quat2eul(orientBack, 'ZYX');
-    eulHipL = quat2eul(orientHipL, 'ZYX');
-
-    % 3. Calculate Relative Angle (Difference in Pitch)
-    angle_rad = eulHipL(2) - eulBack(2);
-    
-    % 4. Convert to degrees
-    hipFlexionAngle = angle_rad * (180/pi);
 end
 ### END OF FILE: FusionKalman.m
 
