@@ -6,20 +6,16 @@
 % and Locomotion Classification (SVM/FSM) to generate control commands.
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-13
-% LAST MODIFIED: 2025-12-13 (Fixed missing gyro data and Kalman interface)
-% --------------------------------------------------------------------------
-% DEPENDENCIES: 
-% - ImportData.m
-% - Features.m
-% - RealtimeFsm.m
-% - FusionKalman.m 
-% - Binary_SVM_Model.mat 
-% --------------------------------------------------------------------------
-% NOTES:
-% - Simulates real-time data flow by iterating over the imported batch data.
+% LAST MODIFIED: 2025-12-17 (Fixed Pathing and Static Method Calls)
 % --------------------------------------------------------------------------
 
 clc; clear; close all;
+
+% --- Path Setup ---
+% Get the location of this script to anchor paths
+scriptPath = fileparts(mfilename('fullpath')); 
+% Assuming script is in /scripts/, go up one level to Project Root
+projectRoot = fileparts(scriptPath); 
 
 % --- Configuration ---
 cfg = ExoConfig();
@@ -29,31 +25,42 @@ WINDOW_SIZE = cfg.WINDOW_SIZE;
 STEP_SIZE = cfg.STEP_SIZE; 
 
 % --- 1. Load Trained Model ---
-model_path = cfg.FILE.SVM_MODEL;
+% Construct absolute path to ensure file is found regardless of CWD
+model_path = fullfile(projectRoot, cfg.FILE.SVM_MODEL);
+
 if ~exist(model_path, 'file')
-    error('Trained SVM Model not found. Run TrainSvmBinary first.');
+    error('Trained SVM Model not found at: %s\nPlease run TrainSvmBinary first.', model_path);
 end
-load(model_path, 'SVMModel');
+loaded = load(model_path, 'SVMModel');
+SVMModel = loaded.SVMModel;
 fprintf('Trained SVM Model loaded successfully.\n');
 
 % --- 2. Initialize Exoskeleton State ---
 current_fsm_state = cfg.STATE_STANDING;
-hip_flexion_angles = zeros(1, 1); % Initialize array
+hip_flexion_angles = zeros(1, 1); 
 
 % --- 3. Initialize Sensor Fusion Filter (Kalman) ---
-[fuse_back, fuse_hipL] = initializeFilters(FS);
+% FIX: Call static method via ClassName.MethodName
+[fuse_back, fuse_hipL] = FusionKalman.initializeFilters(FS);
 
 % --- 4. Load Data ---
+% FIX: ImportData relies on relative paths ('../data'). We temporarily 
+% switch to the 'scripts' folder to ensure the relative path resolves correctly.
+currentDir = pwd;
+cd(scriptPath); 
 try
     [back, hipL, ~, annotations] = ImportData(ACTIVITY_NAME);
 catch ME
+    cd(currentDir); % Ensure we return to original dir even on error
     warning('Data import failed: %s. Using dummy data.', ME.message);
+    % Fallback dummy data
     data_len = 5000;
     back.acc = [zeros(data_len, 2), ones(data_len, 1)*9.8];
     back.gyro = zeros(data_len, 3);
     hipL = struct('acc', zeros(data_len, 3), 'gyro', zeros(data_len, 3));
     annotations = table(zeros(data_len, 1), 'VariableNames', {'Label'});
 end
+cd(currentDir); % Restore path
 
 n_total_samples = size(back.acc, 1);
 hip_flexion_angles = zeros(n_total_samples, 1); % Pre-allocate
@@ -65,13 +72,13 @@ fprintf('Starting real-time simulation on %d samples...\n', n_total_samples);
 % --- 5. Main Real-Time Simulation Loop ---
 for i = 1:n_total_samples
 
-    % --- Sensor Fusion (Corrected Logic) ---
+    % --- Sensor Fusion ---
     % Standard imufilter usage: q = fuse(acc, gyro)
     q_back = fuse_back(back.acc(i,:), back.gyro(i,:));
     q_hipL = fuse_hipL(hipL.acc(i,:), hipL.gyro(i,:));
     
-    % Calculate Angle using the current quaternions
-    hip_flexion_angles(i) = estimateAngle(q_back, q_hipL);
+    % FIX: Call static method via ClassName.MethodName
+    hip_flexion_angles(i) = FusionKalman.estimateAngle(q_back, q_hipL);
 
     % --- Locomotion Classification ---
     if mod(i - 1, STEP_SIZE) == 0 && (i + WINDOW_SIZE - 1) <= n_total_samples
@@ -89,7 +96,7 @@ end
 
 fprintf('\nPipeline simulation complete.\n');
 
-% --- 6. Visualization (Plotting code remains the same) ---
+% --- 6. Visualization ---
 figure('Name', 'Pipeline Output');
 t = (1:n_total_samples) / FS;
 
@@ -109,4 +116,8 @@ if ismember('Label', annotations.Properties.VariableNames)
     plot(t, annotations.Label, 'k', 'LineWidth', 1.5);
     title('Ground Truth');
 end
-saveas(gcf, 'results/realtime_pipeline_output.png');
+
+% Save results using absolute path
+resultsFile = fullfile(projectRoot, 'results', 'realtime_pipeline_output.png');
+saveas(gcf, resultsFile);
+fprintf('Plot saved to: %s\n', resultsFile);
