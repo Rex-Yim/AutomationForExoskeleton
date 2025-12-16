@@ -64,8 +64,10 @@ AutomationForExoskeleton/
 │   ├── Final_Report.txt
 │   ├── Interim_Report.pdf
 │   ├── LICENSE
+│   ├── README.asv
 │   ├── README.md
-│   └── System_Design.pdf
+│   ├── System_Design.pdf
+│   └── System_Design_Summary.txt
 ├── models/
 ├── results/
 │   ├── Binary_SVM_Model.mat
