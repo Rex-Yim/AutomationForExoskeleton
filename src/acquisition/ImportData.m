@@ -1,36 +1,49 @@
 %% ImportData.m
 % --------------------------------------------------------------------------
 % FUNCTION: [back, hipL, hipR, annotations] = ImportData(activityName)
-% PURPOSE: Implements the Data Acquisition Protocol, reading raw CSV data from 
-% a specified activity folder. Handles Timestamp column stripping.
+% PURPOSE: Implements the Data Acquisition Protocol. It locates the 
+%          AutomationForExoskeleton project root dynamically and reads raw 
+%          CSV data.
+% --------------------------------------------------------------------------
+% LOCATION: src/acquisition/ImportData.m
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-11
-% LAST MODIFIED: 2025-12-17 (Added column cleaning in process_imu_table)
+% LAST MODIFIED: 2025-12-17
 % --------------------------------------------------------------------------
 
 function [back, hipL, hipR, annotations] = ImportData(activityName)
-    % Define path to the specific activity folder relative to 'scripts'
-    baseDir = '../data/raw/';
+    
+    % --- 1. Path Management (Location Independent) ---
+    % Get the directory of THIS file (.../src/acquisition/)
+    funcDir = fileparts(mfilename('fullpath'));
+    % Go up two levels to find Project Root (.../AutomationForExoskeleton/)
+    projectRoot = fileparts(fileparts(funcDir));
+    
+    % Construct absolute path to data
+    baseDir = fullfile(projectRoot, 'data', 'raw');
     activityPath = fullfile(baseDir, activityName);
     
-    % Filenames
+    % --- 2. Validation ---
+    if ~isfolder(activityPath)
+        error('Activity folder not found at: %s', activityPath);
+    end
+    
     fileAcc = fullfile(activityPath, 'Accelerometer.csv');
     fileGyro = fullfile(activityPath, 'Gyroscope.csv');
     fileAnnot = fullfile(activityPath, 'Annotation.csv');
     
-    % Check files exist
-    if ~isfolder(activityPath)
-        error('Activity folder not found: %s', activityPath);
-    end
     if ~isfile(fileAcc) || ~isfile(fileGyro)
-        error('IMU data files not found in: %s', activityPath);
+        error('Missing IMU CSV files in: %s', activityPath);
     end
     
-    % --- 1. Import Raw Tables ---
+    % --- 3. Import Raw Tables ---
+    % Suppress warnings for modified variable names during import
     opts = detectImportOptions(fileAcc);
+    opts.VariableNamingRule = 'preserve'; 
     accTable = readtable(fileAcc, opts);
     
     opts = detectImportOptions(fileGyro);
+    opts.VariableNamingRule = 'preserve';
     gyroTable = readtable(fileGyro, opts);
     
     if isfile(fileAnnot)
@@ -41,10 +54,10 @@ function [back, hipL, hipR, annotations] = ImportData(activityName)
         annotations = table();
     end
     
-    % --- 2. Process and Assign Data ---
+    % --- 4. Process and Assign Data ---
     back = process_imu_table(accTable, gyroTable);
     
-    % Setup dummy data for hips (since we only have one physical sensor in this dataset)
+    % Setup placeholder data for hips (Dataset usually only has 1 sensor)
     N_samples = size(back.acc, 1);
     
     hipL.acc = zeros(N_samples, 3);
@@ -52,29 +65,27 @@ function [back, hipL, hipR, annotations] = ImportData(activityName)
     hipR.acc = zeros(N_samples, 3);
     hipR.gyro = zeros(N_samples, 3);
     
-    fprintf('Imported %d samples of IMU data for activity "%s".\n', N_samples, activityName);
+    fprintf('Imported %d samples for activity: "%s"\n', N_samples, activityName);
 end
 
-%% --- NESTED FUNCTION (Utility for Table Processing) ---
+%% --- NESTED UTILITY ---
 function imu = process_imu_table(accTable, gyroTable)
-    % Converts tables to standard IMU data structure (Nx3 arrays).
-    % Automatically keeps only the last 3 columns if Timestamp is present.
-
+    % Converts tables to standard Nx3 arrays.
+    % Handles cases where specific columns (Timestamp) might exist.
+    
     rawAcc = table2array(accTable);
     rawGyro = table2array(gyroTable);
 
-    % --- Fix: Handle Timestamp Column (e.g., if data is Nx4) ---
-    if size(rawAcc, 2) > 3
-        % Assume format is [Timestamp, X, Y, Z], take last 3
+    % Logic: If 4 columns, assume [Time, X, Y, Z]. If 3, assume [X, Y, Z].
+    if size(rawAcc, 2) >= 4
         imu.acc = rawAcc(:, end-2:end);
     else
-        imu.acc = rawAcc;
+        imu.acc = rawAcc(:, 1:3);
     end
 
-    if size(rawGyro, 2) > 3
-        % Assume format is [Timestamp, X, Y, Z], take last 3
+    if size(rawGyro, 2) >= 4
         imu.gyro = rawGyro(:, end-2:end);
     else
-        imu.gyro = rawGyro;
+        imu.gyro = rawGyro(:, 1:3);
     end
 end

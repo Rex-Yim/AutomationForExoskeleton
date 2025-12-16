@@ -1,9 +1,8 @@
 %% RunExoskeletonPipeline.m
 % --------------------------------------------------------------------------
-% FUNCTION: [] = RunExoskeletonPipeline()
 % PURPOSE: Main script to simulate the real-time exoskeleton control system. 
-% It integrates Data Acquisition, Sensor Fusion (Kalman), 
-% and Locomotion Classification (SVM/FSM) to generate control commands.
+% --------------------------------------------------------------------------
+% LOCATION: scripts/RunExoskeletonPipeline.m
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-13
 % LAST MODIFIED: 2025-12-17 (Fixed Pathing and Static Method Calls)
@@ -11,113 +10,128 @@
 
 clc; clear; close all;
 
-% --- Path Setup ---
-% Get the location of this script to anchor paths
+% --- 1. Environment & Path Setup ---
 scriptPath = fileparts(mfilename('fullpath')); 
-% Assuming script is in /scripts/, go up one level to Project Root
 projectRoot = fileparts(scriptPath); 
 
-% --- Configuration ---
+% Add necessary paths just in case startup.m wasn't run
+addpath(fullfile(projectRoot, 'config'));
+addpath(genpath(fullfile(projectRoot, 'src')));
+
 cfg = ExoConfig();
-ACTIVITY_NAME = cfg.ACTIVITY_SIMULATION;
+ACTIVITY_NAME = cfg.ACTIVITY_SIMULATION; % e.g., 'walking_straight'
 FS = cfg.FS; 
 WINDOW_SIZE = cfg.WINDOW_SIZE; 
 STEP_SIZE = cfg.STEP_SIZE; 
 
-% --- 1. Load Trained Model ---
-% Construct absolute path to ensure file is found regardless of CWD
+% --- 2. Load Trained Model ---
 model_path = fullfile(projectRoot, cfg.FILE.SVM_MODEL);
 
 if ~exist(model_path, 'file')
     error('Trained SVM Model not found at: %s\nPlease run TrainSvmBinary first.', model_path);
 end
+
 loaded = load(model_path, 'SVMModel');
 SVMModel = loaded.SVMModel;
-fprintf('Trained SVM Model loaded successfully.\n');
+fprintf('Model loaded. Simulating activity: %s\n', ACTIVITY_NAME);
 
-% --- 2. Initialize Exoskeleton State ---
-current_fsm_state = cfg.STATE_STANDING;
-hip_flexion_angles = zeros(1, 1); 
-
-% --- 3. Initialize Sensor Fusion Filter (Kalman) ---
-% FIX: Call static method via ClassName.MethodName
-[fuse_back, fuse_hipL] = FusionKalman.initializeFilters(FS);
-
-% --- 4. Load Data ---
-% FIX: ImportData relies on relative paths ('../data'). We temporarily 
-% switch to the 'scripts' folder to ensure the relative path resolves correctly.
-currentDir = pwd;
-cd(scriptPath); 
+% --- 3. Load Data ---
 try
     [back, hipL, ~, annotations] = ImportData(ACTIVITY_NAME);
 catch ME
-    cd(currentDir); % Ensure we return to original dir even on error
-    warning('Data import failed: %s. Using dummy data.', ME.message);
-    % Fallback dummy data
-    data_len = 5000;
-    back.acc = [zeros(data_len, 2), ones(data_len, 1)*9.8];
-    back.gyro = zeros(data_len, 3);
-    hipL = struct('acc', zeros(data_len, 3), 'gyro', zeros(data_len, 3));
-    annotations = table(zeros(data_len, 1), 'VariableNames', {'Label'});
+    error('Data Import Failed: %s\nEnsure "data/raw/%s" exists.', ME.message, ACTIVITY_NAME);
 end
-cd(currentDir); % Restore path
 
 n_total_samples = size(back.acc, 1);
-hip_flexion_angles = zeros(n_total_samples, 1); % Pre-allocate
+
+% --- 4. Unit Sanity Check (Auto-Correction) ---
+% SVM expects m/s^2. If data is in Gs (mean ~1.0), convert it.
+avg_gravity = mean(sqrt(sum(back.acc.^2, 2)));
+if avg_gravity < 2.0 && avg_gravity > 0.5
+    fprintf('  [INFO] Data detected in Gs (Mean=%.2f). Converting to m/s^2.\n', avg_gravity);
+    back.acc = back.acc * 9.80665;
+    hipL.acc = hipL.acc * 9.80665;
+    % Gyro is usually rad/s or deg/s. Assuming rad/s for now based on Loader.
+end
+
+% --- 5. Initialization ---
+current_fsm_state = cfg.STATE_STANDING;
+hip_flexion_angles = zeros(n_total_samples, 1); 
 fsm_plot = zeros(n_total_samples, 1);
 last_command = 0;
 
-fprintf('Starting real-time simulation on %d samples...\n', n_total_samples);
+[fuse_back, fuse_hipL] = FusionKalman.initializeFilters(FS);
 
-% --- 5. Main Real-Time Simulation Loop ---
+% CRITICAL: Reset FSM persistent variables from previous runs
+clear RealtimeFsm; 
+
+fprintf('Starting simulation loop (%d samples)...\n', n_total_samples);
+
+% --- 6. Main Real-Time Loop ---
 for i = 1:n_total_samples
 
-    % --- Sensor Fusion ---
-    % Standard imufilter usage: q = fuse(acc, gyro)
+    % A. Kinematics (Sensor Fusion)
     q_back = fuse_back(back.acc(i,:), back.gyro(i,:));
     q_hipL = fuse_hipL(hipL.acc(i,:), hipL.gyro(i,:));
     
-    % FIX: Call static method via ClassName.MethodName
     hip_flexion_angles(i) = FusionKalman.estimateAngle(q_back, q_hipL);
 
-    % --- Locomotion Classification ---
+    % B. AI Classification (Periodic)
     if mod(i - 1, STEP_SIZE) == 0 && (i + WINDOW_SIZE - 1) <= n_total_samples
+        
+        % Extract Window
         windowAcc = back.acc(i : i+WINDOW_SIZE-1, :);
         windowGyro = back.gyro(i : i+WINDOW_SIZE-1, :);
 
+        % Feature Extraction
         features_vec = Features(windowAcc, windowGyro, FS);
+        
+        % Predict (0=Stand, 1=Walk)
         new_label = predict(SVMModel, features_vec);
+        
+        % FSM Smoothing
         [exoskeleton_command, current_fsm_state] = RealtimeFsm(new_label, current_fsm_state);
         
         last_command = exoskeleton_command;
     end
+    
+    % Store for plotting
     fsm_plot(i) = last_command;
 end
 
-fprintf('\nPipeline simulation complete.\n');
+fprintf('Simulation Complete.\n');
 
-% --- 6. Visualization ---
-figure('Name', 'Pipeline Output');
+% --- 7. Visualization ---
+figure('Name', 'Exoskeleton Simulation', 'Color', 'w');
 t = (1:n_total_samples) / FS;
 
-subplot(3,1,1);
+ax1 = subplot(3,1,1);
 plot(t, hip_flexion_angles, 'LineWidth', 1.5);
-title('Estimated Left Hip Flexion Angle (Kalman)');
-ylabel('Angle (deg)'); grid on;
+title('Kalman Filter: Hip Flexion Angle');
+ylabel('Deg'); grid on;
 
-subplot(3,1,2);
-stairs(t, fsm_plot, 'LineWidth', 1.5);
-ylim([-0.1 1.1]);
-title('Exoskeleton Control Command');
-ylabel('Command (0=Stand, 1=Walk)'); grid on;
+ax2 = subplot(3,1,2);
+% Plot acceleration magnitude to show activity intensity
+acc_mag = sqrt(sum(back.acc.^2, 2));
+plot(t, acc_mag, 'Color', [0.7 0.7 0.7]); hold on;
+% Overlay Control Command
+stairs(t, fsm_plot * max(acc_mag), 'r', 'LineWidth', 2);
+title('Control Command (Red) vs Acc Mag (Gray)');
+legend('Activity Energy', 'Exo Command (ON/OFF)');
+ylabel('Cmd / Mag'); grid on;
 
-subplot(3,1,3);
-if ismember('Label', annotations.Properties.VariableNames)
+ax3 = subplot(3,1,3);
+if ~isempty(annotations) && ismember('Label', annotations.Properties.VariableNames)
     plot(t, annotations.Label, 'k', 'LineWidth', 1.5);
-    title('Ground Truth');
+    title('Ground Truth (Annotation.csv)');
+    ylim([-0.2 1.2]);
+else
+    text(0.5, 0.5, 'No Ground Truth Available', 'HorizontalAlignment', 'center');
 end
+linkaxes([ax1, ax2, ax3], 'x');
+xlabel('Time (s)');
 
-% Save results using absolute path
-resultsFile = fullfile(projectRoot, 'results', 'realtime_pipeline_output.png');
+% Save Result
+resultsFile = fullfile(projectRoot, 'results', 'pipeline_output.png');
 saveas(gcf, resultsFile);
 fprintf('Plot saved to: %s\n', resultsFile);

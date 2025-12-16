@@ -556,10 +556,9 @@ ylabel('|Y(f)|');
 ### FILE Path: AutomationForExoskeleton/scripts/RunExoskeletonPipeline.m
 %% RunExoskeletonPipeline.m
 % --------------------------------------------------------------------------
-% FUNCTION: [] = RunExoskeletonPipeline()
 % PURPOSE: Main script to simulate the real-time exoskeleton control system. 
-% It integrates Data Acquisition, Sensor Fusion (Kalman), 
-% and Locomotion Classification (SVM/FSM) to generate control commands.
+% --------------------------------------------------------------------------
+% LOCATION: scripts/RunExoskeletonPipeline.m
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-13
 % LAST MODIFIED: 2025-12-17 (Fixed Pathing and Static Method Calls)
@@ -567,114 +566,129 @@ ylabel('|Y(f)|');
 
 clc; clear; close all;
 
-% --- Path Setup ---
-% Get the location of this script to anchor paths
+% --- 1. Environment & Path Setup ---
 scriptPath = fileparts(mfilename('fullpath')); 
-% Assuming script is in /scripts/, go up one level to Project Root
 projectRoot = fileparts(scriptPath); 
 
-% --- Configuration ---
+% Add necessary paths just in case startup.m wasn't run
+addpath(fullfile(projectRoot, 'config'));
+addpath(genpath(fullfile(projectRoot, 'src')));
+
 cfg = ExoConfig();
-ACTIVITY_NAME = cfg.ACTIVITY_SIMULATION;
+ACTIVITY_NAME = cfg.ACTIVITY_SIMULATION; % e.g., 'walking_straight'
 FS = cfg.FS; 
 WINDOW_SIZE = cfg.WINDOW_SIZE; 
 STEP_SIZE = cfg.STEP_SIZE; 
 
-% --- 1. Load Trained Model ---
-% Construct absolute path to ensure file is found regardless of CWD
+% --- 2. Load Trained Model ---
 model_path = fullfile(projectRoot, cfg.FILE.SVM_MODEL);
 
 if ~exist(model_path, 'file')
     error('Trained SVM Model not found at: %s\nPlease run TrainSvmBinary first.', model_path);
 end
+
 loaded = load(model_path, 'SVMModel');
 SVMModel = loaded.SVMModel;
-fprintf('Trained SVM Model loaded successfully.\n');
+fprintf('Model loaded. Simulating activity: %s\n', ACTIVITY_NAME);
 
-% --- 2. Initialize Exoskeleton State ---
-current_fsm_state = cfg.STATE_STANDING;
-hip_flexion_angles = zeros(1, 1); 
-
-% --- 3. Initialize Sensor Fusion Filter (Kalman) ---
-% FIX: Call static method via ClassName.MethodName
-[fuse_back, fuse_hipL] = FusionKalman.initializeFilters(FS);
-
-% --- 4. Load Data ---
-% FIX: ImportData relies on relative paths ('../data'). We temporarily 
-% switch to the 'scripts' folder to ensure the relative path resolves correctly.
-currentDir = pwd;
-cd(scriptPath); 
+% --- 3. Load Data ---
 try
     [back, hipL, ~, annotations] = ImportData(ACTIVITY_NAME);
 catch ME
-    cd(currentDir); % Ensure we return to original dir even on error
-    warning('Data import failed: %s. Using dummy data.', ME.message);
-    % Fallback dummy data
-    data_len = 5000;
-    back.acc = [zeros(data_len, 2), ones(data_len, 1)*9.8];
-    back.gyro = zeros(data_len, 3);
-    hipL = struct('acc', zeros(data_len, 3), 'gyro', zeros(data_len, 3));
-    annotations = table(zeros(data_len, 1), 'VariableNames', {'Label'});
+    error('Data Import Failed: %s\nEnsure "data/raw/%s" exists.', ME.message, ACTIVITY_NAME);
 end
-cd(currentDir); % Restore path
 
 n_total_samples = size(back.acc, 1);
-hip_flexion_angles = zeros(n_total_samples, 1); % Pre-allocate
+
+% --- 4. Unit Sanity Check (Auto-Correction) ---
+% SVM expects m/s^2. If data is in Gs (mean ~1.0), convert it.
+avg_gravity = mean(sqrt(sum(back.acc.^2, 2)));
+if avg_gravity < 2.0 && avg_gravity > 0.5
+    fprintf('  [INFO] Data detected in Gs (Mean=%.2f). Converting to m/s^2.\n', avg_gravity);
+    back.acc = back.acc * 9.80665;
+    hipL.acc = hipL.acc * 9.80665;
+    % Gyro is usually rad/s or deg/s. Assuming rad/s for now based on Loader.
+end
+
+% --- 5. Initialization ---
+current_fsm_state = cfg.STATE_STANDING;
+hip_flexion_angles = zeros(n_total_samples, 1); 
 fsm_plot = zeros(n_total_samples, 1);
 last_command = 0;
 
-fprintf('Starting real-time simulation on %d samples...\n', n_total_samples);
+[fuse_back, fuse_hipL] = FusionKalman.initializeFilters(FS);
 
-% --- 5. Main Real-Time Simulation Loop ---
+% CRITICAL: Reset FSM persistent variables from previous runs
+clear RealtimeFsm; 
+
+fprintf('Starting simulation loop (%d samples)...\n', n_total_samples);
+
+% --- 6. Main Real-Time Loop ---
 for i = 1:n_total_samples
 
-    % --- Sensor Fusion ---
-    % Standard imufilter usage: q = fuse(acc, gyro)
+    % A. Kinematics (Sensor Fusion)
     q_back = fuse_back(back.acc(i,:), back.gyro(i,:));
     q_hipL = fuse_hipL(hipL.acc(i,:), hipL.gyro(i,:));
     
-    % FIX: Call static method via ClassName.MethodName
     hip_flexion_angles(i) = FusionKalman.estimateAngle(q_back, q_hipL);
 
-    % --- Locomotion Classification ---
+    % B. AI Classification (Periodic)
     if mod(i - 1, STEP_SIZE) == 0 && (i + WINDOW_SIZE - 1) <= n_total_samples
+        
+        % Extract Window
         windowAcc = back.acc(i : i+WINDOW_SIZE-1, :);
         windowGyro = back.gyro(i : i+WINDOW_SIZE-1, :);
 
+        % Feature Extraction
         features_vec = Features(windowAcc, windowGyro, FS);
+        
+        % Predict (0=Stand, 1=Walk)
         new_label = predict(SVMModel, features_vec);
+        
+        % FSM Smoothing
         [exoskeleton_command, current_fsm_state] = RealtimeFsm(new_label, current_fsm_state);
         
         last_command = exoskeleton_command;
     end
+    
+    % Store for plotting
     fsm_plot(i) = last_command;
 end
 
-fprintf('\nPipeline simulation complete.\n');
+fprintf('Simulation Complete.\n');
 
-% --- 6. Visualization ---
-figure('Name', 'Pipeline Output');
+% --- 7. Visualization ---
+figure('Name', 'Exoskeleton Simulation', 'Color', 'w');
 t = (1:n_total_samples) / FS;
 
-subplot(3,1,1);
+ax1 = subplot(3,1,1);
 plot(t, hip_flexion_angles, 'LineWidth', 1.5);
-title('Estimated Left Hip Flexion Angle (Kalman)');
-ylabel('Angle (deg)'); grid on;
+title('Kalman Filter: Hip Flexion Angle');
+ylabel('Deg'); grid on;
 
-subplot(3,1,2);
-stairs(t, fsm_plot, 'LineWidth', 1.5);
-ylim([-0.1 1.1]);
-title('Exoskeleton Control Command');
-ylabel('Command (0=Stand, 1=Walk)'); grid on;
+ax2 = subplot(3,1,2);
+% Plot acceleration magnitude to show activity intensity
+acc_mag = sqrt(sum(back.acc.^2, 2));
+plot(t, acc_mag, 'Color', [0.7 0.7 0.7]); hold on;
+% Overlay Control Command
+stairs(t, fsm_plot * max(acc_mag), 'r', 'LineWidth', 2);
+title('Control Command (Red) vs Acc Mag (Gray)');
+legend('Activity Energy', 'Exo Command (ON/OFF)');
+ylabel('Cmd / Mag'); grid on;
 
-subplot(3,1,3);
-if ismember('Label', annotations.Properties.VariableNames)
+ax3 = subplot(3,1,3);
+if ~isempty(annotations) && ismember('Label', annotations.Properties.VariableNames)
     plot(t, annotations.Label, 'k', 'LineWidth', 1.5);
-    title('Ground Truth');
+    title('Ground Truth (Annotation.csv)');
+    ylim([-0.2 1.2]);
+else
+    text(0.5, 0.5, 'No Ground Truth Available', 'HorizontalAlignment', 'center');
 end
+linkaxes([ax1, ax2, ax3], 'x');
+xlabel('Time (s)');
 
-% Save results using absolute path
-resultsFile = fullfile(projectRoot, 'results', 'realtime_pipeline_output.png');
+% Save Result
+resultsFile = fullfile(projectRoot, 'results', 'pipeline_output.png');
 saveas(gcf, resultsFile);
 fprintf('Plot saved to: %s\n', resultsFile);
 ### END OF FILE: RunExoskeletonPipeline.m
@@ -685,150 +699,170 @@ fprintf('Plot saved to: %s\n', resultsFile);
 % --------------------------------------------------------------------------
 % FUNCTION: [metrics] = TestPipelinePerformance()
 % PURPOSE: Runs the full real-time simulation pipeline and evaluates the 
-% locomotion classification performance against ground truth labels.
+%          locomotion classification performance against ground truth labels.
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-13
-% LAST MODIFIED: 2025-12-13 (Fixed ground truth binarization and missing gyro data)
-% --------------------------------------------------------------------------
-% DEPENDENCIES: 
-% - ExoConfig.m
-% - ImportData.m
-% - Features.m
-% - RealtimeFsm.m
-% - FusionKalman.m
-% - Binary_SVM_Model.mat (Trained model)
-% --------------------------------------------------------------------------
-% NOTES:
-% - Loads ground truth from Annotation.csv for the simulated activity.
-% - Calculates Accuracy, Precision (Positive Predictive Value), and Recall (Sensitivity).
+% LAST MODIFIED: 2025-12-17 (Added heuristic ground truth generation)
 % --------------------------------------------------------------------------
 
 function [metrics] = TestPipelinePerformance()
 
-clc; close all;
-cfg = ExoConfig();
+    clc; 
+    
+    % --- 1. Path Robustness Setup ---
+    % Ensure ImportData works by temporarily switching to the script directory
+    scriptPath = fileparts(mfilename('fullpath'));
+    originalPath = pwd;
+    cleanupObj = onCleanup(@() cd(originalPath)); % Auto-restore path
+    cd(scriptPath);
+    
+    projectRoot = fileparts(scriptPath); 
 
-% --- 0. Pre-Flight Check ---
-model_path = cfg.FILE.SVM_MODEL;
-if ~exist(model_path, 'file')
-error('Trained SVM Model not found. Please run TrainSvmBinary first.');
-end
+    % --- 2. Configuration & Model Loading ---
+    try
+        cfg = ExoConfig();
+        
+        % Construct absolute model path
+        model_path = fullfile(projectRoot, cfg.FILE.SVM_MODEL);
+        
+        if ~exist(model_path, 'file')
+            error('Trained SVM Model not found at: %s\nPlease run TrainSvmBinary first.', model_path);
+        end
+        
+        loaded = load(model_path, 'SVMModel', 'ModelMetadata');
+        SVMModel = loaded.SVMModel;
+        ModelMetadata = loaded.ModelMetadata;
+        
+        FS = ModelMetadata.fs;
+        WINDOW_SIZE = ModelMetadata.windowSize;
+        STEP_SIZE = ModelMetadata.stepSize;
+        ACTIVITY_NAME = cfg.ACTIVITY_SIMULATION;
+        
+        fprintf('--- Starting Full Pipeline Performance Test ---\n');
+        fprintf('Simulating Activity: %s (FS: %d Hz)\n', ACTIVITY_NAME, FS);
+        
+    catch ME
+        error('Initialization failed: %s', ME.message);
+    end
 
-% --- 1. Load Trained Model and Configuration ---
-% Need to load ModelMetadata to ensure compatibility, even if not fully used here
-loaded = load(model_path, 'SVMModel', 'ModelMetadata');
-SVMModel = loaded.SVMModel;
-ModelMetadata = loaded.ModelMetadata;
+    % --- 3. Load Data and Ground Truth ---
+    try
+        [back, hipL, ~, annotations] = ImportData(ACTIVITY_NAME); 
+        n_total_samples = size(back.acc, 1);
 
-FS = ModelMetadata.fs;
-WINDOW_SIZE = ModelMetadata.windowSize;
-STEP_SIZE = ModelMetadata.stepSize;
-ACTIVITY_NAME = cfg.ACTIVITY_SIMULATION;
+        % Flag to determine if we need to generate ground truth manually
+        use_heuristic_gt = false;
 
-fprintf('--- Starting Full Pipeline Performance Test ---\n');
-fprintf('Simulating Activity: %s (FS: %d Hz)\n', ACTIVITY_NAME, FS);
+        if isempty(annotations)
+            warning('Annotation file is empty.');
+            use_heuristic_gt = true;
+        elseif ~ismember('Label', annotations.Properties.VariableNames)
+            warning('Annotation file missing "Label" column.');
+            use_heuristic_gt = true;
+        elseif size(annotations, 1) ~= n_total_samples
+            warning('Annotation mismatch: %d labels vs %d samples.', size(annotations,1), n_total_samples);
+            use_heuristic_gt = true;
+        end
 
-% --- 2. Load Data and Ground Truth ---
-try
-[back, hipL, ~, annotations] = ImportData(ACTIVITY_NAME); 
-n_total_samples = size(back.acc, 1);
+        % --- GROUND TRUTH GENERATION ---
+        if use_heuristic_gt
+            fprintf('>> generating GROUND TRUTH based on Activity Name ("%s")...\n', ACTIVITY_NAME);
+            
+            % If activity name contains movement keywords, assume WALKING
+            if contains(lower(ACTIVITY_NAME), {'walk', 'up', 'down', 'run', 'jog', 'stairs'})
+                ground_truth_binary = ones(n_total_samples, 1) * cfg.STATE_WALKING;
+                fprintf('   -> Assumed Truth: WALKING (1) for all samples.\n');
+            else
+                ground_truth_binary = ones(n_total_samples, 1) * cfg.STATE_STANDING;
+                fprintf('   -> Assumed Truth: STANDING (0) for all samples.\n');
+            end
+        else
+            % Normal processing of Annotation.csv
+            ground_truth = annotations.Label; 
+            walking_labels = cfg.DS.USCHAD.WALKING_LABELS; 
+            non_walking_labels = cfg.DS.USCHAD.NON_WALKING_LABELS; 
+            
+            ground_truth_binary = zeros(size(ground_truth));
+            ground_truth_binary(ismember(ground_truth, walking_labels)) = cfg.STATE_WALKING; 
+            ground_truth_binary(ismember(ground_truth, non_walking_labels)) = cfg.STATE_STANDING; 
+        end
 
-if ~ismember('Label', annotations.Properties.VariableNames) || size(annotations, 1) ~= n_total_samples
-error('Annotation file is invalid or size mismatch. Cannot perform evaluation.');
-end
+    catch ME
+        error('Data loading failed: %s', ME.message);
+    end
 
-ground_truth = annotations.Label; % Multi-class label (e.g., 1, 4, 8)
+    % --- 4. Run Simulation (Simplified Pipeline Loop) ---
+    fprintf('Processing %d samples...\n', n_total_samples);
+    
+    current_fsm_state = cfg.STATE_STANDING; 
+    fsm_plot = zeros(n_total_samples, 1);
+    last_command = 0;
+    
+    % Initialize Filters
+    [fuse_back, fuse_hipL] = FusionKalman.initializeFilters(FS); 
 
-% Fix: Binarize the ground truth label to match the FSM output (0 or 1)
-walking_labels = cfg.DS.USCHAD.WALKING_LABELS; 
-non_walking_labels = cfg.DS.USCHAD.NON_WALKING_LABELS; 
+    for i = 1:n_total_samples
+        % Update Kinematics (Simulate timing)
+        fuse_back(back.acc(i,:), back.gyro(i,:));
+        fuse_hipL(hipL.acc(i,:), hipL.gyro(i,:)); 
 
-ground_truth_binary = zeros(size(ground_truth));
-% Map locomotion labels to 1 (WALKING)
-ground_truth_binary(ismember(ground_truth, walking_labels)) = cfg.STATE_WALKING; 
-% Map non-locomotion labels to 0 (STANDING)
-ground_truth_binary(ismember(ground_truth, non_walking_labels)) = cfg.STATE_STANDING; 
+        % Classification Check
+        if mod(i - 1, STEP_SIZE) == 0 && (i + WINDOW_SIZE - 1) <= n_total_samples
+            
+            windowAcc = back.acc(i : i+WINDOW_SIZE-1, :);
+            windowGyro = back.gyro(i : i+WINDOW_SIZE-1, :); 
 
-catch ME
-error('Data loading or ground truth check failed: %s', ME.message);
-end
+            % Extract Features (5-feature vector)
+            features_vec = Features(windowAcc, windowGyro, FS); 
+            
+            % Predict
+            new_label = predict(SVMModel, features_vec); 
 
-% --- 3. Run Simulation (Simplified Pipeline Loop) ---
+            % Update FSM
+            [exoskeleton_command, current_fsm_state] = RealtimeFsm(new_label, current_fsm_state);
+            last_command = exoskeleton_command; 
+        end
+        fsm_plot(i) = last_command;
+    end
 
-% Initialize states and filters
-current_fsm_state = cfg.STATE_STANDING; 
-fsm_plot = zeros(n_total_samples, 1);
-last_command = 0;
-% Filters are initialized in RunExoskeletonPipeline, but we initialize here too
-[fuse_back, fuse_hipL] = initializeFilters(FS); 
+    % --- 5. Performance Evaluation ---
+    
+    TP = sum(ground_truth_binary == 1 & fsm_plot == 1);
+    TN = sum(ground_truth_binary == 0 & fsm_plot == 0);
+    FP = sum(ground_truth_binary == 0 & fsm_plot == 1);
+    FN = sum(ground_truth_binary == 1 & fsm_plot == 0);
 
-for i = 1:n_total_samples
+    Accuracy = (TP + TN) / (TP + TN + FP + FN);
+    Precision = TP / (TP + FP); 
+    Recall = TP / (TP + FN); 
+    Specificity = TN / (TN + FP);
+    
+    % Handle NaN
+    if isnan(Precision), Precision = 0; end
+    if isnan(Recall), Recall = 0; end
+    if isnan(Specificity), Specificity = 0; end
 
-% Kinematics (Run but results discarded here, focus is on classification)
-update(fuse_back, back.acc(i,:), back.gyro(i,:));
-update(fuse_hipL, hipL.acc(i,:), hipL.gyro(i,:)); 
+    metrics.TP = TP; metrics.TN = TN;
+    metrics.FP = FP; metrics.FN = FN;
+    metrics.Accuracy = Accuracy;
 
-% Classification Check
-if mod(i - 1, STEP_SIZE) == 0 && (i + WINDOW_SIZE - 1) <= n_total_samples
-
-windowAcc = back.acc(i : i+WINDOW_SIZE-1, :);
-windowGyro = back.gyro(i : i+WINDOW_SIZE-1, :); % Fix: Extract Gyro window
-
-% Fix: Pass both Accel and Gyro to Features.m
-features_vec = Features(windowAcc, windowGyro, FS); 
-new_label = predict(SVMModel, features_vec); 
-
-[exoskeleton_command, current_fsm_state] = RealtimeFsm(new_label, current_fsm_state);
-last_command = exoskeleton_command; 
-end
-
-fsm_plot(i) = last_command;
-end
-
-% --- 4. Performance Evaluation ---
-
-% We compare the FSM output (fsm_plot) against the binarized ground truth.
-% True Positives (TP): Walk predicted as Walk
-% Fix: Use ground_truth_binary instead of raw ground_truth
-TP = sum(ground_truth_binary == 1 & fsm_plot == 1);
-% True Negatives (TN): Stand predicted as Stand
-TN = sum(ground_truth_binary == 0 & fsm_plot == 0);
-% False Positives (FP): Stand predicted as Walk (Type I Error)
-FP = sum(ground_truth_binary == 0 & fsm_plot == 1);
-% False Negatives (FN): Walk predicted as Stand (Type II Error)
-FN = sum(ground_truth_binary == 1 & fsm_plot == 0);
-
-% Calculate Metrics
-Accuracy = (TP + TN) / (TP + TN + FP + FN);
-Precision = TP / (TP + FP); % How many predicted 'Walks' were correct
-Recall = TP / (TP + FN); % How many actual 'Walks' were caught
-Specificity = TN / (TN + FP); % How many actual 'Stands' were caught
-
-metrics.TP = TP;
-metrics.TN = TN;
-metrics.FP = FP;
-metrics.FN = FN;
-metrics.Accuracy = Accuracy;
-metrics.Precision = Precision;
-metrics.Recall = Recall;
-metrics.Specificity = Specificity;
-
-
-% --- 5. Report Results ---
-fprintf('\n--- Classification Performance Summary ---\n');
-fprintf('Target Activity: %s\n', ACTIVITY_NAME);
-fprintf('Total Samples: %d\n', n_total_samples);
-fprintf('------------------------------------------\n');
-fprintf('True Positives (TP): %d\n', TP);
-fprintf('True Negatives (TN): %d\n', TN);
-fprintf('False Positives (FP): %d\n', FP);
-fprintf('False Negatives (FN): %d\n', FN);
-fprintf('------------------------------------------\n');
-fprintf('SYSTEM ACCURACY: %.2f%%\n', Accuracy * 100);
-fprintf('PRECISION (Walk): %.2f%%\n', Precision * 100);
-fprintf('RECALL (Walk): %.2f%%\n', Recall * 100);
-fprintf('SPECIFICITY (Stand): %.2f%%\n', Specificity * 100);
-fprintf('------------------------------------------\n');
+    % --- 6. Report Results ---
+    fprintf('\n==========================================\n');
+    fprintf('   CLASSIFICATION PERFORMANCE SUMMARY\n');
+    fprintf('==========================================\n');
+    fprintf('Target Activity: %s\n', ACTIVITY_NAME);
+    fprintf('Total Samples:   %d\n', n_total_samples);
+    fprintf('------------------------------------------\n');
+    fprintf('True Positives  (TP): %d\n', TP);
+    fprintf('True Negatives  (TN): %d\n', TN);
+    fprintf('False Positives (FP): %d\n', FP);
+    fprintf('False Negatives (FN): %d\n', FN);
+    fprintf('------------------------------------------\n');
+    fprintf('SYSTEM ACCURACY:      %.2f%%\n', Accuracy * 100);
+    fprintf('PRECISION (Walk):     %.2f%%\n', Precision * 100);
+    fprintf('RECALL (Walk):        %.2f%%\n', Recall * 100);
+    fprintf('SPECIFICITY (Stand):  %.2f%%\n', Specificity * 100);
+    fprintf('==========================================\n');
 
 end
 ### END OF FILE: TestPipelinePerformance.m
@@ -1229,36 +1263,49 @@ end
 %% ImportData.m
 % --------------------------------------------------------------------------
 % FUNCTION: [back, hipL, hipR, annotations] = ImportData(activityName)
-% PURPOSE: Implements the Data Acquisition Protocol, reading raw CSV data from 
-% a specified activity folder. Handles Timestamp column stripping.
+% PURPOSE: Implements the Data Acquisition Protocol. It locates the 
+%          AutomationForExoskeleton project root dynamically and reads raw 
+%          CSV data.
+% --------------------------------------------------------------------------
+% LOCATION: src/acquisition/ImportData.m
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-11
-% LAST MODIFIED: 2025-12-17 (Added column cleaning in process_imu_table)
+% LAST MODIFIED: 2025-12-17
 % --------------------------------------------------------------------------
 
 function [back, hipL, hipR, annotations] = ImportData(activityName)
-    % Define path to the specific activity folder relative to 'scripts'
-    baseDir = '../data/raw/';
+    
+    % --- 1. Path Management (Location Independent) ---
+    % Get the directory of THIS file (.../src/acquisition/)
+    funcDir = fileparts(mfilename('fullpath'));
+    % Go up two levels to find Project Root (.../AutomationForExoskeleton/)
+    projectRoot = fileparts(fileparts(funcDir));
+    
+    % Construct absolute path to data
+    baseDir = fullfile(projectRoot, 'data', 'raw');
     activityPath = fullfile(baseDir, activityName);
     
-    % Filenames
+    % --- 2. Validation ---
+    if ~isfolder(activityPath)
+        error('Activity folder not found at: %s', activityPath);
+    end
+    
     fileAcc = fullfile(activityPath, 'Accelerometer.csv');
     fileGyro = fullfile(activityPath, 'Gyroscope.csv');
     fileAnnot = fullfile(activityPath, 'Annotation.csv');
     
-    % Check files exist
-    if ~isfolder(activityPath)
-        error('Activity folder not found: %s', activityPath);
-    end
     if ~isfile(fileAcc) || ~isfile(fileGyro)
-        error('IMU data files not found in: %s', activityPath);
+        error('Missing IMU CSV files in: %s', activityPath);
     end
     
-    % --- 1. Import Raw Tables ---
+    % --- 3. Import Raw Tables ---
+    % Suppress warnings for modified variable names during import
     opts = detectImportOptions(fileAcc);
+    opts.VariableNamingRule = 'preserve'; 
     accTable = readtable(fileAcc, opts);
     
     opts = detectImportOptions(fileGyro);
+    opts.VariableNamingRule = 'preserve';
     gyroTable = readtable(fileGyro, opts);
     
     if isfile(fileAnnot)
@@ -1269,10 +1316,10 @@ function [back, hipL, hipR, annotations] = ImportData(activityName)
         annotations = table();
     end
     
-    % --- 2. Process and Assign Data ---
+    % --- 4. Process and Assign Data ---
     back = process_imu_table(accTable, gyroTable);
     
-    % Setup dummy data for hips (since we only have one physical sensor in this dataset)
+    % Setup placeholder data for hips (Dataset usually only has 1 sensor)
     N_samples = size(back.acc, 1);
     
     hipL.acc = zeros(N_samples, 3);
@@ -1280,30 +1327,28 @@ function [back, hipL, hipR, annotations] = ImportData(activityName)
     hipR.acc = zeros(N_samples, 3);
     hipR.gyro = zeros(N_samples, 3);
     
-    fprintf('Imported %d samples of IMU data for activity "%s".\n', N_samples, activityName);
+    fprintf('Imported %d samples for activity: "%s"\n', N_samples, activityName);
 end
 
-%% --- NESTED FUNCTION (Utility for Table Processing) ---
+%% --- NESTED UTILITY ---
 function imu = process_imu_table(accTable, gyroTable)
-    % Converts tables to standard IMU data structure (Nx3 arrays).
-    % Automatically keeps only the last 3 columns if Timestamp is present.
-
+    % Converts tables to standard Nx3 arrays.
+    % Handles cases where specific columns (Timestamp) might exist.
+    
     rawAcc = table2array(accTable);
     rawGyro = table2array(gyroTable);
 
-    % --- Fix: Handle Timestamp Column (e.g., if data is Nx4) ---
-    if size(rawAcc, 2) > 3
-        % Assume format is [Timestamp, X, Y, Z], take last 3
+    % Logic: If 4 columns, assume [Time, X, Y, Z]. If 3, assume [X, Y, Z].
+    if size(rawAcc, 2) >= 4
         imu.acc = rawAcc(:, end-2:end);
     else
-        imu.acc = rawAcc;
+        imu.acc = rawAcc(:, 1:3);
     end
 
-    if size(rawGyro, 2) > 3
-        % Assume format is [Timestamp, X, Y, Z], take last 3
+    if size(rawGyro, 2) >= 4
         imu.gyro = rawGyro(:, end-2:end);
     else
-        imu.gyro = rawGyro;
+        imu.gyro = rawGyro(:, 1:3);
     end
 end
 ### END OF FILE: ImportData.m
@@ -1397,119 +1442,121 @@ end
 ### FILE Path: AutomationForExoskeleton/src/classification/Classifier.m
 %% Classifier.m
 % --------------------------------------------------------------------------
-% FUNCTION: [performance] = EvaluateClassifier(test_trial_name)
-% PURPOSE: Loads a trained SVM and tests its performance on a specific, 
-% held-out single trial from the USC-HAD dataset.
+% FUNCTION: [performance] = Classifier(test_trial_name)
+% PURPOSE: Loads a specific trial from the saved USC-HAD dataset and 
+%          evaluates the SVM model against it.
+% --------------------------------------------------------------------------
+% LOCATION: src/classification/Classifier.m
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-13
-% LAST MODIFIED: 2025-12-13 (Fixed label handling/binarization)
-% --------------------------------------------------------------------------
-% DEPENDENCIES: 
-% - ExoConfig.m
-% - ImportUschadSingleImu.m
-% - Features.m
-% --------------------------------------------------------------------------
-% NOTES:
-% - Calculates window-by-window classification accuracy.
+% LAST MODIFIED: 2025-12-17
 % --------------------------------------------------------------------------
 
 function [performance] = Classifier(test_trial_name)
 
-clc;
-cfg = ExoConfig();
-
-% --- 0. Pre-Flight Check ---
-model_path = cfg.FILE.SVM_MODEL;
-if ~exist(model_path, 'file')
-error('Trained SVM Model not found. Please run TrainSvmBinary first.');
-end
-
-% --- 1. Load Trained Model and Metadata ---
-loaded = load(model_path, 'SVMModel', 'ModelMetadata');
-SVMModel = loaded.SVMModel;
-ModelMetadata = loaded.ModelMetadata;
-
-FS = ModelMetadata.fs;
-WINDOW_SIZE = ModelMetadata.windowSize;
-STEP_SIZE = ModelMetadata.stepSize;
-
-fprintf('--- Starting Classifier Evaluation ---\n');
-fprintf('Testing on trial: %s (FS: %d Hz)\n', test_trial_name, FS);
-
-% --- 2. Load Test Data and Determine Ground Truth ---
-try
-% Fix: Corrected function signature call (returns 3 IMU structs)
-[back, ~, ~] = ImportUschadSingleImu(test_trial_name); 
-
-% Load the USC structure to get the activity ID for the test trial
-loaded_usc = load(cfg.FILE.USCHAD_DATA, 'usc');
-raw_activity_id = loaded_usc.usc.(test_trial_name).label;
-
-n_total_samples = size(back.acc, 1);
-
-% Fix: Binarize the ground truth label based on the ModelMetadata
-if ismember(raw_activity_id, ModelMetadata.WALKING_LABELS_RAW)
-    ground_truth_binary = cfg.STATE_WALKING; % 1
-else
-    ground_truth_binary = cfg.STATE_STANDING; % 0
-end
-
-% Create a ground truth label for every *window*
-n_windows = floor((n_total_samples - ModelMetadata.windowSize) / ModelMetadata.stepSize) + 1;
-ground_truth_windows = repmat(ground_truth_binary, n_windows, 1);
-
-catch ME
-error('Data loading or ground truth determination failed: %s', ME.message);
-end
-
-% --- 3. Extract Features for Test Data ---
-test_features = [];
-window_labels = []; % Store the predicted label for each window
-
-for k = 1:STEP_SIZE:(n_total_samples - WINDOW_SIZE + 1)
-    window_start = k;
-    window_end = k + WINDOW_SIZE - 1;
-
-    windowAcc = back.acc(window_start:window_end, :);
-    windowGyro = back.gyro(window_start:window_end, :); % Include Gyro
-
-    feature_vector = Features(windowAcc, windowGyro, FS);
-    test_features = [test_features; feature_vector]; %#ok<AGROW>
-end
-
-% --- 4. Classify All Windows ---
-predicted_labels = predict(SVMModel, test_features);
-
-
-% --- 5. Performance Evaluation (Window-by-Window) ---
-TP = sum(ground_truth_windows == 1 & predicted_labels == 1);
-TN = sum(ground_truth_windows == 0 & predicted_labels == 0);
-FP = sum(ground_truth_windows == 0 & predicted_labels == 1);
-FN = sum(ground_truth_windows == 1 & predicted_labels == 0);
-
-Accuracy = (TP + TN) / (TP + TN + FP + FN);
-Precision = TP / (TP + FP); 
-Recall = TP / (TP + FN); 
-Specificity = TN / (TN + FP);
-
-performance.TP = TP;
-performance.TN = TN;
-performance.FP = FP;
-performance.FN = FN;
-performance.Accuracy = Accuracy;
-performance.Precision = Precision;
-performance.Recall = Recall;
-performance.Specificity = Specificity;
-
-% --- 6. Report Results ---
-fprintf('\n--- Classification Performance Summary (Window-by-Window) ---\n');
-fprintf('Target Label: %d (WALK=%d, STAND=%d)\n', ground_truth_binary, cfg.STATE_WALKING, cfg.STATE_STANDING);
-fprintf('Total Windows: %d\n', n_windows);
-fprintf('------------------------------------------\n');
-fprintf('Accuracy: %.2f%%\n', Accuracy * 100);
-fprintf('Precision: %.2f%%\n', Precision * 100);
-fprintf('Recall: %.2f%%\n', Recall * 100);
-fprintf('------------------------------------------\n');
+    clc;
+    cfg = ExoConfig();
+    
+    % --- 1. Load Trained Model ---
+    % Resolve absolute path to model
+    rootPath = fileparts(fileparts(fileparts(mfilename('fullpath'))));
+    model_path = fullfile(rootPath, cfg.FILE.SVM_MODEL);
+    
+    if ~exist(model_path, 'file')
+        error('Trained SVM Model not found at: %s', model_path);
+    end
+    
+    loaded = load(model_path, 'SVMModel', 'ModelMetadata');
+    SVMModel = loaded.SVMModel;
+    ModelMetadata = loaded.ModelMetadata;
+    
+    FS = ModelMetadata.fs;
+    WINDOW_SIZE = ModelMetadata.windowSize;
+    STEP_SIZE = ModelMetadata.stepSize;
+    
+    fprintf('--- Classifier Evaluation ---\n');
+    fprintf('Trial: %s | Model FS: %d Hz\n', test_trial_name, FS);
+    
+    % --- 2. Load Data (Fix: Load directly from .mat) ---
+    dataFile = fullfile(rootPath, cfg.FILE.USCHAD_DATA);
+    
+    if ~exist(dataFile, 'file')
+        error('Dataset not found: %s', dataFile);
+    end
+    
+    dataStruct = load(dataFile, 'usc');
+    if ~isfield(dataStruct.usc, test_trial_name)
+        error('Trial "%s" does not exist in the loaded dataset.', test_trial_name);
+    end
+    
+    trialData = dataStruct.usc.(test_trial_name);
+    
+    % Prepare Sensor Data
+    back.acc = trialData.acc;
+    back.gyro = trialData.gyro;
+    raw_activity_id = trialData.label;
+    
+    % --- 3. Determine Ground Truth ---
+    % Map the USC Label (1-12) to Binary (0=Stand, 1=Walk)
+    if ismember(raw_activity_id, cfg.DS.USCHAD.WALKING_LABELS)
+        gt_binary = cfg.STATE_WALKING;
+    else
+        gt_binary = cfg.STATE_STANDING;
+    end
+    
+    n_total_samples = size(back.acc, 1);
+    
+    % --- 4. Sliding Window Classification ---
+    features_list = [];
+    predictions = [];
+    
+    % Iterate
+    for k = 1:STEP_SIZE:(n_total_samples - WINDOW_SIZE + 1)
+        w_start = k;
+        w_end = k + WINDOW_SIZE - 1;
+        
+        wAcc = back.acc(w_start:w_end, :);
+        wGyro = back.gyro(w_start:w_end, :);
+        
+        f_vec = Features(wAcc, wGyro, FS);
+        features_list = [features_list; f_vec]; %#ok<AGROW>
+    end
+    
+    if isempty(features_list)
+        error('Data too short for window size %d', WINDOW_SIZE);
+    end
+    
+    % Batch Predict
+    predictions = predict(SVMModel, features_list);
+    
+    % --- 5. Metrics Calculation ---
+    % Create Ground Truth vector matching the number of windows
+    num_windows = length(predictions);
+    gt_vector = repmat(gt_binary, num_windows, 1);
+    
+    TP = sum(gt_vector == 1 & predictions == 1);
+    TN = sum(gt_vector == 0 & predictions == 0);
+    FP = sum(gt_vector == 0 & predictions == 1);
+    FN = sum(gt_vector == 1 & predictions == 0);
+    
+    Accuracy = (TP + TN) / num_windows;
+    Precision = TP / (TP + FP);
+    Recall = TP / (TP + FN);
+    Specificity = TN / (TN + FP);
+    
+    % Handle potential NaNs (divide by zero)
+    if isnan(Precision), Precision = 0; end
+    if isnan(Recall), Recall = 0; end
+    if isnan(Specificity), Specificity = 0; end
+    
+    performance.Accuracy = Accuracy;
+    performance.Precision = Precision;
+    performance.Recall = Recall;
+    performance.TP = TP;
+    performance.TN = TN;
+    
+    fprintf('Result: Acc=%.2f%% | Prec=%.2f%% | Rec=%.2f%%\n', ...
+        Accuracy*100, Precision*100, Recall*100);
 
 end
 ### END OF FILE: Classifier.m

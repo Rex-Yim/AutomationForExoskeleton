@@ -1,117 +1,119 @@
 %% Classifier.m
 % --------------------------------------------------------------------------
-% FUNCTION: [performance] = EvaluateClassifier(test_trial_name)
-% PURPOSE: Loads a trained SVM and tests its performance on a specific, 
-% held-out single trial from the USC-HAD dataset.
+% FUNCTION: [performance] = Classifier(test_trial_name)
+% PURPOSE: Loads a specific trial from the saved USC-HAD dataset and 
+%          evaluates the SVM model against it.
+% --------------------------------------------------------------------------
+% LOCATION: src/classification/Classifier.m
 % --------------------------------------------------------------------------
 % DATE CREATED: 2025-12-13
-% LAST MODIFIED: 2025-12-13 (Fixed label handling/binarization)
-% --------------------------------------------------------------------------
-% DEPENDENCIES: 
-% - ExoConfig.m
-% - ImportUschadSingleImu.m
-% - Features.m
-% --------------------------------------------------------------------------
-% NOTES:
-% - Calculates window-by-window classification accuracy.
+% LAST MODIFIED: 2025-12-17
 % --------------------------------------------------------------------------
 
 function [performance] = Classifier(test_trial_name)
 
-clc;
-cfg = ExoConfig();
-
-% --- 0. Pre-Flight Check ---
-model_path = cfg.FILE.SVM_MODEL;
-if ~exist(model_path, 'file')
-error('Trained SVM Model not found. Please run TrainSvmBinary first.');
-end
-
-% --- 1. Load Trained Model and Metadata ---
-loaded = load(model_path, 'SVMModel', 'ModelMetadata');
-SVMModel = loaded.SVMModel;
-ModelMetadata = loaded.ModelMetadata;
-
-FS = ModelMetadata.fs;
-WINDOW_SIZE = ModelMetadata.windowSize;
-STEP_SIZE = ModelMetadata.stepSize;
-
-fprintf('--- Starting Classifier Evaluation ---\n');
-fprintf('Testing on trial: %s (FS: %d Hz)\n', test_trial_name, FS);
-
-% --- 2. Load Test Data and Determine Ground Truth ---
-try
-% Fix: Corrected function signature call (returns 3 IMU structs)
-[back, ~, ~] = ImportUschadSingleImu(test_trial_name); 
-
-% Load the USC structure to get the activity ID for the test trial
-loaded_usc = load(cfg.FILE.USCHAD_DATA, 'usc');
-raw_activity_id = loaded_usc.usc.(test_trial_name).label;
-
-n_total_samples = size(back.acc, 1);
-
-% Fix: Binarize the ground truth label based on the ModelMetadata
-if ismember(raw_activity_id, ModelMetadata.WALKING_LABELS_RAW)
-    ground_truth_binary = cfg.STATE_WALKING; % 1
-else
-    ground_truth_binary = cfg.STATE_STANDING; % 0
-end
-
-% Create a ground truth label for every *window*
-n_windows = floor((n_total_samples - ModelMetadata.windowSize) / ModelMetadata.stepSize) + 1;
-ground_truth_windows = repmat(ground_truth_binary, n_windows, 1);
-
-catch ME
-error('Data loading or ground truth determination failed: %s', ME.message);
-end
-
-% --- 3. Extract Features for Test Data ---
-test_features = [];
-window_labels = []; % Store the predicted label for each window
-
-for k = 1:STEP_SIZE:(n_total_samples - WINDOW_SIZE + 1)
-    window_start = k;
-    window_end = k + WINDOW_SIZE - 1;
-
-    windowAcc = back.acc(window_start:window_end, :);
-    windowGyro = back.gyro(window_start:window_end, :); % Include Gyro
-
-    feature_vector = Features(windowAcc, windowGyro, FS);
-    test_features = [test_features; feature_vector]; %#ok<AGROW>
-end
-
-% --- 4. Classify All Windows ---
-predicted_labels = predict(SVMModel, test_features);
-
-
-% --- 5. Performance Evaluation (Window-by-Window) ---
-TP = sum(ground_truth_windows == 1 & predicted_labels == 1);
-TN = sum(ground_truth_windows == 0 & predicted_labels == 0);
-FP = sum(ground_truth_windows == 0 & predicted_labels == 1);
-FN = sum(ground_truth_windows == 1 & predicted_labels == 0);
-
-Accuracy = (TP + TN) / (TP + TN + FP + FN);
-Precision = TP / (TP + FP); 
-Recall = TP / (TP + FN); 
-Specificity = TN / (TN + FP);
-
-performance.TP = TP;
-performance.TN = TN;
-performance.FP = FP;
-performance.FN = FN;
-performance.Accuracy = Accuracy;
-performance.Precision = Precision;
-performance.Recall = Recall;
-performance.Specificity = Specificity;
-
-% --- 6. Report Results ---
-fprintf('\n--- Classification Performance Summary (Window-by-Window) ---\n');
-fprintf('Target Label: %d (WALK=%d, STAND=%d)\n', ground_truth_binary, cfg.STATE_WALKING, cfg.STATE_STANDING);
-fprintf('Total Windows: %d\n', n_windows);
-fprintf('------------------------------------------\n');
-fprintf('Accuracy: %.2f%%\n', Accuracy * 100);
-fprintf('Precision: %.2f%%\n', Precision * 100);
-fprintf('Recall: %.2f%%\n', Recall * 100);
-fprintf('------------------------------------------\n');
+    clc;
+    cfg = ExoConfig();
+    
+    % --- 1. Load Trained Model ---
+    % Resolve absolute path to model
+    rootPath = fileparts(fileparts(fileparts(mfilename('fullpath'))));
+    model_path = fullfile(rootPath, cfg.FILE.SVM_MODEL);
+    
+    if ~exist(model_path, 'file')
+        error('Trained SVM Model not found at: %s', model_path);
+    end
+    
+    loaded = load(model_path, 'SVMModel', 'ModelMetadata');
+    SVMModel = loaded.SVMModel;
+    ModelMetadata = loaded.ModelMetadata;
+    
+    FS = ModelMetadata.fs;
+    WINDOW_SIZE = ModelMetadata.windowSize;
+    STEP_SIZE = ModelMetadata.stepSize;
+    
+    fprintf('--- Classifier Evaluation ---\n');
+    fprintf('Trial: %s | Model FS: %d Hz\n', test_trial_name, FS);
+    
+    % --- 2. Load Data (Fix: Load directly from .mat) ---
+    dataFile = fullfile(rootPath, cfg.FILE.USCHAD_DATA);
+    
+    if ~exist(dataFile, 'file')
+        error('Dataset not found: %s', dataFile);
+    end
+    
+    dataStruct = load(dataFile, 'usc');
+    if ~isfield(dataStruct.usc, test_trial_name)
+        error('Trial "%s" does not exist in the loaded dataset.', test_trial_name);
+    end
+    
+    trialData = dataStruct.usc.(test_trial_name);
+    
+    % Prepare Sensor Data
+    back.acc = trialData.acc;
+    back.gyro = trialData.gyro;
+    raw_activity_id = trialData.label;
+    
+    % --- 3. Determine Ground Truth ---
+    % Map the USC Label (1-12) to Binary (0=Stand, 1=Walk)
+    if ismember(raw_activity_id, cfg.DS.USCHAD.WALKING_LABELS)
+        gt_binary = cfg.STATE_WALKING;
+    else
+        gt_binary = cfg.STATE_STANDING;
+    end
+    
+    n_total_samples = size(back.acc, 1);
+    
+    % --- 4. Sliding Window Classification ---
+    features_list = [];
+    predictions = [];
+    
+    % Iterate
+    for k = 1:STEP_SIZE:(n_total_samples - WINDOW_SIZE + 1)
+        w_start = k;
+        w_end = k + WINDOW_SIZE - 1;
+        
+        wAcc = back.acc(w_start:w_end, :);
+        wGyro = back.gyro(w_start:w_end, :);
+        
+        f_vec = Features(wAcc, wGyro, FS);
+        features_list = [features_list; f_vec]; %#ok<AGROW>
+    end
+    
+    if isempty(features_list)
+        error('Data too short for window size %d', WINDOW_SIZE);
+    end
+    
+    % Batch Predict
+    predictions = predict(SVMModel, features_list);
+    
+    % --- 5. Metrics Calculation ---
+    % Create Ground Truth vector matching the number of windows
+    num_windows = length(predictions);
+    gt_vector = repmat(gt_binary, num_windows, 1);
+    
+    TP = sum(gt_vector == 1 & predictions == 1);
+    TN = sum(gt_vector == 0 & predictions == 0);
+    FP = sum(gt_vector == 0 & predictions == 1);
+    FN = sum(gt_vector == 1 & predictions == 0);
+    
+    Accuracy = (TP + TN) / num_windows;
+    Precision = TP / (TP + FP);
+    Recall = TP / (TP + FN);
+    Specificity = TN / (TN + FP);
+    
+    % Handle potential NaNs (divide by zero)
+    if isnan(Precision), Precision = 0; end
+    if isnan(Recall), Recall = 0; end
+    if isnan(Specificity), Specificity = 0; end
+    
+    performance.Accuracy = Accuracy;
+    performance.Precision = Precision;
+    performance.Recall = Recall;
+    performance.TP = TP;
+    performance.TN = TN;
+    
+    fprintf('Result: Acc=%.2f%% | Prec=%.2f%% | Rec=%.2f%%\n', ...
+        Accuracy*100, Precision*100, Recall*100);
 
 end

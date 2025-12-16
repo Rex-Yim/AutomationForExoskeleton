@@ -52,7 +52,7 @@ function [metrics] = TestPipelinePerformance()
     try
         [back, hipL, ~, annotations] = ImportData(ACTIVITY_NAME); 
         n_total_samples = size(back.acc, 1);
-        
+
         % Flag to determine if we need to generate ground truth manually
         use_heuristic_gt = false;
 
