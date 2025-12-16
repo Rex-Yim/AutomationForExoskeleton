@@ -1,0 +1,71 @@
+================================================================================
+SYSTEM DESIGN SUMMARY (Version 1.1)
+================================================================================
+
+Date: December 17, 2025
+
+1. EXECUTIVE SUMMARY
+The Exoskeleton Control System is a modular software framework designed to 
+detect locomotion intent and control a powered lower-limb exoskeleton. It 
+utilizes a standard pipeline approach: Sensing -> Fusion -> Perception -> Control.
+
+2. EXECUTION PIPELINE
+
+A. Data Acquisition
+   - Input: 3 IMUs (Back, Left Hip, Right Hip).
+   - Rate: 100 Hz.
+   - Windowing: 1.0-second sliding windows with 50% overlap (0.5s step).
+
+B. Feature Extraction
+   The system extracts a 5-dimensional feature vector from the IMU window:
+   1. Mean Acceleration Magnitude: Captures overall movement intensity.
+   2. Variance of Acceleration Magnitude: Measures movement regularity.
+   3. Mean Gyroscope Magnitude: Captures average rotational velocity.
+   4. Variance of Gyroscope Magnitude: Measures erratic nature of rotation.
+   5. Dominant Frequency: Extracted via FFT (Z-axis) to detect step 
+      frequency (typically 1-2Hz).
+
+C. Sensor Fusion
+   - Algorithm: Kalman Filter (via MATLAB 'imufilter').
+   - Reference Frame: East-North-Up (ENU).
+   - Output: Joint angles (Hip Flexion calculated as pitch difference 
+     between Back and Thigh).
+
+D. Classification (SVM)
+   - Type: Binary Support Vector Machine.
+   - Kernel: Radial Basis Function (RBF).
+   - Classes: 0 (Standing), 1 (Walking).
+   - Training: Supervised learning using the USC-HAD dataset.
+
+E. State Estimation (FSM)
+   To prevent "flickering" commands, a Finite State Machine filters the 
+   SVM output using Asymmetric Hysteresis:
+   - Entry Threshold (Stand -> Walk): Requires 3 consecutive 'Walk' predictions.
+   - Exit Threshold (Walk -> Stand): Requires 5 consecutive 'Stand' predictions.
+   - Benefit: Prevents the system from prematurely locking the exoskeleton 
+     during brief pauses in gait.
+
+3. DATA MODEL
+
+Feature Vector:
+   features = [mean_acc, var_acc, mean_gyro, var_gyro, dom_freq]
+   Size: [1 x 5] double
+
+System State Structure:
+   state = struct(
+       'timestamp', double,
+       'fsm_state', {0, 1},
+       'hip_angle', double,
+       'command',   {0, 1}
+   );
+
+4. PERFORMANCE TARGETS
+   - Processing Latency: < 100 ms per window.
+   - Accuracy: > 85%.
+   - Joint Angle RMSE: < 5 degrees.
+
+5. FUTURE ENHANCEMENTS
+   - Deep Learning: Transition from SVM to LSTM for temporal sequence modeling.
+   - Terrain Detection: Distinguish between flat ground, stairs, and ramps.
+   - Personalization: Adaptive online tuning of FSM thresholds based on user 
+     biomechanics.

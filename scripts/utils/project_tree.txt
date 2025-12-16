@@ -68,6 +68,8 @@ AutomationForExoskeleton/
 │   └── System_Design.pdf
 ├── models/
 ├── results/
+│   ├── Binary_SVM_Model.mat
+│   └── realtime_pipeline_output.png
 ├── scripts/
 │   ├── utils/
 │   │   ├── ConcatenateCode.m

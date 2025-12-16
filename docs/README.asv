@@ -59,9 +59,9 @@ graph TD
 1.  Clone this repository.
 2.  Open MATLAB and navigate to the project root.
 3.  Run the startup script to add all subfolders to the MATLAB path:
-```matlab
->> startup
-```
+    ```matlab
+    >> startup
+    ```
 
 ---
 
