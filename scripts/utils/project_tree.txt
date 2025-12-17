@@ -61,12 +61,9 @@ AutomationForExoskeleton/
 │           ├── GyroscopeUncalibrated.csv
 │           └── Metadata.csv
 ├── docs/
-│   ├── Final_Report.txt
-│   ├── Interim_Report.pdf
 │   ├── LICENSE
 │   ├── README.md
-│   ├── System_Design.pdf
-│   └── System_Design_Summary.txt
+│   └── System_Design.md
 ├── models/
 │   └── Binary_SVM_Model.mat
 ├── results/

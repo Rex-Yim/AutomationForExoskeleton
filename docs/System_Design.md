@@ -1,6 +1,6 @@
 # Exoskeleton Control System
 ## System Design Document
-**Version:** 1.2
+**Version:** 1.1
 **Date:** December 17, 2025
 
 ---
@@ -84,21 +84,22 @@ Uses **Asymmetric Hysteresis** to manage state transitions. This design prioriti
 
 ## 4. Execution Pipeline
 
-### 4.1 Training (`TrainSvmBinary.m`)
-1.  Loads `ExoConfig`.
-2.  Iterates through USC-HAD dataset using `LoadUSCHAD`.
-3.  Extracts 5 features per window.
-4.  Trains **RBF SVM** with **Standardization** (`true`).
-    *   *Note: Standardization is vital because Gyro (rad/s) and Acc (m/s²) have vastly different value ranges.*
-5.  Saves model + `ModelMetadata` (FS, Window Size) to `.mat`.
+### 4.1 Data Ingestion & Preprocessing
+*   **Automatic Unit Conversion:** The pipeline (`RunExoskeletonPipeline.m`) detects if input data is in G-force (Mean < 2.0). If detected, it automatically multiplies by $9.80665$ to convert to $m/s^2$ before processing.
+*   **Windowing:** Data is segmented into **1.0-second windows** (100 samples) with **50% overlap** (50 samples).
 
-### 4.2 Real-time Simulation (`RunExoskeletonPipeline.m`)
-1.  **Boot:** Loads Model and initializes `persistent` FSM variables.
-2.  **Loop (1...N):**
-    *   Update Kalman Filter (Every sample).
-    *   Check Unit Scale (Auto-fix Gs to m/s²).
-    *   **Every 50 samples:** Extract Features $\to$ SVM Predict $\to$ Update FSM.
-3.  **Visualization:** Plots Joint Angle overlaid with Control Commands.
+### 4.2 Feature Extraction (`Features.m`)
+The system extracts features that characterize both translational and rotational dynamics. The inclusion of Gyroscope variance is critical for distinguishing "shifting weight in place" from "turning/walking".
+
+### 4.3 Classification & Smoothing
+1.  **Prediction:** The standardized feature vector is passed to the SVM.
+2.  **State Estimation (`RealtimeFsm.m`):**
+    *   Uses persistent variables to track consecutive label counts.
+    *   Biases the system towards the **Walking State** to ensure safety during locomotion.
+
+### 4.4 Kinematics Estimation
+*   Runs in parallel to classification at the full 100Hz rate.
+*   Calculates relative pitch angle between the Back IMU and Hip IMU to determine the exact phase of the gait cycle for torque profiling.
 
 ---
 
@@ -132,3 +133,4 @@ AutomationForExoskeleton/
     ├── classification/        # RealtimeFsm, Classifier
     ├── features/              # Features.m (5-dim extraction)
     └── fusion/                # FusionKalman.m (Static class)
+```

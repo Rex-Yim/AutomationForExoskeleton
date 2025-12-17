@@ -1,149 +1,56 @@
-# Robotic Exoskeleton Control System for Load Transportation
+# Robotic Exoskeleton Control System
 
-## 📖 Executive Summary
+## 🚀 Project Overview
+This project implements a software-centric control module for a lower-limb robotic exoskeleton. It utilizes **sensor fusion** (Kalman Filters) for kinematics and **Machine Learning** (SVM) for real-time locomotion intent detection.
 
-This project implements a software-centric enhancement module for a lower-limb robotic exoskeleton designed to assist workers in heavy load transportation tasks (>20 kg).
+## 🛠️ System Architecture
 
-The system provides **real-time locomotion intent detection** and **joint kinematics estimation** using a multi-sensor fusion approach. It runs entirely in MATLAB and generates stable control commands (e.g., switching between *Standing* and *Walking* assistance modes) based on Inertial Measurement Unit (IMU) data.
+### 1. Signal Processing Pipeline (100 Hz)
+*   **Input:** 3 IMUs (Back, Left Hip, Right Hip).
+*   **Fusion:** 6-DOF Kalman Filter (Indirect) via MATLAB `imufilter`.
+*   **Output:** Hip Flexion Angle ($\theta_{flexion} = \theta_{thigh} - \theta_{back}$).
 
-### Key Objectives
-1.  **Sensor Fusion:** Robust estimation of hip flexion angles using Kalman Filtering on IMU data.
-2.  **Intent Detection:** Real-time classification of locomotion modes using Support Vector Machines (SVM).
-3.  **State Management:** A Finite State Machine (FSM) with hysteresis to prevent rapid switching and ensure smooth actuator control.
-4.  **Modularity:** A layered architecture separating data acquisition, feature extraction, and control logic.
+### 2. Machine Learning (Intention Detection)
+*   **Model:** Binary SVM (RBF Kernel).
+*   **Features (5-D Vector):**
+    1.  `Mean_Acc`: Overall energy.
+    2.  `Var_Acc`: Movement smoothness.
+    3.  `Mean_Gyro`: Rotational intensity.
+    4.  `Var_Gyro`: Rotational volatility.
+    5.  `Dom_Freq`: Gait cadence (FFT).
+*   **Performance:** ~98.8% Accuracy (USC-HAD 5-Fold CV).
 
----
+### 3. Safety Control Logic (FSM)
+To prevent erratic switching, the system uses **Asymmetric Hysteresis**:
+*   **Stand $\to$ Walk:** Triggered after **3** consecutive 'Walk' predictions.
+*   **Walk $\to$ Stand:** Triggered after **5** consecutive 'Stand' predictions.
+*   *Benefit:* This "easy to start, hard to stop" logic prevents the exoskeleton from locking up during brief hesitations.
 
-## 🏗️ System Architecture
+## 📂 Installation & Usage
 
-The system processes data in a sequential pipeline operating at **100 Hz**.
+### Prerequisites
+*   MATLAB R2020b+
+*   Toolboxes: *Statistics and Machine Learning*, *Sensor Fusion*, *Signal Processing*.
 
-### Data Flow Diagram
+### Quick Start
+1.  **Initialize Environment:**
+    ```matlab
+    >> startup
+    ```
+2.  **Train Model:** (Required first run)
+    ```matlab
+    >> TrainSvmBinary
+    ```
+3.  **Run Simulation:**
+    ```matlab
+    >> RunExoskeletonPipeline
+    ```
 
-```mermaid
-graph TD
-    IMU[IMU Sensors] --> Feat[Feature Extraction]
-    IMU --> Fusion[Sensor Fusion]
-    Feat --> SVM[SVM Classifier]
-    SVM --> Label[Predicted Label]
-    Fusion --> Angles[Joint Angles]
-    Label --> Est[State Estimator]
-    Angles --> Est
-    Est --> Cmd[Control Command]
-    Cmd --> Torque[Torque Profile]
-    Torque --> Act[Exoskeleton Actuators]
-```
-
-### Core Pipeline Components
-
-| Component | File Path | Description |
-| :--- | :--- | :--- |
-| **A. Configuration** | `config/ExoConfig.m` | Centralized parameters for FS (100Hz), Window Size (1.0s), and Thresholds. |
-| **B. Fusion** | `src/fusion/FusionKalman.m` | Uses `imufilter` (Sensor Fusion Toolbox) to estimate orientation and hip flexion angles. |
-| **C. Features** | `src/features/Features.m` | Extracts a **5-dimensional feature vector**: <br>1. Mean Acceleration<br>2. Variance of Acceleration<br>3. Mean Gyroscope<br>4. Variance of Gyroscope<br>5. Dominant Frequency (FFT) |
-| **D. Classifier** | `results/Binary_SVM_Model.mat` | Pre-trained RBF-kernel SVM model for binary classification (Stand vs. Walk). *(Saved to `results/` by default)* |
-| **E. Control** | `src/classification/RealtimeFsm.m` | Implements **asymmetric hysteresis** to stabilize control commands:<br>• *Entry (Stand→Walk):* 3 consecutive predictions<br>• *Exit (Walk→Stand):* 5 consecutive predictions |
-
----
-
-## ⚙️ Installation and Prerequisites
-
-### Software Requirements
-*   **MATLAB R2020b** or later
-*   **Required Toolboxes:**
-    *   Statistics and Machine Learning Toolbox (for SVM)
-    *   Sensor Fusion and Tracking Toolbox (for `imufilter`)
-    *   Signal Processing Toolbox (for FFT)
-
-### Setup
-1.  Clone this repository.
-2.  Open MATLAB and navigate to the project root.
-3.  Run the startup script to add all subfolders to the MATLAB path:
-```matlab
->> startup
-```
-
----
-
-## 📊 Data Preparation
-
-The system is designed to work with public datasets for training and validation.
-
-### Supported Datasets
-
-1.  **USC-HAD** (Training)
-    *   Place raw `.mat` files in: `data/public/USC-HAD/USC-HAD_raw/`
-    *   Run `LoadUSCHAD` to normalize the data.
-
-2.  **HuGaDB** (Validation)
-    *   Place raw `.txt` files in: `data/public/HuGaDB/HuGaDB_v2_raw/`
-
-### Training the Model
-
-> **⚠️ Important:** The repository may not contain the trained `.mat` model file. You must train it before running simulations.
-
-Run the following command in the MATLAB console:
-
-```matlab
->> TrainSvmBinary
-```
-
-*This script loads USC-HAD data, extracts the 5 features, trains an RBF SVM, and saves the model to `results/Binary_SVM_Model.mat`.*
-
-**Latest Training Results:**
-*   **Data:** 55,321 windows extracted from 840 trials.
-*   **Accuracy:** **98.88%** (5-Fold Cross-Validation).
-
----
-
-## ▶️ Usage
-
-### A. Run Real-Time Simulation
-To simulate the full pipeline using recorded data:
-
-```matlab
->> RunExoskeletonPipeline
-```
-
-**Output:** Generates a plot in `results/realtime_pipeline_output.png` displaying:
-*   Estimated Hip Flexion Angle (Kalman)
-*   Control Command (FSM Output)
-*   Ground Truth Comparison
-
-### B. Performance Evaluation
-To calculate specific metrics (Accuracy, Precision, Recall, Specificity) against ground truth:
-
-```matlab
->> TestPipelinePerformance
-```
-
-*Current Benchmark: >98% Accuracy on validation sets.*
-
----
-
-## 📂 File Organization
-
-```text
-AutomationForExoskeleton/
-├── config/             # System configuration (ExoConfig.m)
-├── data/               # Datasets (USC-HAD, HuGaDB, raw CSVs)
-├── docs/               # Reports and Design Documents
-├── models/             # Folder for potential model storage
-├── results/            # Pipeline outputs & Active SVM Model
-├── scripts/            # Main execution scripts
-│   ├── RunExoskeletonPipeline.m   # Main simulation entry point
-│   ├── TrainSvmBinary.m           # Model training script
-│   ├── TestPipelinePerformance.m  # Accuracy/Recall testing
-│   └── utils/                     # Helper tools
-├── src/                # Source code libraries
-│   ├── acquisition/    # Data import logic
-│   ├── classification/ # SVM prediction and FSM logic
-│   ├── features/       # FFT and statistical feature extraction
-│   └── fusion/         # Kalman filter implementation
-└── tests/              # Unit tests
-```
-
----
+## 📊 Directory Structure
+*   `config/`: Global tuning parameters (Window size: 1.0s, Step: 0.5s).
+*   `src/fusion/`: Kalman filter implementation.
+*   `src/features/`: Feature extraction algorithms.
+*   `src/classification/`: SVM prediction and FSM state logic.
 
 ## 🤝 Acknowledgments
 
@@ -152,3 +59,4 @@ AutomationForExoskeleton/
 *   **Datasets provided by:**
     1.  Chereshnev et al. (HuGaDB)
     2.  Zhang et al. (USC-HAD)
+
