@@ -61,7 +61,7 @@ System State Structure:
 
 4. PERFORMANCE TARGETS
    - Processing Latency: < 100 ms per window.
-   - Accuracy: > 85%.
+   - Accuracy: > 95% (Validation Benchmarks).
    - Joint Angle RMSE: < 5 degrees.
 
 5. FUTURE ENHANCEMENTS
@@ -69,3 +69,4 @@ System State Structure:
    - Terrain Detection: Distinguish between flat ground, stairs, and ramps.
    - Personalization: Adaptive online tuning of FSM thresholds based on user 
      biomechanics.
+### END OF FILE: System_Design_Summary.txt
