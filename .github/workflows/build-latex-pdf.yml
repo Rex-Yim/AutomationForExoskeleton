@@ -1,0 +1,33 @@
+# Builds docs/latex/main.pdf on GitHub (no local MacTeX needed).
+# After push: Actions tab → latest run → Artifacts → download "FYP-Final-Report-PDF".
+name: Build LaTeX PDF
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - 'docs/latex/**'
+      - 'results/*.png'
+      - '.github/workflows/build-latex-pdf.yml'
+
+jobs:
+  latex:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compile LaTeX
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: main.tex
+          working_directory: docs/latex
+          latexmk_use_xelatex: false
+          latexmk_shell_escape: false
+
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FYP-Final-Report-PDF
+          path: docs/latex/main.pdf

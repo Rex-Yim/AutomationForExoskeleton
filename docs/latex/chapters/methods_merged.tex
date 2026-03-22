@@ -1,0 +1,96 @@
+% Chapter 3 body: interim PDF (proposed / planned) + implementation status
+\section{Proposed Methodologies}
+The project employs a multidisciplinary approach combining mechanical design, signal processing, and machine learning, primarily using MATLAB for algorithm development. Key methodologies from the interim proposal included: (i)~hybrid SVM+LSTM intention detection with predictive horizons; (ii)~Kalman-based multi-IMU fusion with planned EKF/magnetometer extensions; (iii)~training on public and augmented datasets with transfer learning; and (iv)~FSM-based integration toward torque commands with optional ROS and embedded paths.
+
+\textbf{Implementation status:} The validated repository emphasizes signal processing and machine learning in MATLAB; full mechanical design content remains with the hardware partner. The items below record \textit{both} the original proposal and what is implemented in code.
+
+\section{Intention Detection Algorithm (planned and implemented)}
+\subsection*{Original proposal (interim PDF)}
+Develop a real-time algorithm in MATLAB to classify user locomotion modes (e.g., walking, stair ascent/descent) and transitions (e.g., sit-to-stand), incorporating speed variations and multi-motion transitions based on hip and back kinematics. Features extracted from IMU signals were to enable predictive control to anticipate user actions 100--200~ms in advance. The algorithm was to use a \textbf{hybrid SVM + LSTM} framework: SVM (RBF kernel) for initial mode classification, and LSTM (two layers, 128 hidden units each) for temporal sequence prediction. Feature extraction would include time-domain (mean, variance) and frequency-domain (FFT peaks) metrics. Training would involve augmented datasets with noise injection, on the order of thousands of samples with an 80/20 train--validation split.
+
+\begin{verbatim}
+% Load IMU data
+data = loadIMUData();
+features = extractFeatures(data);
+mode = svmClassify(features, trainedSVMModel);
+sequence = preprocessForLSTM(data);
+predictedTransition = lstmPredict(sequence, trainedLSTMNet);
+intent = fuseModeAndTransition(mode, predictedTransition);
+\end{verbatim}
+
+\subsection*{Implemented baseline (repository)}
+The delivered system classifies on overlapping windows (100 samples, step 50) using \textbf{RBF SVMs} only. Per IMU, five features are computed (mean/variance of acc and gyro magnitudes, dominant frequency of vertical acc FFT)---see \texttt{Features.m}. For merged public-data training, HuGaDB provides six IMUs per window (\texttt{FeaturesFromImuStack} $\rightarrow$ \textbf{30-D} feature row); USC-HAD provides one smartphone IMU with zero-padded slots (\texttt{LocomotionFeatureVector}). On-line simulation uses the same padding with the back IMU stream.
+
+\textbf{Binary model} (\texttt{fitcsvm}): locomotion-like vs.\ non-locomotion for assist gating. \textbf{Multiclass model} (\texttt{fitcecoc}, one-vs-all): twelve unified labels in \texttt{ActivityClassRegistry.m}. \textbf{LSTM path is not implemented.} The pseudocode above remains future work.
+
+\section{Multi-Sensor Data Processing Pipeline (planned and implemented)}
+\subsection*{Original proposal}
+Implement a Kalman filter (MATLAB \texttt{imufilter}) to fuse accelerometer and gyroscope data from IMUs at the hips and back for joint angles and velocities. Planned expansion included an Extended Kalman filter (EKF) for nonlinear load-carrying dynamics, magnetometer-based heading correction, online bias handling, complementary filtering, and validation targeting RMSE $<5^\circ$ against motion capture.
+
+\begin{verbatim}
+f = imufilter('SampleRate', 100, 'AccelerometerNoise', 0.01, ...
+    'GyroscopeNoise', 0.01);
+[orientation, angVel] = f(accData, gyroData);
+hipAngle = computeJointAngle(orientation);
+\end{verbatim}
+
+\subsection*{Implemented baseline}
+The repository uses \texttt{imufilter} as in the snippet for the simulation pipeline (\texttt{FusionKalman.m}). EKF/magnetometer extensions and motion-capture RMSE studies are \textbf{not implemented} in the submitted codebase.
+
+\section{Machine Learning Model Training and Deployment (planned and implemented)}
+\subsection*{Original proposal}
+Utilize the Statistics and Machine Learning Toolbox for SVMs and the Deep Learning Toolbox for LSTM networks; train on labeled locomotion data toward $>90$\% accuracy on dynamic terrain recognition; use confusion matrices, precision, and recall; post-trial fine-tuning and transfer learning; ensemble SVM+LSTM; Bayesian hyperparameter optimization; HuGaDB augmentation with synthetic variations; deployment via MATLAB Coder to embedded targets. Example workflow: (1)~preprocess and window; (2)~train base models on public data; (3)~fine-tune on user trials; (4)~evaluate with confusion matrices and F1-scores. Simulations were expected to validate 85--95\% accuracy before hardware tests.
+
+\subsection*{Implemented baseline}
+\textbf{In use:} \texttt{fitcsvm}, \texttt{fitcecoc}, \texttt{crossval}, \texttt{kfoldPredict}. Scripts: \texttt{TrainSvmBinary}, \texttt{TrainSvmMulticlass}, \texttt{EvaluateSvmConfusion}, \texttt{EvaluateMulticlassConfusion}, \texttt{RunSvmDatasetAblation}. Models: \texttt{Binary\_SVM\_Model.mat} (merged default), \texttt{Multiclass\_SVM\_ECOC.mat}. \textbf{Not implemented:} Deep Learning Toolbox training pipeline, MATLAB Coder deployment, Bayesian optimization in-repo.
+
+\section{System Integration and Control (planned and implemented)}
+\subsection*{Original proposal}
+Translate model outputs into torque commands using an FSM; architecture spanning gait event detection, intention recognition, and reference generation; layers described as IMU input, Kalman+ML processing (parallel, low latency), FSM+PID control, and actuator output with safety limits; ROS Toolbox for pre-deployment simulation; modular design inspired by rehabilitation exoskeleton practice~\cite{dosSantos2017}; mitigation of sensor drift via periodic resets.
+
+\begin{itemize}[noitemsep]
+  \item \textbf{Input layer:} IMU raw signals.
+  \item \textbf{Processing layer:} Kalman fusion + ML classification; parallel processing for low latency ($<50$~ms targeted in proposal).
+  \item \textbf{Control layer:} FSM and PID-style torque profiling (planned).
+  \item \textbf{Output layer:} Hip/knee assistance with torque limits (planned hardware).
+\end{itemize}
+
+\subsection*{Implemented baseline}
+The MATLAB simulation produces a \textbf{binary} assist command (0/1) via \texttt{RealtimeFsm.m} with asymmetric hysteresis (3 / 5 consecutive predictions). \texttt{RunExoskeletonPipelineMulticlass.m} optionally drives the FSM from multiclass predictions through \texttt{RealtimeFsmFromActivityClass}. ROS integration, PID torque generation, and hardware actuation are \textbf{not implemented} in software.
+
+\section{List of MATLAB Libraries and Toolboxes}
+\subsection*{Components in active use}
+\begin{table}[htbp]
+  \centering
+  \caption{MATLAB components used in the implemented baseline.}
+  \begin{tabular}{@{}ll@{}}
+    \toprule
+    \textbf{Component} & \textbf{Role} \\
+    \midrule
+    MATLAB & Core scripting and visualization \\
+    Signal Processing Toolbox & FFT and signal operations \\
+    Statistics and Machine Learning Toolbox & SVM / ECOC training and cross-validation \\
+    Sensor Fusion and Tracking Toolbox & \texttt{imufilter} fusion \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection*{Additional libraries named in the interim proposal (optional / future)}
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Toolboxes and packages referenced in the Jan 2026 interim report for future integration.}
+  \begin{tabular}{@{}p{4.2cm}p{9cm}@{}}
+    \toprule
+    \textbf{Library} & \textbf{Role (as proposed)} \\
+    \midrule
+    Deep Learning Toolbox & LSTM/CNN intention models \\
+    Optimization Toolbox & Bayesian hyperparameter tuning \\
+    Control System Toolbox & PID and adaptive controllers \\
+    MATLAB Support Package for Arduino & Optional actuator interfacing \\
+    ROS Toolbox & Simulation and middleware integration \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\noindent\textbf{Note:} Only the first table reflects code paths that are required to reproduce the submitted results; the second table documents scope from the original PDF.

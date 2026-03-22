@@ -1,0 +1,53 @@
+% Chapter 4: interim PDF narrative + repository updates
+\section{Data Acquisition Prototype}
+As of December 2025, the project achieved milestones aligned with the proposed methodologies. A functional data acquisition prototype uses three mobile phones as IMUs (accelerometers, gyroscopes, magnetometers) to simulate placement on the lower limbs and back, enabling real-time collection. The protocol attaches phones to the hips and lower back; tasks include walking 10~m on flat ground, climbing 10 steps, and navigating uneven surfaces at self-selected speeds; data export to CSV ensures reproducibility. Preliminary simulations verified data integrity.
+
+\textbf{Update:} Public-dataset training additionally relies on \texttt{usc\_had\_dataset.mat} and \texttt{hugadb\_dataset.mat} built by \texttt{LoadUSCHAD.m} and \texttt{LoadHuGaDB.m} when raw data are available.
+
+\section{Sensor Fusion and Intention-Detection Algorithms}
+\subsection*{Interim results narrative (Jan 2026 PDF)}
+A 6-DOF sensor fusion pipeline was implemented using MATLAB \texttt{imufilter}, fusing accelerometer and gyroscope data from the hip and back to estimate hip flexion angles relative to the trunk. Validation on USC-HAD confirmed tracking of gait cycles with low latency. The intention-detection module used a \textbf{binary} RBF SVM with a \textbf{five-dimensional} feature vector per window (mean acc magnitude, variance of acc magnitude, mean and variance of gyro magnitude, dominant frequency from FFT of $z$-axis acceleration). A finite state machine with \textbf{asymmetric hysteresis} required 3 consecutive frames to trigger ``Walk'' and 5 to revert to ``Stand.'' Five-fold cross-validation on USC-HAD reported \textbf{98.88\%} accuracy.
+
+Figure~\ref{fig:pipeline} (real-time pipeline output) illustrates the Kalman hip-angle trace and latched control command during walking, consistent with the FSM design.
+
+\subsection*{Repository updates (merged datasets, extended features)}
+The codebase now trains on \textbf{merged} USC-HAD and HuGaDB windows using a \textbf{30-D} standardized feature vector (six IMU slots $\times$ five features, with padding for single-IMU sources) as described in Chapter~3. Table~\ref{tab:binarycv} summarizes five-fold \textbf{out-of-fold binary} accuracy for USC-HAD only, HuGaDB only, and merged training (current script outputs). Figure~\ref{fig:cm} shows the merged-model confusion matrix; Figures~\ref{fig:cm_mc} and metrics file document the twelve-class ECOC baseline.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Binary SVM (30-D features): five-fold OOF accuracy on public data (current repository).}
+  \label{tab:binarycv}
+  \begin{tabular}{@{}lc@{}}
+    \toprule
+    \textbf{Training data} & \textbf{OOF accuracy} \\
+    \midrule
+    USC-HAD only & $\sim$98.9\% \\
+    HuGaDB only & $\sim$88.6\% \\
+    USC-HAD + HuGaDB (merged) & $\sim$94.5\% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.92\textwidth]{svm_confusion_matrix.png}
+  \caption{Binary confusion matrix (five-fold OOF) for the \textbf{merged} training setting; default \texttt{Binary\_SVM\_Model.mat}.}
+  \label{fig:cm}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.92\textwidth]{multiclass_confusion_matrix.png}
+  \caption{Twelve-class ECOC SVM: five-fold OOF confusion (stratified subsample for tractable CV). Baseline accuracy $\sim$57\%.}
+  \label{fig:cm_mc}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.92\textwidth]{pipeline_output.png}
+  \caption{Real-time pipeline output: hip flexion angle (top), control command vs.\ acceleration magnitude (middle), annotation panel when available (bottom).}
+  \label{fig:pipeline}
+\end{figure}
+
+\section{Visualization Tools and Software Architecture}
+Real-time visualization is integrated in MATLAB (e.g., Figure~\ref{fig:pipeline}). The codebase uses \texttt{startup.m} for path resolution, modular \texttt{src/} layout (acquisition, fusion, classification, features), and \texttt{docs/System\_Design.md} for architecture documentation. Repository: \url{https://github.com/Rex-Yim/AutomationForExoskeleton}.
