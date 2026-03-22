@@ -20,9 +20,11 @@ function startup()
     utilsPath   = fullfile(projectRoot, 'scripts', 'utils');
     testsPath   = fullfile(projectRoot, 'tests');
     srcPath     = fullfile(projectRoot, 'src');
+    uscHadPath  = fullfile(projectRoot, 'data', 'public', 'USC-HAD');
+    huGaDbPath  = fullfile(projectRoot, 'data', 'public', 'HuGaDB');
     
-    % Initialize list with standard folders
-    pathsToAdd = {configPath; scriptsPath; utilsPath; testsPath};
+    % Initialize list with standard folders (public dataset loaders)
+    pathsToAdd = {configPath; scriptsPath; utilsPath; testsPath; uscHadPath; huGaDbPath};
 
     % Add 'src' and all its subfolders (if it exists)
     if exist(srcPath, 'dir')

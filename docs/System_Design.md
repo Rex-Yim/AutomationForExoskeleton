@@ -1,87 +1,87 @@
 # Exoskeleton Control System
 ## System Design Document
-**Version:** 1.1
-**Date:** December 17, 2025
+**Version:** 1.2  
+**Date:** March 22, 2026
 
 ---
 
 ## 1. Executive Summary
-This document describes the architecture of the software-centric control module for the ExoTechHK lower-limb exoskeleton. The system integrates inertial measurement units (IMUs), Support Vector Machine (SVM) classification, and Kalman Filter sensor fusion to provide real-time, adaptive assistance. 
+This document describes the architecture of the software-centric control module for the ExoTechHK lower-limb exoskeleton. The system integrates inertial measurement units (IMUs), Support Vector Machine (SVM) classification, and Kalman Filter sensor fusion to provide real-time, adaptive assistance.
 
-Version 1.1 introduces a refined 5-dimensional feature space to capture rotational dynamics and an Asymmetric Finite State Machine (FSM) to enhance user safety during gait transitions.
+Version 1.2 documents **merged USC-HAD + HuGaDB** training with a **30-dimensional** window feature vector (six IMU slots × five statistics per slot), **binary** and **multiclass** ECOC SVM paths, and the asymmetric finite state machine for assist gating.
 
 ---
 
 ## 2. System Architecture
 
 ### 2.1 Configuration (`ExoConfig.m`)
-The system is driven by a singleton configuration class that centralizes all tuning parameters to ensure consistency between training and simulation environments.
-*   **Sampling Rate:** 100 Hz
-*   **Window Size:** 1.0s (100 samples)
-*   **Step Size:** 0.5s (50 samples)
-*   **Data Structure:** Handles standardized formatting for USC-HAD and HuGaDB datasets.
+The system is driven by a configuration class that centralizes tuning parameters.
+*   **Sampling Rate:** 100 Hz  
+*   **Window Size:** 1.0 s (100 samples)  
+*   **Step Size:** 0.5 s (50 samples)  
+*   **Paths:** `usc_had_dataset.mat`, `hugadb_dataset.mat`, `Binary_SVM_Model.mat`, `Multiclass_SVM_ECOC.mat`  
+*   **LOCOMOTION:** `N_IMU_SLOTS = 6`, `FEATURES_PER_IMU = 5` (must match `Features.m`)
 
 ### 2.2 Data Flow Pipeline
-1.  **Input:** Raw CSV (Acc + Gyro) imported via `ImportData.m`.
-2.  **Pre-processing:** Automatic detection of G-force units; conversion to $m/s^2$ if mean acceleration < 2.0g.
-3.  **Feature Extraction:** 5 statistical/frequency features computed per window.
-4.  **Inference:** Binary SVM (RBF Kernel) predicts Class 0 (Stand) or 1 (Walk).
-5.  **State Machine:** FSM applies asymmetric hysteresis to filter noise.
-6.  **Fusion:** Kalman Filter (`imufilter`) computes Hip Flexion Angle in parallel to ML.
-7.  **Output:** Control Command (0/1) + Joint Kinematics.
+1.  **Input:** Raw CSV (Acc + Gyro) via `ImportData.m` (simulation), or public `.mat` caches via loaders.
+2.  **Pre-processing:** G-force heuristic → conversion to m/s² if needed.
+3.  **Feature extraction:** Five features per IMU (`Features.m`). HuGaDB uses **six IMUs** per window (`FeaturesFromImuStack`). USC-HAD and on-line simulation use **one IMU + zero padding** (`LocomotionFeatureVector`) → **1×30** vector.
+4.  **Inference — binary:** RBF SVM (`fitcsvm`) → class 0/1 (non-locomotion vs locomotion-like per dataset label maps).
+5.  **Inference — multiclass (optional):** ECOC SVM (`fitcecoc`) → 12 unified activity names (`ActivityClassRegistry.m`). Exo assist can map locomotion-like classes through `RealtimeFsmFromActivityClass.m`.
+6.  **State machine:** `RealtimeFsm.m` applies asymmetric hysteresis on **binary** predictions.
+7.  **Fusion:** Kalman (`imufilter`) computes hip flexion angle in parallel.
+8.  **Output:** Control command (0/1) + kinematics; multiclass scripts add activity labels for logging/plots.
 
 ---
 
 ## 3. Core Components
 
-### 3.1 Feature Extraction (`Features.m`)
-The feature vector has been expanded from 3 to 5 dimensions. The inclusion of Gyroscope variance is critical for distinguishing "shifting weight while standing" from actual "turning/walking".
+### 3.1 Feature Extraction (`Features.m`, `FeaturesFromImuStack.m`, `LocomotionFeatureVector.m`)
+Per IMU window, the feature vector is **1×5**:
+1. Mean acc magnitude  
+2. Variance of acc magnitude  
+3. Mean gyro magnitude  
+4. Variance of gyro magnitude  
+5. Dominant FFT frequency of vertical acceleration  
 
-**Feature Vector ($1 \times 5$):**
-1.  **Mean Acc Magnitude:** $\mu(|a|)$ - Represents overall translational intensity.
-2.  **Var Acc Magnitude:** $\sigma^2(|a|)$ - Represents movement smoothness.
-3.  **Mean Gyro Magnitude:** $\mu(|\omega|)$ - **(New)** Captures rotational intensity.
-4.  **Var Gyro Magnitude:** $\sigma^2(|\omega|)$ - **(New)** Captures rotational volatility/turns.
-5.  **Dominant Frequency:** Peak FFT frequency of Z-axis acceleration (typically 1-2 Hz for gait).
+**Training on public data:** HuGaDB trials store **N×3×6** acc/gyro (`LoadHuGaDB.m`); stacked features are **1×30**. USC-HAD trials use one IMU → **1×5** inside `LocomotionFeatureVector` plus **25 zeros**.
 
-### 3.2 Sensor Fusion (`FusionKalman.m`)
-Implemented as a `Static` class wrapping MATLAB's `imufilter`.
-*   **Input:** 3-axis Accelerometer, 3-axis Gyroscope.
-*   **Algorithm:** Indirect Kalman Filter.
-*   **Output:** Orientation (Quaternion) $\to$ Euler Angles.
-*   **Kinematics:** $\theta_{flexion} = \theta_{thigh} - \theta_{back}$ (Calculated in real-time loop).
+### 3.2 Activity labels (`ActivityClassRegistry.m`)
+Maps raw USC-HAD (12 trial activities) and HuGaDB (8 sample-level IDs) into **12 unified classes** for multiclass training. Binary training uses `ExoConfig.DS.*.WALKING_LABELS` / `NON_WALKING_LABELS`.
 
-### 3.3 Finite State Machine (`RealtimeFsm.m`)
-Uses **Asymmetric Hysteresis** to manage state transitions. This design prioritizes user safety by implementing an "easy to start, hard to stop" logic.
+### 3.3 Sensor Fusion (`FusionKalman.m`)
+Static class wrapping MATLAB `imufilter`. Output: orientation → hip flexion proxy vs back.
 
-*   **States:** `STANDING (0)`, `WALKING (1)`
-*   **Transition Stand $\to$ Walk:**
-    *   Trigger: SVM predicts 'Walk'.
-    *   Threshold: **3** consecutive frames.
-    *   *Reasoning:* Ensures quick response to locomotion initiation.
-*   **Transition Walk $\to$ Stand:**
-    *   Trigger: SVM predicts 'Stand'.
-    *   Threshold: **5** consecutive frames.
-    *   *Reasoning:* Prevents the exoskeleton from locking the leg during a stumble, brief pause, or single missed classification frame.
+### 3.4 Finite State Machine (`RealtimeFsm.m`)
+Asymmetric hysteresis: **3** consecutive walk-like binary predictions to enter walking assist; **5** consecutive non-locomotion to exit.
 
 ---
 
 ## 4. Execution & File Organization
 
 ### 4.1 Path Management
-The project uses dynamic path resolution (`mfilename('fullpath')`) in `startup.m` and `ConcatenateCode.m`. This allows the repository to run immediately upon cloning without manual path configuration.
+`startup.m` adds `config/`, `scripts/`, `src/` (recursive), and public dataset folders.
 
-### 4.2 Directory Structure
+**USC-HAD:** `LoadUSCHAD.m` → `data/public/USC-HAD/usc_had_dataset.mat` (recursive raw `.mat` under `USC-HAD_raw/`).
+
+**HuGaDB:** `LoadHuGaDB.m` → `data/public/HuGaDB/hugadb_dataset.mat` (recursive `**/*.txt` under `HuGaDB_v2_raw/`, six IMUs per row).
+
+**Binary training / evaluation:** `TrainSvmBinary.m`, `EvaluateSvmConfusion.m`, `RunSvmDatasetAblation.m` (USC-only, HuGaDB-only, merged).
+
+**Multiclass:** `PrepareTrainingDataMulticlass.m`, `TrainSvmMulticlass.m`, `EvaluateMulticlassConfusion.m`, `RunTrainEvalMulticlass.m`, `RunExoskeletonPipelineMulticlass.m`.
+
+### 4.2 Directory Structure (abridged)
 ```text
 AutomationForExoskeleton/
-├── config/                # Global tuning (ExoConfig.m)
-├── data/                  # Loaders for USC-HAD / HuGaDB
-├── models/                # Trained Binary_SVM_Model.mat
-├── results/               # Pipeline visualization outputs
-├── scripts/               # Main executables (RunExoskeletonPipeline.m)
-│   └── utils/             # Helpers (Tree generation, Code export)
-└── src/                   # Core logic
-    ├── classification/    # FSM and State Estimation
-    ├── features/          # Feature extraction algorithms
-    └── fusion/            # Kalman filter implementation
+├── config/                 # ExoConfig.m, ActivityClassRegistry.m
+├── data/public/USC-HAD/    # LoadUSCHAD.m, usc_had_dataset.mat
+├── data/public/HuGaDB/     # LoadHuGaDB.m, hugadb_dataset.mat
+├── models/                 # Binary_SVM_Model*.mat, Multiclass_SVM_ECOC.mat
+├── results/                # Figures + .mat metrics
+├── scripts/                # Train/eval/pipeline scripts
+└── src/
+    ├── acquisition/        # PrepareTrainingData*.m
+    ├── classification/   # RealtimeFsm.m, RealtimeFsmFromActivityClass.m
+    ├── features/         # Features.m, FeaturesFromImuStack.m, LocomotionFeatureVector.m
+    └── fusion/
 ```

@@ -83,8 +83,8 @@ for i = 1:n_total_samples
         windowAcc = back.acc(i : i+WINDOW_SIZE-1, :);
         windowGyro = back.gyro(i : i+WINDOW_SIZE-1, :);
 
-        % Feature Extraction
-        features_vec = Features(windowAcc, windowGyro, FS);
+        % Feature Extraction (same padding as USC-HAD rows in merged training)
+        features_vec = LocomotionFeatureVector(windowAcc, windowGyro, FS, cfg);
         
         % Predict (0=Stand, 1=Walk)
         new_label = predict(SVMModel, features_vec);

@@ -1,1 +1,6 @@
 .DS_Store
+**/.DS_Store
+
+# Generated dataset caches (large; run LoadUSCHAD / LoadHuGaDB after clone)
+data/public/USC-HAD/usc_had_dataset.mat
+data/public/HuGaDB/hugadb_dataset.mat

@@ -20,14 +20,21 @@ fprintf('===========================================================\n');
 
 % --- 1. Prepare Data ---
 try
-    % This function now handles all loading, windowing, and feature extraction
+    % Default: USC-HAD + HuGaDB when both .mat files exist. For ablation runs
+    % (single-source + merged), use scripts/RunSvmDatasetAblation.m or call
+    % PrepareTrainingData(cfg,'IncludeUSCHAD',false,'IncludeHuGaDB',true), etc.
     [featuresAll, labelsAll, ModelMetadata] = PrepareTrainingData(cfg);
 catch ME
     error('Data preparation failed: %s', ME.message);
 end
 
 if isempty(featuresAll)
-    error('No features extracted. Ensure "LoadUSCHAD" has been run and data is valid.');
+    error('No features extracted. Run LoadUSCHAD (and optionally LoadHuGaDB), then retry.');
+end
+
+if isfield(ModelMetadata, 'nWindowsUSCHAD')
+    fprintf('Window counts — USC-HAD: %d | HuGaDB: %d\n', ...
+        ModelMetadata.nWindowsUSCHAD, ModelMetadata.nWindowsHuGaDB);
 end
 
 % --- 2. Train SVM Model ---

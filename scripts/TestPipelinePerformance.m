@@ -115,8 +115,7 @@ function [metrics] = TestPipelinePerformance()
             windowAcc = back.acc(i : i+WINDOW_SIZE-1, :);
             windowGyro = back.gyro(i : i+WINDOW_SIZE-1, :); 
 
-            % Extract Features (5-feature vector)
-            features_vec = Features(windowAcc, windowGyro, FS); 
+            features_vec = LocomotionFeatureVector(windowAcc, windowGyro, FS, cfg); 
             
             % Predict
             new_label = predict(SVMModel, features_vec); 

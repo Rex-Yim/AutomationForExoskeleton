@@ -1,67 +1,57 @@
 # Robotic Exoskeleton Control System
 
-## 🚀 Project Overview
-This project implements a software-centric control module for a lower-limb robotic exoskeleton, designed for heavy load transportation (>20kg). It utilizes **sensor fusion** (Kalman Filters) for kinematics estimation and **Machine Learning** (SVM) for real-time locomotion intent detection.
+## Project overview
+Software-centric control module for a lower-limb exoskeleton (heavy load transport). Uses **Kalman fusion** (`imufilter`) for kinematics and **SVM** classification for locomotion intent. Public training data: **USC-HAD** and **HuGaDB** (optional merge).
 
-**Current Status:** Validation on USC-HAD dataset achieves **98.90% accuracy** with a 150ms predictive horizon.
+## Current implementation (summary)
 
-## 🛠️ Key Features
+### Pipeline (100 Hz)
+- **Input:** Three phone IMUs (back, hips) in simulation via `ImportData.m`; public datasets via `.mat` caches.
+- **Fusion:** 6-DOF indirect Kalman filter → hip flexion angle estimate.
+- **Binary assist model:** RBF SVM, **30-D** window features (5 per IMU slot × 6 slots: HuGaDB fills all; USC-HAD / simulation use one stream + zero padding). Positive class = **locomotion-like** (walk, stairs, run per label maps), not generic “any motion.”
+- **Multiclass (12 activities):** ECOC + SVM (`fitcecoc`), unified labels in `ActivityClassRegistry.m`; baseline OOF accuracy is moderate on merged public data—use for analysis / future phone-specific fine-tuning.
+- **FSM:** `RealtimeFsm.m` — 3 consecutive walk-like predictions to turn assist on, 5 non-locomotion to turn off.
 
-### 1. Signal Processing Pipeline (100 Hz)
-*   **Input:** 3 IMUs (Back, Left Hip, Right Hip).
-*   **Fusion:** 6-DOF Indirect Kalman Filter via MATLAB `imufilter`.
-*   **Output:** Real-time Hip Flexion Angle estimation.
+### Typical binary CV (5-fold OOF, current feature pipeline)
+| Training set | Approx. OOF accuracy |
+|--------------|----------------------|
+| USC-HAD only | ~98.9% |
+| HuGaDB only  | ~88.6% |
+| Merged       | ~94.5% |
 
-### 2. Intention Detection (SVM)
-*   **Model:** Binary Support Vector Machine (RBF Kernel).
-*   **5-Dimensional Feature Space:**
-    *   Translational: Mean & Variance of Acceleration.
-    *   Rotational: Mean & Variance of Gyroscope (Crucial for turn detection).
-    *   Frequency: Dominant Gait Frequency (FFT).
+Run `RunSvmDatasetAblation` to regenerate all three; default `models/Binary_SVM_Model.mat` is the **merged** model.
 
-### 3. Safety Control Logic (Asymmetric FSM)
-To prevent actuator "chattering" (erratic switching), the system uses asymmetric thresholds:
-*   **Stand $\to$ Walk:** Triggered after **3** consecutive 'Walk' predictions (Fast response).
-*   **Walk $\to$ Stand:** Triggered after **5** consecutive 'Stand' predictions (Safety buffer).
+Multiclass: run `EvaluateMulticlassConfusion` — default uses a **stratified subsample** for CV speed; see `results/multiclass_evaluation_metrics.mat`.
 
-## 📂 Installation & Usage
+## Prerequisites
+- MATLAB R2020b+ (tested on R2025b).
+- Toolboxes: Statistics and Machine Learning, Sensor Fusion and Tracking, Signal Processing.
 
-### Prerequisites
-*   MATLAB R2020b or newer.
-*   Required Toolboxes:
-    *   *Statistics and Machine Learning Toolbox*
-    *   *Sensor Fusion and Tracking Toolbox*
-    *   *Signal Processing Toolbox*
+## Quick start (project root as current folder)
+```matlab
+startup
+```
 
-### Quick Start
-1.  **Initialize Environment:**
-    Sets up dynamic paths and checks for required toolboxes.
-    ```matlab
-    >> startup
-    ```
+1. **Build datasets (when raw data present)**  
+   - USC-HAD: raw `.mat` under `data/public/USC-HAD/USC-HAD_raw/` → `LoadUSCHAD`  
+   - HuGaDB: `.txt` under `data/public/HuGaDB/HuGaDB_v2_raw/` → `LoadHuGaDB`
 
-2.  **Train the Model:**
-    Loads dataset, extracts features, and trains the SVM.
-    ```matlab
-    >> TrainSvmBinary
-    ```
+2. **Binary model**  
+   - `TrainSvmBinary` — merged training if both `.mat` exist  
+   - `RunSvmDatasetAblation` — USC-only, HuGaDB-only, merged + default model copy  
+   - `EvaluateSvmConfusion` — confusion + metrics for reports  
 
-3.  **Run Simulation:**
-    Runs the full pipeline (Data -> Fusion -> AI -> FSM -> Control Command) and generates plots in `results/`.
-    ```matlab
-    >> RunExoskeletonPipeline
-    ```
+3. **Multiclass model**  
+   - `TrainSvmMulticlass` → `models/Multiclass_SVM_ECOC.mat`  
+   - `EvaluateMulticlassConfusion`  
+   - `RunExoskeletonPipelineMulticlass` — sim with activity trace + FSM from multiclass  
 
-## 📊 Performance
-The system is evaluated using 5-Fold Cross-Validation on the USC-HAD dataset.
-*   **Accuracy:** 98.90%
-*   **Precision:** High precision in walking detection minimizes false positives.
-*   **Recall:** High recall ensures the exoskeleton does not disengage during movement.
+4. **Simulation**  
+   - `RunExoskeletonPipeline` — binary model → `results/pipeline_output.png`  
 
-## 🤝 Acknowledgments
-*   **ExoTechHK Limited** for hardware prototype collaboration.
-*   **HKSTP** for incubation support.
-*   **Supervisor:** Prof. Wei-Hsin Liao, CUHK.
-*   **Datasets provided by:**
-    1.  Chereshnev et al. (HuGaDB)
-    2.  Zhang et al. (USC-HAD)
+## Report / LaTeX
+Sources under `docs/latex/`; figures read from `results/` (e.g. `svm_confusion_matrix.png`, `multiclass_confusion_matrix.png`, `pipeline_output.png`). See `docs/latex/README.md` and CI workflow `.github/workflows/build-latex-pdf.yml`.
+
+## Acknowledgments
+- **ExoTechHK Limited**, **HKSTP**, **Prof. Wei-Hsin Liao** (CUHK).  
+- Datasets: HuGaDB (Chereshnev et al.); USC-HAD (Zhang et al.).
