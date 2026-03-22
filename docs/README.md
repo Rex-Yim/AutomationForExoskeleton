@@ -34,7 +34,8 @@ startup
 
 1. **Build datasets (when raw data present)**  
    - USC-HAD: raw `.mat` under `data/public/USC-HAD/USC-HAD_raw/` → `LoadUSCHAD`  
-   - HuGaDB: `.txt` under `data/public/HuGaDB/HuGaDB_v2_raw/` → `LoadHuGaDB`
+   - HuGaDB: `.txt` under `data/public/HuGaDB/HuGaDB_v2_raw/` → `LoadHuGaDB`  
+   - Those raw folders and the merged `usc_had_dataset.mat` / `hugadb_dataset.mat` caches are **not** in the GitHub repo; place downloads locally (official dataset releases), then run the loaders.
 
 2. **Binary model**  
    - `TrainSvmBinary` — merged training if both `.mat` exist  

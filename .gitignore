@@ -1,6 +1,12 @@
 .DS_Store
 **/.DS_Store
 
-# Generated dataset caches (large; run LoadUSCHAD / LoadHuGaDB after clone)
+# Public dataset bulk (not in remote — obtain locally from official releases)
+data/public/USC-HAD/USC-HAD_raw/
+data/public/HuGaDB/HuGaDB_v2_raw/
+
+# Generated dataset caches (run LoadUSCHAD / LoadHuGaDB after raw data is present)
 data/public/USC-HAD/usc_had_dataset.mat
 data/public/HuGaDB/hugadb_dataset.mat
+
+data/public/.DS_Store
