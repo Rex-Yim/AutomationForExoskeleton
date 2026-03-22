@@ -50,8 +50,9 @@ startup
 4. **Simulation**  
    - `RunExoskeletonPipeline` — binary model → `results/pipeline_output.png`  
 
-## Report / LaTeX
-Sources under `docs/latex/`; figures read from `results/` (e.g. `svm_confusion_matrix.png`, `multiclass_confusion_matrix.png`, `pipeline_output.png`). See `docs/latex/README.md` and CI workflow `.github/workflows/build-latex-pdf.yml`.
+## Written report
+- **Word (submission-style):** `1155176974_Yim_Fu_Chong_MAEG4998_Final_Report.docx` — synced from `Final_Report.txt`; figures embedded from `results/` where those PNGs exist. Regenerate with `python3 scripts/build_final_report_docx.py` (expects a template copy from `~/Desktop/1155176974_Yim_Fu_Chong_MAEG4998_Final_Report.docx` when present; otherwise creates a new document).
+- **Plain text:** `Final_Report.txt` (same narrative). Evaluation figures live under `results/` (e.g. `svm_confusion_matrix.png`, `multiclass_confusion_matrix.png`, `pipeline_output.png`).
 
 ## Acknowledgments
 - **ExoTechHK Limited**, **HKSTP**, **Prof. Wei-Hsin Liao** (CUHK).  

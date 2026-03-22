@@ -5,7 +5,7 @@
 %
 % Writes tagged models under models/ and tagged figures/metrics under results/.
 % After completion, copies the merged model and merged confusion outputs to the
-% default paths used by RunExoskeletonPipeline / LaTeX (Binary_SVM_Model.mat,
+% default paths used by RunExoskeletonPipeline (Binary_SVM_Model.mat,
 % svm_confusion_matrix.png, svm_evaluation_metrics.mat).
 % --------------------------------------------------------------------------
 % PREREQ: startup or paths to config + src; usc_had_dataset.mat and/or
