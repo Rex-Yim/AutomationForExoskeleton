@@ -1,18 +1,8 @@
-% Chapter 5: summary + interim PDF remaining work + timeline + risks + repository status
+% Chapter 5: summary + interim future work + timeline + risks + repository status
 \section{Summary of what was delivered}
 This project produced a reproducible MATLAB baseline for lower-limb exoskeleton \emph{assist gating} on public IMU data: Kalman fusion (\texttt{imufilter}), a 30-dimensional feature pipeline with merged USC-HAD and HuGaDB training, binary RBF SVM classification with five-fold out-of-fold evaluation, an optional twelve-class ECOC model for exploratory activity recognition, an optional binary LSTM sequence classifier, and finite-state-machine smoothing with asymmetric hysteresis for stable on/off assist commands in simulation. Scalar accuracies and figures are traceable to versioned scripts and \texttt{results/*.mat}, with numbers exported into \texttt{generated\_metrics.tex} via \texttt{ExportMetricsForReport.m}.
 
-The binary accuracy target ($>90$\%) is met for USC-HAD-only and merged training; HuGaDB-only accuracy is lower, consistent with dataset heterogeneity and label mapping choices. Multiclass accuracy remains modest and is not proposed as a deployable control layer without further work. End-to-end hardware trials, embedded deployment, hybrid SVM--LSTM fusion as in the original pseudocode, and the full predictive-horizon benchmark were not completed in software; the sections below preserve the interim roadmap, risks, and timeline so planned scope stays distinguishable from the validated repository.
-
-\section{Remaining tasks and roadmap (updated for final report)}
-The Jan~2026 interim plan listed scope still open beyond the validated MATLAB baseline. Relative to the repository status in Section~\ref{sec:repo_status} and the results chapter, the backlog can be restated as follows:
-\begin{itemize}
-  \item \textbf{Intention detection:} Binary SVM and optional LSTM/multiclass paths exist in-repo; remaining work includes harmonizing LSTM evaluation with the five-fold OOF protocol used for SVMs, optional SVM--LSTM or ensemble fusion (not implemented), richer transition handling (multi-mode, speed), and deployment-time tuning on partner or collected data.
-  \item \textbf{Machine learning deployment:} On-device inference from trained SVM/LSTM artifacts (e.g., MATLAB Coder or an embedded runtime), plus any terrain- or activity-specific models beyond the current public-dataset baselines.
-  \item \textbf{Hardware integration:} Port validated decision logic to the ExoTechHK controller stack and close the loop with actuation, beyond MATLAB simulation and CSV replay.
-  \item \textbf{Testing and validation:} Instrumented bench tests, ethical user trials under torque limits, and field-style evaluation (latency, confusion-matrix metrics, precision/recall under realistic loads).
-  \item \textbf{Documentation and presentation:} This document consolidates the technical baseline; slides, video demonstration, and comparative benchmarks against additional literature or commercial systems remain optional deliverables beyond the core report.
-\end{itemize}
+The binary accuracy target ($>90$\%) is met for USC-HAD-only and merged training; HuGaDB-only accuracy is lower, consistent with dataset heterogeneity and label mapping choices. Multiclass accuracy remains modest and is not proposed as a deployable control layer without further work. End-to-end hardware trials, embedded deployment, hybrid SVM--LSTM fusion as in the original pseudocode, and the full predictive-horizon benchmark were not completed in software; the sections below preserve interim future-work bullets, timeline, risks, and repository status so planned scope stays distinguishable from the validated repository.
 
 \section{Future work beyond the FYP (interim PDF)}
 \begin{itemize}
