@@ -20,6 +20,8 @@ This folder builds a **PDF report** aligned to the **current MATLAB codebase**: 
 
 Citations use numeric brackets (e.g.\ [1]) with the **`cite`** package, and the list is formatted by **`IEEEtran.bst`**, consistent with the IEEE Reference Style described in IEEE’s *Information for Authors* (numbered references, order of first citation). Edit `references.bib` and re-run the build (which runs **BibTeX**).
 
+The reference list appears **once at the end** of the report (standard for thesis-style documents). `chapters/references.tex` sets `\bibname` to **References** so you do not get a duplicate **Bibliography** heading from the default `report` class.
+
 ## Figures (required before compile)
 
 From the **project root**, run MATLAB so these exist (commit them for GitHub Actions):

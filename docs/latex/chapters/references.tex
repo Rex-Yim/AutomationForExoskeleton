@@ -1,5 +1,9 @@
-% IEEE reference list: IEEEtran bibliography style (IEEE Reference Style).
-\chapter*{References}
+% IEEE reference list at end of report (single list; order follows first citation).
+% Do not use \chapter*{References} here: \bibliography already emits \chapter*{\bibname};
+% the default \bibname in report is "Bibliography", so we rename it to "References".
+\cleardoublepage
+\phantomsection
 \addcontentsline{toc}{chapter}{References}
+\renewcommand{\bibname}{References}
 \bibliographystyle{IEEEtran}
 \bibliography{references}
