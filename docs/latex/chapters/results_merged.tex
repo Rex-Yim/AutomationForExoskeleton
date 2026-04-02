@@ -1,29 +1,29 @@
 % Chapter 4: interim PDF narrative + repository updates
 \section{Data Acquisition Prototype}
-As of December 2025, the project achieved milestones aligned with the proposed methodologies. A functional data acquisition prototype uses three mobile phones as IMUs (accelerometers, gyroscopes, magnetometers) to simulate placement on the lower limbs and back, enabling real-time collection. The protocol attaches phones to the hips and lower back; tasks include walking 10~m on flat ground, climbing 10 steps, and navigating uneven surfaces at self-selected speeds; data export to CSV ensures reproducibility. Preliminary simulations verified data integrity.
+The project reached milestones aligned with the proposed methodologies during the prototype phase. A functional data acquisition prototype uses three mobile phones as IMUs (accelerometers, gyroscopes, magnetometers) to simulate placement on the lower limbs and back, enabling real-time collection. The protocol attaches phones to the hips and lower back; tasks include walking 10~m on flat ground, climbing 10 steps, and navigating uneven surfaces at self-selected speeds; data export to CSV ensures reproducibility. Preliminary simulations verified data integrity.
 
 \textbf{Update:} Public-dataset training additionally relies on \texttt{usc\_had\_dataset.mat} and \texttt{hugadb\_dataset.mat} built by \texttt{LoadUSCHAD.m} and \texttt{LoadHuGaDB.m} when raw data are available.
 
 \section{Sensor Fusion and Intention-Detection Algorithms}
-\subsection*{Interim results narrative (Jan 2026 PDF)}
-A 6-DOF sensor fusion pipeline was implemented using MATLAB \texttt{imufilter}, fusing accelerometer and gyroscope data from the hip and back to estimate hip flexion angles relative to the trunk. Validation on USC-HAD confirmed tracking of gait cycles with low latency. The intention-detection module used a \textbf{binary} RBF SVM with a \textbf{five-dimensional} feature vector per window (mean acc magnitude, variance of acc magnitude, mean and variance of gyro magnitude, dominant frequency from FFT of $z$-axis acceleration). A finite state machine with \textbf{asymmetric hysteresis} required 3 consecutive frames to trigger ``Walk'' and 5 to revert to ``Stand.'' Five-fold cross-validation on USC-HAD reported \textbf{98.88\%} accuracy.
+\subsection*{Historical interim PDF (Jan 2026) vs.\ current repository}
+The Jan 2026 interim PDF described a \textbf{five-dimensional} feature vector per window and quoted \textbf{98.88\%} five-fold accuracy on USC-HAD alone. The \textbf{current} codebase (Chapter~3) uses a \textbf{30-D} feature layout (six IMU slots $\times$ five features), merged USC-HAD and HuGaDB pools, and the accuracies in Table~\ref{tab:binarycv}---generated from \texttt{results/svm\_evaluation\_metrics\_*.mat} via \texttt{scripts/ExportMetricsForReport.m}. The Kalman pipeline and FSM remain: \textbf{asymmetric hysteresis} (3 consecutive walk-like predictions to assist, 5 to release).
 
 Figure~\ref{fig:pipeline} (real-time pipeline output) illustrates the Kalman hip-angle trace and latched control command during walking, consistent with the FSM design.
 
-\subsection*{Repository updates (merged datasets, extended features)}
-The codebase now trains on \textbf{merged} USC-HAD and HuGaDB windows using a \textbf{30-D} standardized feature vector (six IMU slots $\times$ five features, with padding for single-IMU sources) as described in Chapter~3. Table~\ref{tab:binarycv} summarizes five-fold \textbf{out-of-fold binary} accuracy for USC-HAD only, HuGaDB only, and merged training (current script outputs). Figure~\ref{fig:cm} shows the merged-model confusion matrix; Figures~\ref{fig:cm_mc} and metrics file document the twelve-class ECOC baseline.
+\subsection*{Current quantitative results (merged datasets)}
+The codebase trains on \textbf{merged} USC-HAD and HuGaDB windows using the 30-D standardized feature vector as described in Chapter~3. Table~\ref{tab:binarycv} lists five-fold \textbf{out-of-fold binary} accuracy for USC-HAD only, HuGaDB only, and merged training. Figure~\ref{fig:cm} shows the merged-model confusion matrix; Figure~\ref{fig:cm_mc} and \texttt{multiclass\_evaluation\_metrics.mat} document the twelve-class ECOC baseline.
 
 \begin{table}[htbp]
   \centering
-  \caption{Binary SVM (30-D features): five-fold OOF accuracy on public data (current repository).}
+  \caption{Binary SVM (30-D features): five-fold OOF accuracy (from \texttt{results/svm\_evaluation\_metrics\_*.mat}; values in \texttt{generated\_metrics.tex}).}
   \label{tab:binarycv}
   \begin{tabular}{@{}lc@{}}
     \toprule
     \textbf{Training data} & \textbf{OOF accuracy} \\
     \midrule
-    USC-HAD only & $\sim$98.9\% \\
-    HuGaDB only & $\sim$88.6\% \\
-    USC-HAD + HuGaDB (merged) & $\sim$94.5\% \\
+    USC-HAD only & \BinaryOofAccUsc\% \\
+    HuGaDB only & \BinaryOofAccHuGa\% \\
+    USC-HAD + HuGaDB (merged) & \BinaryOofAccMerged\% \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -38,7 +38,7 @@ The codebase now trains on \textbf{merged} USC-HAD and HuGaDB windows using a \t
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.92\textwidth]{multiclass_confusion_matrix.png}
-  \caption{Twelve-class ECOC SVM: five-fold OOF confusion (stratified subsample for tractable CV). Baseline accuracy $\sim$57\%.}
+  \caption{Twelve-class ECOC SVM: five-fold OOF confusion (stratified subsample for tractable CV). OOF accuracy \MulticlassOofAcc\% (see \texttt{multiclass\_evaluation\_metrics.mat}).}
   \label{fig:cm_mc}
 \end{figure}
 
@@ -50,7 +50,7 @@ The codebase now trains on \textbf{merged} USC-HAD and HuGaDB windows using a \t
 \end{figure}
 
 \subsection*{Optional binary LSTM (sequence classifier)}
-The repository includes an alternative \textbf{binary LSTM} trained on the same windowed USC-HAD/HuGaDB pools with raw IMU sequences (not the 30-D hand-crafted features). Training uses a stratified \textbf{20\% holdout} and a fixed random seed so metrics can be reproduced; this is \textit{not} directly comparable to the five-fold \textbf{out-of-fold} SVM accuracy in Table~\ref{tab:binarycv}. After training (\texttt{TrainLstmBinary}), run \texttt{EvaluateLstmConfusion} to export \texttt{lstm\_confusion\_matrix.png} and holdout precision/recall; typical merged-data holdout accuracy is in the mid-to-high 90\% range on the same public pools, though the exact value depends on the random seed and training run.
+The repository includes an alternative \textbf{binary LSTM} trained on the same windowed USC-HAD/HuGaDB pools with raw IMU sequences (not the 30-D hand-crafted features). Training uses a stratified \textbf{20\% holdout} and a fixed random seed so metrics can be reproduced; this is \textit{not} directly comparable to the five-fold \textbf{out-of-fold} SVM accuracy in Table~\ref{tab:binarycv}. After training (\texttt{TrainLstmBinary}), run \texttt{EvaluateLstmConfusion} to export \texttt{lstm\_confusion\_matrix.png} and \texttt{lstm\_evaluation\_metrics.mat}. Re-run \texttt{ExportMetricsForReport} after evaluation so \texttt{generated\_metrics.tex} can include LSTM holdout metrics when that script is extended to read the LSTM \texttt{.mat} file.
 
 \IfFileExists{../../results/lstm_confusion_matrix.png}{%
 \begin{figure}[htbp]

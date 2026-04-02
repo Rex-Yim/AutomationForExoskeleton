@@ -14,15 +14,19 @@ Software-centric control module for a lower-limb exoskeleton (heavy load transpo
 - **FSM:** `RealtimeFsm.m` — 3 consecutive walk-like predictions to turn assist on, 5 non-locomotion to turn off.
 
 ### Typical binary CV (5-fold OOF, current feature pipeline)
-| Training set | Approx. OOF accuracy |
-|--------------|----------------------|
-| USC-HAD only | ~98.9% |
-| HuGaDB only  | ~88.6% |
-| Merged       | ~94.5% |
+Values below match the committed `results/svm_evaluation_metrics_*.mat` files (regenerate with `RunSvmDatasetAblation` or `EvaluateSvmConfusion`).
+
+| Training set | OOF accuracy |
+|--------------|----------------|
+| USC-HAD only | 98.91% |
+| HuGaDB only  | 88.60% |
+| Merged       | 94.50% |
 
 Run `RunSvmDatasetAblation` to regenerate all three; default `models/Binary_SVM_Model.mat` is the **merged** model.
 
-Multiclass: run `EvaluateMulticlassConfusion` — default uses a **stratified subsample** for CV speed; see `results/multiclass_evaluation_metrics.mat`.
+Multiclass: run `EvaluateMulticlassConfusion` — default uses a **stratified subsample** for CV speed; latest OOF in `results/multiclass_evaluation_metrics.mat` is **56.76%**.
+
+**Report / PDF:** run `scripts/ExportMetricsForReport.m` to refresh `docs/latex/generated_metrics.tex` so LaTeX tables and the abstract stay aligned with those `.mat` files after you re-evaluate.
 
 ## Prerequisites
 - MATLAB R2020b+ (tested on R2025b).

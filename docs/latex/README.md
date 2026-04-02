@@ -15,6 +15,7 @@ This folder builds a **PDF report** aligned to the **current MATLAB codebase**: 
 | `chapters/literature_review.tex` | Chapter 2 (literature + summary table) |
 | `references.bib` | BibTeX database (all cited works) |
 | `chapters/references.tex` | Invokes `\bibliographystyle{IEEEtran}` + `\bibliography{references}` |
+| `generated_metrics.tex` | **Auto-generated** SVM/multiclass accuracies for tables/abstract (`scripts/ExportMetricsForReport.m`) |
 
 ## References (IEEE style)
 
@@ -33,6 +34,8 @@ From the **project root**, run MATLAB so these exist (commit them for GitHub Act
 - `results/pipeline_output.png` — from `RunExoskeletonPipeline`
 
 **Optional** (for Chapter 4 LSTM subsection): `TrainLstmBinary` then `EvaluateLstmConfusion` → `results/lstm_confusion_matrix.png`. The LaTeX source includes this figure only if the file exists (`\IfFileExists`).
+
+**Before committing a “final” PDF:** run `ExportMetricsForReport` in MATLAB so `generated_metrics.tex` matches `results/svm_evaluation_metrics_*.mat` and `multiclass_evaluation_metrics.mat`.
 
 ## Install LaTeX on macOS
 
