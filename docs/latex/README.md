@@ -22,6 +22,8 @@ Citations use numeric brackets (e.g.\ [1]) with the **`cite`** package, and the 
 
 The reference list appears **once at the end** of the report (standard for thesis-style documents). `chapters/references.tex` sets `\bibname` to **References** so you do not get a duplicate **Bibliography** heading from the default `report` class.
 
+Each entry in `references.bib` includes **`url={https://doi.org/...}`** (derived from the DOI) so the PDF lists a resolvable link, similar to pasting `https://doi.org/...` under each reference in Word. Pagination and DOIs follow Crossref/IEEE metadata where they differ from an older manuscript (for example, Lazzaroni et al.\ vs.\ Poliero et al.\ are distinct RA-L papers with different DOIs and page ranges).
+
 ## Figures (required before compile)
 
 From the **project root**, run MATLAB so these exist (commit them for GitHub Actions):
