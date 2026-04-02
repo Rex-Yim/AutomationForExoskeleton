@@ -13,7 +13,12 @@ This folder builds a **PDF report** aligned to the **current MATLAB codebase**: 
 | `chapters/results_merged.tex` | Ch.4: interim narrative + updated metrics/figures |
 | `chapters/conclusions_merged.tex` | Ch.5: roadmap, timeline, risks, repository status |
 | `chapters/literature_review.tex` | Chapter 2 (literature + summary table) |
-| `chapters/references.tex` | Reference list (thebibliography) |
+| `references.bib` | BibTeX database (all cited works) |
+| `chapters/references.tex` | Invokes `\bibliographystyle{IEEEtran}` + `\bibliography{references}` |
+
+## References (IEEE style)
+
+Citations use numeric brackets (e.g.\ [1]) with the **`cite`** package, and the list is formatted by **`IEEEtran.bst`**, consistent with the IEEE Reference Style described in IEEE’s *Information for Authors* (numbered references, order of first citation). Edit `references.bib` and re-run the build (which runs **BibTeX**).
 
 ## Figures (required before compile)
 
@@ -50,6 +55,8 @@ sudo tlmgr install collection-latexextra
 
 ```bash
 cd /Users/rexyim/Documents/MATLAB/AutomationForExoskeleton/docs/latex
+pdflatex -interaction=nonstopmode main.tex
+bibtex main
 pdflatex -interaction=nonstopmode main.tex
 pdflatex -interaction=nonstopmode main.tex
 ```

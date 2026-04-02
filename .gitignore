@@ -10,3 +10,12 @@ data/public/USC-HAD/usc_had_dataset.mat
 data/public/HuGaDB/hugadb_dataset.mat
 
 data/public/.DS_Store
+
+# LaTeX build artifacts (docs/latex — keep sources + main.pdf only)
+docs/latex/*.aux
+docs/latex/*.bbl
+docs/latex/*.blg
+docs/latex/*.out
+docs/latex/*.toc
+docs/latex/*.log
+docs/latex/*.synctex.gz
