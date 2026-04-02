@@ -16,6 +16,7 @@
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{array}
+\usepackage{tabularx}
 \usepackage{longtable}
 \usepackage{amsmath,amssymb}
 % IEEE-style numeric citations (compression, sorting); load before hyperref
@@ -32,7 +33,8 @@
 
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[C]{\small MAEG4999 Final Year Project II: Robotic Exoskeleton for Load Transportation}
+% Short header text avoids two-line headers on dense literature pages
+\fancyhead[C]{\small MAEG4999 FYP II --- Robotic Exoskeleton for Load Transportation}
 \fancyfoot[C]{\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
 \fancypagestyle{plain}{%

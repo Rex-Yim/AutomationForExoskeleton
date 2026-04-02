@@ -4,7 +4,7 @@
 \section{Introduction}
 The literature review focuses on existing research related to robotic exoskeletons for back support, particularly in the context of manual material handling (MMH) and load transportation tasks. Key themes include exoskeleton designs (passive vs.\ active, rigid vs.\ flexible), actuation systems (with emphasis on cable-driven and series elastic actuators), control strategies (including intention detection, sensor fusion, and machine learning), and personalization mechanisms. The review draws from systematic reviews, empirical studies, and technical papers to identify advancements, limitations, and gaps relevant to the project's goal of developing a software-centric enhancement module for a lower-limb exoskeleton. To provide a comprehensive overview, this review incorporates recent systematic analyses from 2020--2025, highlighting post-pandemic advancements in hybrid designs, AI integration, and industrial evaluations. For instance, Pesenti et al.~\cite{pesenti2021} and subsequent updates in Kermavnar et al.~\cite{kermavnar2021} and later works in bioengineering reviews classify over 30 back-support exoskeletons, emphasizing the shift toward soft and quasi-passive systems for improved user acceptance.
 
-\section{Overview of Back-Support Exoskeletons for MMH}
+\section[Overview of back-support exoskeletons for MMH]{Back-Support Exoskeletons for MMH}
 Back-support exoskeletons (BSEs) are designed to mitigate low back pain and musculoskeletal disorders (MSDs) associated with repetitive lifting, bending, and load carrying in industries such as construction, logistics, and manufacturing. A systematic review by De Looze et al.~\cite{delooze2016} and updated analyses by Pesenti et al.~\cite{pesenti2021} classify BSEs into passive and active types. Passive BSEs, such as the Laevo or SPEXOR, rely on mechanical springs or elastic bands to store and release energy during trunk flexion-extension (TFE) motions, reducing erector spinae muscle activity by 10--40\% without requiring power sources. However, they offer limited adaptability to dynamic tasks and may impose resistance during non-assisted movements.
 
 Recent evaluations, such as Luger et al.~\cite{luger2023}, evaluated the Laevo V2 passive exoskeleton in male workers and reported 12--19\% lower erector spinae activity during symmetric and asymmetric static holding tasks. Koopman et al.~\cite{koopman2020} further quantified that although passive exoskeletons effectively reduce peak L5/S1 moments during symmetric lifting, the moment reduction diminishes significantly when lifting involves trunk rotation or asymmetry---reinforcing the need for active, adaptive systems in real-world industrial settings where perfectly symmetric lifts are rare.
@@ -15,15 +15,15 @@ Long-term field evaluations show that BSE adoption increases with user acceptanc
 
 The SPEXOR passive spinal exoskeleton reduced net metabolic cost by 18\% (range 11--25\%) during symmetric repetitive lifting~\cite{baltrusch2020}. More recent quasi-passive designs with compact variable gravity compensation modules have achieved comparable reductions in erector spinae activity with improved wearer comfort~\cite{song2024}. Long-term field adoption remains constrained by limited adaptability to highly dynamic or asymmetric tasks and by user-acceptance challenges~\cite{babic2021,luger2023}.
 
-\section{Actuation Systems: Focus on Cable-Driven and Series Elastic Actuators}
+\section{Actuation Systems (Cable-Driven and SEAs)}
 Actuation design is critical for efficient torque delivery while ensuring safety and ergonomics. Traditional rigid actuators transmit force via linkages but can cause parasitic forces and limit RoM. Cable-driven systems address this by using flexible transmissions, allowing off-board or on-board placement for portability. Chen et al.~\cite{chen2019} and Li et al.~\cite{li2022} review and demonstrate cable-driven exoskeletons, noting their advantages in reducing structural weight and enabling multi-DoF compensation for misalignment. Recent advancements include Li et al.'s cable-driven asymmetric back exosuit, providing 38\% muscle activity reduction in lifting, and Ding et al.'s spring-cable-differential for passive assistance~\cite{ding2023}.
 
 Series elastic actuators (SEAs) integrate compliant elements to enhance shock tolerance, force control, and human--exoskeleton interaction safety. Pratt and Williamson~\cite{pratt1995} pioneered SEAs, and recent applications in BSEs include Hyun et al.~\cite{hyun2020}. Cable-driven series elastic actuation (CSEA) proposed by Liao et al.~\cite{liao2024} uses a torsion spring--support beam mechanism with deflection constraints to operate in multiple modes: SEA mode for compliant, low-torque assistance and conventional stiff actuator (CSA) mode for high-torque output ($>50$~N$\cdot$m). Bench and human tests validated a 20--30\% reduction in erector spinae EMG during TFE, with stable torque control despite status transitions.
 
-Poliero et al.~\cite{poliero2022} compared active and passive BSEs in dynamic tasks. Ding et al.~\cite{ding2024} introduced a differential SEA with cable routing for precise force control. In soft exoskeletons, twisted string actuators enable lightweight designs with high force density~\cite{xiloyannis2019}. Comparative analysis shows that cable-driven SEAs excel in flexibility but require careful routing and low-friction sheathing~\cite{poliero2022,liao2024}. Bowden cable routing and pre-tensioning, as in upper-limb systems~\cite{tsai2019}, minimize friction and hysteresis. For load transportation, these systems typically deliver 20--50~N$\cdot$m of torque---sufficient for assisting with loads greater than 20~kg---although challenges in battery life and heat dissipation remain.
+Poliero et al.~\cite{poliero2022} compared active and passive BSEs in dynamic tasks. \mbox{Ding et al.}~\cite{ding2024} introduced a differential SEA with cable routing for precise force control. In soft exoskeletons, twisted string actuators enable lightweight designs with high force density~\cite{xiloyannis2019}. Comparative analysis shows that cable-driven SEAs excel in flexibility but require careful routing and low-friction sheathing~\cite{poliero2022,liao2024}. Bowden cable routing and pre-tensioning, as in upper-limb systems~\cite{tsai2019}, minimize friction and hysteresis. For load transportation, these systems typically deliver 20--50~N$\cdot$m of torque---sufficient for assisting with loads greater than 20~kg---although challenges in battery life and heat dissipation remain.
 
-\section{Control Strategies: Intention Detection, Sensor Fusion, and Machine Learning}
-Effective BSE control requires real-time detection of user intent and environmental adaptation. Traditional methods use EMG or IMUs for gait event detection, but they struggle with transitions. Machine learning has emerged for intention prediction: Novak and Riener~\cite{novak2015} survey sensor fusion methods in wearable robotics and highlight intention detection as a central challenge. Separately, locomotion mode classification studies often use SVMs or LSTM networks and report $>90$\% accuracy in controlled settings. Recent applications include Jiang et al.'s EMG-based loading recognition for lumbar exoskeletons~\cite{jiang2024}. Chen et al.~\cite{chen2018} showed that simple kinematic thresholds on hip flexion angle and angular velocity can reliably detect the onset of lifting within 150--200~ms, offering a lightweight, non-ML baseline.
+\section{Intention Detection, Sensor Fusion, and Machine Learning}
+Effective BSE control requires real-time detection of user intent and environmental adaptation. Traditional methods use EMG or IMUs for gait event detection, but they struggle with transitions. Machine learning has emerged for intention prediction: Novak and Riener~\cite{novak2015} survey sensor fusion methods in wearable robotics and highlight intention detection as a central challenge. Separately, locomotion mode classification studies often use SVMs or LSTM networks and report accuracy above $90$\% in controlled settings. Recent applications include Jiang et al.'s EMG-based loading recognition for lumbar exoskeletons~\cite{jiang2024}. Chen et al.~\cite{chen2018} showed that simple kinematic thresholds on hip flexion angle and angular velocity can reliably detect the onset of lifting within 150--200~ms, offering a lightweight, non-ML baseline.
 
 Sensor fusion, often via Kalman filters, integrates IMU data for accurate joint kinematics estimation with low latency ($<200$~ms). Lazzaroni et al.~\cite{lazzaroni2022} improved efficacy with accelerometer-based control during manual handling. Toxiri et al.~\cite{toxiri2018} use finite state machines to modulate assistance based on trunk angle, reducing user effort by 25\%.
 
@@ -39,34 +39,36 @@ The present work addresses software-centric rapid prototyping on IMU data with M
 
 The present work directly addresses gaps repeatedly identified in recent reviews~\cite{pesenti2021,kermavnar2021,troster2022,lin2025}:
 \begin{itemize}
+  \setlength{\itemsep}{4pt plus 1pt minus 1pt}
+  \setlength{\parsep}{0pt}
   \item Lack of real-time personalization and user-specific adaptation (future work).
   \item Insufficient handling of asymmetric and highly dynamic load-transportation tasks.
   \item Delayed or reactive assistance onset in active/quasi-passive systems.
   \item Limited transferability and rapid prototyping of advanced control on existing hardware.
 \end{itemize}
 
-\section{Summary Table of Representative Back-Support Exoskeletons}
+\section{Representative Exoskeletons (Summary Table)}
 \begin{table}[htbp]
   \centering
-  \small
+  \footnotesize
+  \setlength{\tabcolsep}{3.5pt}
+  \renewcommand{\arraystretch}{1.2}
   \caption{Representative back-support exoskeletons (adapted from the literature).}
   \label{tab:exo_summary}
-  \resizebox{\textwidth}{!}{%
-  \begin{tabular}{@{}p{2.6cm}p{1.2cm}p{1.1cm}p{3.2cm}p{3.0cm}@{}}
+  \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{2.65cm}>{\raggedright\arraybackslash}p{1.45cm}>{\raggedright\arraybackslash}p{1.5cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
     \toprule
-    \textbf{Device / Study} & \textbf{Type} & \textbf{Torque (N$\cdot$m)} & \textbf{Reported benefit} & \textbf{Key limitation} \\
+    \textbf{Device / study} & \textbf{Type} & \textbf{Torque (N$\cdot$m)} & \textbf{Reported benefit} & \textbf{Key limitation} \\
     \midrule
     Laevo V2 (2023) & Passive & $\sim$35--40 & 12--19\% erector spinae EMG (static) & Resistance in extension; poor asymmetry \\
     SPEXOR (2020) & Passive & $\sim$40 & 11--25\% net metabolic cost & Fixed profile; added hip stiffness \\
     HeroWear Apex & Soft quasi-passive & 25--35 & 7.9--23\% metabolic; $\sim$20--30\% back force & Lower torque; limited overhead \\
     SuitX BackX & Active & 30--60 & Up to 50\% lumbar compression & Weight $>7$~kg; rigid RoM limits \\
     Cray X (2022) & Active & 50--80 & 16--37.8\% erector spinae EMG & High power; bulky battery \\
-    SIAT-WEXv2 & Active hip+knee & $\sim$60 & 25--35\% peak lumbar moment (15--25~kg) & Complex mechanics; $>5$~kg \\
+    SIAT-WEXv2 & Active (hip \& knee) & $\sim$60 & 25--35\% peak lumbar moment (15--25~kg) & Complex mechanics; $>5$~kg \\
     VT-LOWE & Passive & $\sim$45 & 31.5\% peak back-muscle activity & No dynamic adaptation \\
     Liao et al.\ CSEA (2024) & Hybrid & $>50$ (CSA) & 20--30\% erector spinae EMG & Mode-switching complexity \\
     Auxivo LiftSuit (2024) & Quasi-passive & 30--45 & 15--28\% metabolic; $\sim$35\% EMG & Limited customization \\
     Hyundai / German Bionic & Active & 50--75 & 20--40\% back load reduction & Cost; rigid harness \\
     \bottomrule
-  \end{tabular}%
-  }
+  \end{tabularx}
 \end{table}
