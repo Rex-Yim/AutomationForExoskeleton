@@ -7,6 +7,7 @@ This folder builds a **PDF report** aligned to the **current MATLAB codebase**: 
 | File | Role |
 |------|------|
 | `main.tex` | Title page, Ch.1--2 inputs, Ch.3--5 chapter headings + merged bodies |
+| `main.pdf` | **Built report** (commit after recompiling; see build commands below) |
 | `chapters/abstract_merged.tex` | Abstract: interim PDF + repository corrections/updates |
 | `chapters/methods_merged.tex` | Ch.3: planned (PDF) vs implemented methods |
 | `chapters/results_merged.tex` | Ch.4: interim narrative + updated metrics/figures |
@@ -54,6 +55,12 @@ pdflatex -interaction=nonstopmode main.tex
 ```
 
 Output: **`main.pdf`** in this folder.
+
+Alternative (Homebrew `tectonic`, no full TeX Live install):
+
+```bash
+tectonic -X compile main.tex
+```
 
 Optional:
 
