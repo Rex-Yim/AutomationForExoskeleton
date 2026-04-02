@@ -22,7 +22,7 @@
 \setlength{\parskip}{0.25em}
 \setstretch{1.02}
 
-\graphicspath{{../../results/}}
+\graphicspath{{../../results/}{assets/}}
 
 \input{generated_metrics}
 
@@ -60,11 +60,11 @@
   \setlength{\fboxsep}{8pt}%
   \setlength{\fboxrule}{0.7pt}%
   \fcolorbox{stripborder}{white}{%
-    \begin{minipage}[c][7.6em][c]{0.305\textwidth}
+    \begin{minipage}[c][7.2em][c]{0.255\textwidth}
       \centering
-      {\fontsize{20}{24}\selectfont\bfseries\color{bodytext} #1}\\[0.18em]
-      {\fontsize{48}{54}\selectfont\bfseries\color{accent} #2}\\[0.14em]
-      {\fontsize{20}{24}\selectfont\color{footfg} #3}
+      {\fontsize{18}{22}\selectfont\bfseries\color{bodytext} #1}\\[0.18em]
+      {\fontsize{44}{50}\selectfont\bfseries\color{accent} #2}\\[0.14em]
+      {\fontsize{18}{22}\selectfont\color{footfg} #3}
     \end{minipage}%
   }%
 }
@@ -106,6 +106,19 @@
   }%
 }
 
+\newcommand{\qrbadge}[3]{%
+  \begin{minipage}[c][7.2em][c]{0.095\textwidth}
+    \centering
+    \setlength{\fboxsep}{4pt}%
+    \setlength{\fboxrule}{0.6pt}%
+    \fcolorbox{stripborder}{white}{%
+      \includegraphics[width=0.82\linewidth]{#1}%
+    }\\[0.18em]
+    {\fontsize{15}{18}\selectfont\bfseries #2}\\[0.05em]
+    {\fontsize{13}{16}\selectfont\color{footfg} #3}
+  \end{minipage}%
+}
+
 \begin{document}
 \pagestyle{empty}
 \thispagestyle{empty}
@@ -120,13 +133,23 @@
   \parbox{\dimexpr\linewidth-2\fboxsep}{%
     \color{bannerfg}
     \vspace{0.44em}
-    \begin{center}
+    \noindent
+    \begin{minipage}[c]{0.14\linewidth}
+      \centering
+      \includegraphics[width=\linewidth,keepaspectratio]{cuhk_crest.png}
+    \end{minipage}\hfill
+    \begin{minipage}[c]{0.68\linewidth}
+      \centering
       {\fontsize{56}{64}\selectfont\bfseries Robotic Exoskeleton for Load Transportation}\\[0.18em]
       {\fontsize{31}{38}\selectfont\color{banneraccent}IMU-based locomotion intent recognition and assist gating in MATLAB}\\[0.30em]
       {\fontsize{25}{31}\selectfont Yim Fu Chong \quad\textcolor{banneraccent}{$\bullet$}\quad Supervisor: Prof.\ Wei-Hsin Liao}\\[0.18em]
       {\fontsize{22}{28}\selectfont Department of Mechanical and Automation Engineering --- The Chinese University of Hong Kong}\\[0.12em]
       {\fontsize{20}{25}\selectfont ExoTechHK Limited (HKSTP) \quad\textcolor{banneraccent}{$\bullet$}\quad Final Year Project (MAEG4999)}
-    \end{center}
+    \end{minipage}\hfill
+    \begin{minipage}[c]{0.14\linewidth}
+      \centering
+      \includegraphics[width=\linewidth,keepaspectratio]{mae_logo.png}
+    \end{minipage}
     \vspace{0.36em}
   }%
 }
@@ -152,51 +175,14 @@
 \metriccard{Deployment baseline\\Binary SVM, merged 5-fold OOF}{\BinaryOofAccMerged\%}{Best validated claim for assist gating}\hfill
 \metriccard{Exploratory activity model\\12-class ECOC, 5-fold OOF}{\MulticlassOofAcc\%}{Useful for analysis, not direct control}\hfill
 \ifnum\HasLstmMetrics=1
-  \metriccard{Sequence baseline\\Binary LSTM, 20\% holdout}{\LstmHoldoutAcc\%}{Separate protocol, not directly comparable}
+  \metriccard{Sequence baseline\\Binary LSTM, 20\% holdout}{\LstmHoldoutAcc\%}{Separate protocol, not directly comparable}\hfill
 \else
-  \metriccard{Sequence baseline\\Binary LSTM, 20\% holdout}{---}{Run training and export metrics}
+  \metriccard{Sequence baseline\\Binary LSTM, 20\% holdout}{---}{Run training and export metrics}\hfill
 \fi
+\qrbadge{github_qr.png}{GitHub}{Scan}\hfill
+\qrbadge{instagram_qr.png}{IG}{Scan}
 
 \vspace{0.18em}
-
-% ---------- Main figures ----------
-\noindent
-\begin{minipage}[t]{0.485\textwidth}
-  \posterfigcap{svm_confusion_matrix.png}{Merged binary SVM: the main validated result for assist gating}{0.248\textheight}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.485\textwidth}
-  \posterfigcap{pipeline_output.png}{Real-time MATLAB replay: fused hip angle and FSM-latched assist output}{0.248\textheight}
-\end{minipage}
-
-\vspace{0.14em}
-
-\noindent
-\begin{minipage}[t]{0.485\textwidth}
-  \posterfigcap{multiclass_confusion_matrix.png}{12-class ECOC: exploratory activity recognition is much harder than binary gating}{0.228\textheight}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.485\textwidth}
-  \posterfigcap{lstm_confusion_matrix.png}{Binary LSTM: supporting sequence baseline on a separate 20\% holdout split}{0.228\textheight}
-\end{minipage}
-
-\vspace{0.14em}
-
-\posterbox{Pipeline at a glance}{
-  \begin{center}
-    \workflowstep{1}{IMU data\\and CSV replay}\hfill
-    {\fontsize{38}{38}\selectfont\color{accent}$\rightarrow$}\hfill
-    \workflowstep{2}{Kalman fusion\\for hip state}\hfill
-    {\fontsize{38}{38}\selectfont\color{accent}$\rightarrow$}\hfill
-    \workflowstep{3}{30-D features\\per window}\hfill
-    {\fontsize{38}{38}\selectfont\color{accent}$\rightarrow$}\hfill
-    \workflowstep{4}{Binary SVM\\prediction}\hfill
-    {\fontsize{38}{38}\selectfont\color{accent}$\rightarrow$}\hfill
-    \workflowstep{5}{FSM hysteresis\\for assist}\hfill
-    {\fontsize{38}{38}\selectfont\color{accent}$\rightarrow$}\hfill
-    \workflowstep{6}{Stable on/off\\command}
-  \end{center}
-}
-
-\vspace{0.1em}
 
 % ---------- Two columns ----------
 \noindent
@@ -218,15 +204,6 @@
       \item \textbf{Features:} \textbf{30-D} vector, five statistics per IMU slot across six slots.
       \item \textbf{Primary model:} RBF SVM for locomotion-like vs.\ non-locomotion.
       \item \textbf{Supervisory smoothing:} FSM hysteresis, 3 positives to engage assist and 5 negatives to release.
-    \end{compactitem}
-  }
-
-  \posterbox{Data and evaluation protocol}{
-    \begin{compactitem}
-      \item \textbf{HuGaDB} contributes six on-body IMU streams per window.
-      \item \textbf{USC-HAD} contributes one IMU stream; the remaining slots are zero-padded so both datasets share the same 30-D layout.
-      \item The \textbf{binary SVM} is the deployment baseline and is evaluated with five-fold out-of-fold predictions.
-      \item The \textbf{12-class ECOC} and \textbf{binary LSTM} are supporting baselines; the LSTM uses a separate stratified 20\% holdout and is therefore not directly comparable.
     \end{compactitem}
   }
 \end{minipage}\hfill
@@ -252,21 +229,52 @@
     The USC-only score is numerically highest, but the \textbf{merged} model is the better poster result because it generalizes across a broader sensing setup and label mixture.
   }
 
-  \posterbox{How to read the supporting baselines}{
+  \posterbox{Data and evaluation protocol}{
     \begin{compactitem}
-      \item The pipeline plot shows why the FSM matters: it turns noisy frame-level predictions into a smoother and more usable assist signal.
-      \item The multiclass ECOC score of \textbf{\MulticlassOofAcc\%} is informative for analysis, but not yet strong enough for fine-grained control.
-      \item \ifnum\HasLstmMetrics=1 LSTM holdout accuracy is \textbf{\LstmHoldoutAcc\%}, but it uses a different validation protocol, so it is a supporting baseline rather than a direct SVM comparison.\else LSTM metrics are not exported, so it is not part of the validated poster claim.\fi
+      \item \textbf{HuGaDB} contributes six on-body IMU streams per window.
+      \item \textbf{USC-HAD} contributes one IMU stream; the remaining slots are zero-padded so both datasets share the same 30-D layout.
+      \item The \textbf{binary SVM} is the deployment baseline and is evaluated with five-fold out-of-fold predictions.
+      \item The \textbf{12-class ECOC} and \textbf{binary LSTM} are supporting baselines; the LSTM uses a separate stratified 20\% holdout and is therefore not directly comparable.
     \end{compactitem}
   }
+\end{minipage}
 
-  \posterbox{Current limits}{
-    \begin{compactitem}
-      \item No hardware-in-the-loop or human-subject load trials are reported here.
-      \item The 100--200~ms predictive horizon remains a \textbf{design target}, not a re-benchmarked final result.
-      \item Current output is \textbf{assist gating}, not full torque scheduling or terrain-aware control.
-    \end{compactitem}
-  }
+\vspace{0.14em}
+\posterbox{Pipeline at a glance}{
+  \begin{center}
+    \workflowstep{1}{IMU data\\and CSV replay}\hfill
+    {\fontsize{38}{38}\selectfont\color{accent}$\rightarrow$}\hfill
+    \workflowstep{2}{Kalman fusion\\for hip state}\hfill
+    {\fontsize{38}{38}\selectfont\color{accent}$\rightarrow$}\hfill
+    \workflowstep{3}{30-D features\\per window}\hfill
+    {\fontsize{38}{38}\selectfont\color{accent}$\rightarrow$}\hfill
+    \workflowstep{4}{Binary SVM\\prediction}\hfill
+    {\fontsize{38}{38}\selectfont\color{accent}$\rightarrow$}\hfill
+    \workflowstep{5}{FSM hysteresis\\for assist}\hfill
+    {\fontsize{38}{38}\selectfont\color{accent}$\rightarrow$}\hfill
+    \workflowstep{6}{Stable on/off\\command}
+  \end{center}
+}
+
+\vspace{0.14em}
+
+% ---------- Main figures ----------
+\noindent
+\begin{minipage}[t]{0.485\textwidth}
+  \posterfigcap{svm_confusion_matrix.png}{Merged binary SVM: the main validated result for assist gating}{0.248\textheight}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+  \posterfigcap{pipeline_output.png}{Real-time MATLAB replay: fused hip angle and FSM-latched assist output}{0.248\textheight}
+\end{minipage}
+
+\vspace{0.14em}
+
+\noindent
+\begin{minipage}[t]{0.485\textwidth}
+  \posterfigcap{multiclass_confusion_matrix.png}{12-class ECOC: exploratory activity recognition is much harder than binary gating}{0.228\textheight}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+  \posterfigcap{lstm_confusion_matrix.png}{Binary LSTM: supporting sequence baseline on a separate 20\% holdout split}{0.228\textheight}
 \end{minipage}
 
 \vspace{0.14em}
@@ -284,19 +292,31 @@
 \vspace{0.14em}
 \noindent
 \begin{minipage}[t]{0.485\textwidth}
+  \posterbox{How to read the supporting baselines}{
+    \begin{compactitem}
+      \item The pipeline plot shows why the FSM matters: it turns noisy frame-level predictions into a smoother and more usable assist signal.
+      \item The multiclass ECOC score of \textbf{\MulticlassOofAcc\%} is informative for analysis, but not yet strong enough for fine-grained control.
+      \item \ifnum\HasLstmMetrics=1 LSTM holdout accuracy is \textbf{\LstmHoldoutAcc\%}, but it uses a different validation protocol, so it is a supporting baseline rather than a direct SVM comparison.\else LSTM metrics are not exported, so it is not part of the validated poster claim.\fi
+    \end{compactitem}
+  }
+
+  \posterbox{Current limits}{
+    \begin{compactitem}
+      \item No hardware-in-the-loop or human-subject load trials are reported here.
+      \item The 100--200~ms predictive horizon remains a \textbf{design target}, not a re-benchmarked final result.
+      \item Current output is \textbf{assist gating}, not full torque scheduling or terrain-aware control.
+    \end{compactitem}
+  }
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
   \posterbox{Next steps}{
     \begin{compactitem}
       \item Align SVM and LSTM evaluation under the same cross-validation protocol.
       \item Add hardware integration, latency measurement, and load-carrying trials.
       \item Move from binary assist gating toward subject-specific, activity-aware assistance.
     \end{compactitem}
-
-    \vspace{0.18em}
-    {\fontsize{21}{26}\selectfont\bfseries Code and report:}\\
-    {\color{accent}\fontsize{21}{26}\selectfont\url{https://github.com/Rex-Yim/AutomationForExoskeleton}}
   }
-\end{minipage}\hfill
-\begin{minipage}[t]{0.485\textwidth}
+
   \posterbox{Summary}{
     \begin{compactitem}
       \item \textbf{Delivered:} Kalman fusion, binary SVM, FSM smoothing, reproducible metrics, and CSV replay in MATLAB.
@@ -306,13 +326,5 @@
     \end{compactitem}
   }
 \end{minipage}
-
-\noindent{\color{stripborder}\rule{\linewidth}{0.8pt}}
-
-\begin{center}
-  {\color{footfg}\fontsize{20}{24}\selectfont
-  MAEG4999 $\cdot$ CUHK Mechanical and Automation Engineering \quad\textcolor{stripborder}{$\bullet$}\quad
-  Scalars and figures are synced from MATLAB exports via \texttt{generated\_metrics.tex}}
-\end{center}
 
 \end{document}
