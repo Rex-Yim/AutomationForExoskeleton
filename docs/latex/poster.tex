@@ -1,0 +1,244 @@
+% A0 landscape poster — MAEG4999 / AutomationForExoskeleton
+% Build: cd docs/latex && pdflatex -interaction=nonstopmode poster.tex
+\documentclass[20pt,landscape]{extarticle}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{microtype}
+\usepackage[a0paper,landscape,margin=13mm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{colortbl}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage[hyphens]{url}
+\usepackage{ragged2e}
+\usepackage{setspace}
+\usepackage{parskip}
+\setlength{\parskip}{0.28em}
+\setstretch{1.03}
+
+\graphicspath{{../../results/}}
+
+\input{generated_metrics}
+
+% --- Palette ---
+\definecolor{bannerbg}{HTML}{142f52}
+\definecolor{bannerfg}{HTML}{f7fafc}
+\definecolor{banneraccent}{HTML}{63b3ed}
+\definecolor{stripbg}{HTML}{edf2f7}
+\definecolor{stripborder}{HTML}{cbd5e0}
+\definecolor{sectrule}{HTML}{2c5282}
+\definecolor{accent}{HTML}{2b6cb0}
+\definecolor{accentsoft}{HTML}{bee3f8}
+\definecolor{figbg}{HTML}{f8fafc}
+\definecolor{footfg}{HTML}{4a5568}
+\definecolor{bodytext}{HTML}{1a202c}
+\definecolor{captionfg}{HTML}{2d3748}
+
+\newcommand{\postersection}[1]{%
+  \par\addvspace{0.22em}%
+  \noindent
+  \raisebox{0.12ex}{\color{sectrule}\rule{3.8pt}{1.35em}}%
+  \hspace{0.5em}%
+  \parbox[t]{\dimexpr\linewidth-3.8pt-0.5em}{\raggedright\color{bodytext}\fontsize{27}{31}\selectfont\bfseries #1}%
+  \par\vspace{0.22em}%
+  \noindent\ignorespaces
+}
+
+\newlength{\posterinnerw}
+
+% Framed figure + caption (fcolorbox: 5pt sep + 0.6pt rule each side $\Rightarrow$ subtract 11.2pt)
+\newcommand{\posterfig}[2]{%
+  \par\addvspace{0.12em}%
+  \setlength{\fboxsep}{4pt}%
+  \setlength{\fboxrule}{0.6pt}%
+  \setlength{\posterinnerw}{\dimexpr\linewidth-9.2pt\relax}%
+  \noindent\fcolorbox{stripborder}{figbg}{%
+    \begin{minipage}{\posterinnerw}\centering
+      \includegraphics[width=\linewidth]{#1}%
+    \end{minipage}%
+  }\\[0.22em]
+  {\centering\color{captionfg}\fontsize{20}{24}\selectfont\bfseries #2\par}%
+  \par\addvspace{0.1em}%
+}
+
+\newcommand{\posterfigcap}[3]{%
+  \par\addvspace{0.12em}%
+  \setlength{\fboxsep}{4pt}%
+  \setlength{\fboxrule}{0.6pt}%
+  \setlength{\posterinnerw}{\dimexpr\linewidth-9.2pt\relax}%
+  \noindent\fcolorbox{stripborder}{figbg}{%
+    \begin{minipage}{\posterinnerw}\centering
+      \includegraphics[width=\linewidth,height=#3,keepaspectratio]{#1}%
+    \end{minipage}%
+  }\\[0.22em]
+  {\centering\color{captionfg}\fontsize{20}{24}\selectfont\bfseries #2\par}%
+  \par\addvspace{0.1em}%
+}
+
+\begin{document}
+\pagestyle{empty}
+\thispagestyle{empty}
+\color{bodytext}
+\RaggedRight
+\sloppy
+\emergencystretch=2.5em
+
+% ---------- Title banner ----------
+\noindent\colorbox{bannerbg}{%
+  \parbox{\dimexpr\linewidth-2\fboxsep}{%
+    \color{bannerfg}
+    \vspace{0.38em}
+    \begin{center}
+      {\fontsize{46}{54}\selectfont\bfseries Robotic Exoskeleton for Load Transportation}\\[0.28em]
+      {\fontsize{28}{35}\selectfont\color{banneraccent}Software-centric intent recognition \& sensor fusion for assistive control}\\[0.32em]
+      {\fontsize{24}{30}\selectfont Yim Fu Chong \quad\textcolor{banneraccent}{$\bullet$}\quad Supervisor: Prof.\ Wei-Hsin Liao}\\[0.2em]
+      {\fontsize{21}{27}\selectfont Department of Mechanical and Automation Engineering --- The Chinese University of Hong Kong}\\[0.12em]
+      {\fontsize{19}{25}\selectfont ExoTechHK Limited (HKSTP) \quad\textcolor{banneraccent}{$\bullet$}\quad Final Year Project (MAEG4999)}
+    \end{center}
+    \vspace{0.32em}
+  }%
+}
+
+\vspace{0.22em}
+
+% Body text size for everything below the banner (A0 readability)
+\fontsize{24}{30}\selectfont
+
+% ---------- At-a-glance metrics ----------
+\noindent
+\setlength{\fboxsep}{6pt}%
+\setlength{\fboxrule}{0.65pt}%
+\fcolorbox{stripborder}{stripbg}{%
+  \parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule}{%
+    \centering
+    \begin{minipage}[c]{0.31\textwidth}\centering
+      {\fontsize{20}{24}\selectfont\bfseries\color{bodytext}Binary SVM (merged, 5-fold OOF)}\\[0.12em]
+      {\fontsize{42}{48}\selectfont\bfseries\color{accent}\BinaryOofAccMerged\%}\\[0.08em]
+      {\fontsize{20}{24}\selectfont\color{footfg}USC-HAD + HuGaDB}
+    \end{minipage}\hfill
+    \textcolor{stripborder}{\rule[-1.55em]{0.6pt}{3.6em}}\hfill
+    \begin{minipage}[c]{0.31\textwidth}\centering
+      {\fontsize{20}{24}\selectfont\bfseries\color{bodytext}12-class ECOC (5-fold OOF)}\\[0.12em]
+      {\fontsize{42}{48}\selectfont\bfseries\color{accent}\MulticlassOofAcc\%}\\[0.08em]
+      {\fontsize{20}{24}\selectfont\color{footfg}Stratified subsample}
+    \end{minipage}\hfill
+    \textcolor{stripborder}{\rule[-1.55em]{0.6pt}{3.6em}}\hfill
+    \begin{minipage}[c]{0.31\textwidth}\centering
+      {\fontsize{20}{24}\selectfont\bfseries\color{bodytext}Binary LSTM (holdout)}\\[0.12em]
+      \ifnum\HasLstmMetrics=1
+        {\fontsize{42}{48}\selectfont\bfseries\color{accent}\LstmHoldoutAcc\%}\\[0.08em]
+        {\fontsize{20}{24}\selectfont\color{footfg}Not comparable to SVM OOF}
+      \else
+        {\large\sffamily ---}\\[0.06em]
+        {\fontsize{20}{24}\selectfont\color{footfg}Run training / export}
+      \fi
+    \end{minipage}
+  }%
+}
+
+\vspace{0.18em}
+
+% ---------- Confusion matrices (aligned with headline columns) ----------
+\noindent
+\begin{minipage}[t]{0.31\textwidth}
+  \posterfigcap{svm_confusion_matrix.png}{Binary confusion matrix --- merged SVM, five-fold OOF}{0.265\textheight}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.31\textwidth}
+  \posterfigcap{multiclass_confusion_matrix.png}{Twelve-class ECOC --- five-fold OOF}{0.265\textheight}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.31\textwidth}
+  \posterfigcap{lstm_confusion_matrix.png}{Binary LSTM --- stratified 20\% holdout}{0.265\textheight}
+\end{minipage}
+
+\vspace{0.2em}
+
+% ---------- Three columns ----------
+\noindent
+\begin{minipage}[t]{0.31\textwidth}
+  \postersection{System overview}
+  Sliding windows (1.0~s, 50\% overlap, 100~Hz): \textbf{30-D} feature vector (five statistics per IMU slot $\times$ six slots). HuGaDB uses six streams; USC-HAD single-stream windows are zero-padded.
+
+  \par\smallskip\noindent
+  \textbf{RBF SVM} (\texttt{fitcsvm}) is the primary classifier; \textbf{multiclass ECOC} (12 labels) supports analysis; \textbf{FSM}: 3 consecutive walk-like predictions to assist, 5 to release---reducing chatter in simulation.
+
+  \postersection{Real-time pipeline (simulation)}
+  Kalman-based hip angle, classifier output, and FSM-latched assist command---stable engagement vs.\ rapid toggling.
+
+  \posterfig{pipeline_output.png}{Pipeline output: hip flexion, assist vs.\ acceleration magnitude, annotations when available}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.31\textwidth}
+  \postersection{Binary SVM accuracy (ablation)}
+  \setlength{\fboxsep}{4pt}%
+  \setlength{\fboxrule}{0.6pt}%
+  \setlength{\tabcolsep}{8pt}%
+  \setlength{\posterinnerw}{\dimexpr\linewidth-9.2pt\relax}%
+  \noindent\fcolorbox{stripborder}{white}{%
+    \begin{minipage}{\posterinnerw}
+      \renewcommand{\arraystretch}{1.12}%
+      \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.62\linewidth} r@{}}
+        \toprule
+        \rowcolor{accentsoft}
+        \textbf{Training data} & \textbf{OOF acc.} \\
+        \midrule
+        USC-HAD only & \textbf{\BinaryOofAccUsc\%} \\
+        HuGaDB only & \textbf{\BinaryOofAccHuGa\%} \\
+        USC-HAD + HuGaDB (merged) & \textbf{\textcolor{accent}{\BinaryOofAccMerged\%}} \\
+        \bottomrule
+      \end{tabular}%
+    \end{minipage}%
+  }
+  \vspace{0.12em}
+  \noindent
+  The $>90$\% target is met for USC-only and merged training; HuGaDB-only is harder (variability / imbalance). The \textbf{merged} model is the default for broader sensing layouts.
+
+  \postersection{Multiclass \& LSTM baselines}
+  \noindent\textbf{12-class ECOC:} exploratory unified labels (harder than binary assist gating).
+
+  \par\smallskip\noindent
+  \textbf{LSTM:} sequence baseline on the same binary task; holdout metric is not directly comparable to SVM OOF.
+  \ifnum\HasLstmMetrics=1
+    \par\smallskip\noindent\textit{Note:} LSTM training was interrupted before the final epoch; see report.
+  \fi
+\end{minipage}\hfill
+\begin{minipage}[t]{0.31\textwidth}
+  \postersection{Motivation}
+  Heavy manual handling ($>20$~kg) drives MSDs, back pain, and lost productivity. Passive or fixed-profile exoskeletons often mismatch user intent and context.
+
+  \par\medskip\noindent
+  This work targets a \textbf{lightweight, software-based} module: real-time \textbf{locomotion vs.\ non-locomotion} gating using IMU data and classical ML---without EMG---for eventual hip/knee assistance during load transport.
+
+  \postersection{Goals}
+  \begin{itemize}\setlength{\itemsep}{0.18em}\setlength{\leftmargini}{1.2em}\setlength{\labelsep}{0.4em}
+    \item Kalman-based fusion for joint kinematics from a \textbf{three-phone IMU} prototype (CSV replay).
+    \item \textbf{Binary} locomotion intent (locomotion-like vs.\ non-locomotion) with SVM features on \textbf{USC-HAD} and \textbf{HuGaDB}.
+    \item FSM smoothing for stable assist commands; optional \textbf{binary LSTM} sequence baseline.
+    \item Metrics synced with \texttt{generated\_metrics.tex} / MATLAB exports.
+  \end{itemize}
+
+  \postersection{Takeaways}
+  \begin{itemize}\setlength{\itemsep}{0.18em}\setlength{\leftmargini}{1.2em}\setlength{\labelsep}{0.4em}
+    \item Reproducible \textbf{binary assist gating} on public IMU data with strong merged accuracy.
+    \item \textbf{Kalman + SVM + FSM} integrated end-to-end in MATLAB for CSV-driven simulation.
+    \item Next: hardware-in-the-loop, trials under load, aligned LSTM vs.\ SVM validation, end-to-end latency studies.
+  \end{itemize}
+
+  \postersection{Code \& report}
+  {\color{accent}\fontsize{21}{26}\selectfont\url{https://github.com/Rex-Yim/AutomationForExoskeleton}}
+
+  \vspace{0.35em}
+  \begin{center}
+    \color{footfg}\fontsize{20}{25}\selectfont
+    MAEG4999 $\cdot$ CUHK Mechanical and Automation Engineering\\[0.22em]
+    \textit{Scalars and figures match the FYP report when \texttt{ExportMetricsForReport.m} has been run.}
+  \end{center}
+\end{minipage}
+
+\vspace{0.2em}
+\noindent{\color{stripborder}\rule{\linewidth}{0.6pt}}
+
+\end{document}
