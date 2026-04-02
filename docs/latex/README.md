@@ -14,6 +14,7 @@ This folder builds a **PDF report** aligned to the **current MATLAB codebase**: 
 | `chapters/conclusions_merged.tex` | Ch.5: roadmap, timeline, risks, repository status |
 | `chapters/literature_review.tex` | Chapter 2 (literature + summary table) |
 | `references.bib` | BibTeX database (all cited works) |
+| `IEEEtran.bst` | IEEE bibliography style (bundled for BasicTeX / CI; same as CTAN) |
 | `chapters/references.tex` | Invokes `\bibliographystyle{IEEEtran}` + `\bibliography{references}` |
 | `generated_metrics.tex` | **Auto-generated** SVM/multiclass accuracies for tables/abstract (`scripts/ExportMetricsForReport.m`) |
 

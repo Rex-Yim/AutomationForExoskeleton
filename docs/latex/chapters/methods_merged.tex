@@ -23,7 +23,9 @@ The delivered system classifies on overlapping windows (100 samples, step 50) us
 
 \textbf{Binary model} (\texttt{fitcsvm}): locomotion-like vs.\ non-locomotion for assist gating. \textbf{Multiclass model} (\texttt{fitcecoc}, one-vs-all): twelve unified labels in \texttt{ActivityClassRegistry.m}.
 
-\textbf{Optional binary LSTM} (Deep Learning Toolbox): sliding windows are encoded as \textbf{sequences} $(6 \times N_{\mathrm{IMU\,slots}}) \times 100$ (features $\times$ time) via \texttt{ImuWindowToSequenceMatrix.m}; training data are built with \texttt{PrepareTrainingDataSequences.m} (same USC-HAD / HuGaDB sources and binary label maps as the SVM pipeline). \texttt{TrainLstmBinary.m} trains a two-layer LSTM classifier (128 units per layer, dropout, Adam, stratified 20\% holdout with fixed RNG seed for reproducibility) and saves \texttt{Binary\_LSTM\_Network.mat}. Real-time simulation uses \texttt{RunExoskeletonPipelineLstm.m}. The hybrid ``SVM then LSTM then fuse'' pseudocode above is \textbf{not} implemented; the LSTM is a standalone alternative to the RBF SVM for the same binary assist decision.
+\textbf{Optional binary LSTM} (Deep Learning Toolbox): sliding windows are encoded as \textbf{sequences} $(6 \times N_{\mathrm{IMU\,slots}}) \times 100$ (features $\times$ time) via \texttt{ImuWindowToSequenceMatrix.m}; training data are built with \texttt{PrepareTrainingDataSequences.m} (same USC-HAD / HuGaDB sources and binary label maps as the SVM pipeline).
+
+\texttt{TrainLstmBinary.m} trains a two-layer LSTM classifier (128 units per layer, dropout, Adam, stratified 20\% holdout with fixed RNG seed for reproducibility) and saves \texttt{Binary\_LSTM\_Network.mat}. Real-time simulation uses \texttt{RunExoskeletonPipelineLstm.m}. The hybrid ``SVM then LSTM then fuse'' pseudocode above is \textbf{not} implemented; the LSTM is a standalone alternative to the RBF SVM for the same binary assist decision.
 
 \section{Multi-Sensor Data Processing Pipeline (planned and implemented)}
 \subsection*{Original proposal}
@@ -44,9 +46,15 @@ The repository uses \texttt{imufilter} as in the snippet for the simulation pipe
 Utilize the Statistics and Machine Learning Toolbox for SVMs and the Deep Learning Toolbox for LSTM networks; train on labeled locomotion data toward $>90$\% accuracy on dynamic terrain recognition; use confusion matrices, precision, and recall; post-trial fine-tuning and transfer learning; ensemble SVM+LSTM; Bayesian hyperparameter optimization; HuGaDB augmentation with synthetic variations; deployment via MATLAB Coder to embedded targets. Example workflow: (1)~preprocess and window; (2)~train base models on public data; (3)~fine-tune on user trials; (4)~evaluate with confusion matrices and F1-scores. Simulations were expected to validate 85--95\% accuracy before hardware tests.
 
 \subsection*{Implemented baseline}
-\textbf{In use:} \texttt{fitcsvm}, \texttt{fitcecoc}, \texttt{crossval}, \texttt{kfoldPredict}. Scripts: \texttt{TrainSvmBinary}, \texttt{TrainSvmMulticlass}, \texttt{EvaluateSvmConfusion}, \texttt{EvaluateMulticlassConfusion}, \texttt{RunSvmDatasetAblation}. Models: \texttt{Binary\_SVM\_Model.mat} (merged default), \texttt{Multiclass\_SVM\_ECOC.mat}.
+{\small
+\textbf{In use:} \texttt{fitcsvm}, \texttt{fitcecoc}, \texttt{crossval}, \texttt{kfoldPredict}.
 
-\textbf{Optional (Deep Learning Toolbox):} \texttt{trainNetwork}, sequence input + LSTM layers. Scripts: \texttt{TrainLstmBinary}, \texttt{EvaluateLstmConfusion}. Model: \texttt{Binary\_LSTM\_Network.mat}.
+\textbf{Scripts:} \texttt{TrainSvmBinary}, \texttt{TrainSvmMulticlass}, \texttt{EvaluateSvmConfusion}, \texttt{EvaluateMulticlassConfusion}, \texttt{RunSvmDatasetAblation}.
+
+\textbf{Models:} \texttt{Binary\_SVM\_Model.mat} (merged default), \texttt{Multiclass\_SVM\_ECOC.mat}.
+
+\textbf{Optional (Deep Learning Toolbox):} \texttt{trainNetwork}, sequence input + LSTM layers. \textbf{Scripts:} \texttt{TrainLstmBinary}, \texttt{EvaluateLstmConfusion}. \textbf{Model:} \texttt{Binary\_LSTM\_Network.mat}.
+}
 
 \textbf{Not implemented:} MATLAB Coder deployment, Bayesian optimization in-repo, ensemble fusion of SVM and LSTM outputs.
 
@@ -54,7 +62,7 @@ Utilize the Statistics and Machine Learning Toolbox for SVMs and the Deep Learni
 \subsection*{Original proposal}
 Translate model outputs into torque commands using an FSM; architecture spanning gait event detection, intention recognition, and reference generation; layers described as IMU input, Kalman+ML processing (parallel, low latency), FSM+PID control, and actuator output with safety limits; ROS Toolbox for pre-deployment simulation; modular design inspired by rehabilitation exoskeleton practice~\cite{dosSantos2017}; mitigation of sensor drift via periodic resets.
 
-\begin{itemize}[noitemsep]
+\begin{itemize}
   \item \textbf{Input layer:} IMU raw signals.
   \item \textbf{Processing layer:} Kalman fusion + ML classification; parallel processing for low latency ($<50$~ms targeted in proposal).
   \item \textbf{Control layer:} FSM and PID-style torque profiling (planned).
@@ -62,7 +70,9 @@ Translate model outputs into torque commands using an FSM; architecture spanning
 \end{itemize}
 
 \subsection*{Implemented baseline}
-The MATLAB simulation produces a \textbf{binary} assist command (0/1) via \texttt{RealtimeFsm.m} with asymmetric hysteresis (3 / 5 consecutive predictions). \texttt{RunExoskeletonPipelineMulticlass.m} optionally drives the FSM from multiclass predictions through \texttt{RealtimeFsmFromActivityClass}. ROS integration, PID torque generation, and hardware actuation are \textbf{not implemented} in software.
+The MATLAB simulation produces a \textbf{binary} assist command (0/1) via \texttt{RealtimeFsm.m} with asymmetric hysteresis (3 / 5 consecutive predictions).
+
+\texttt{RunExoskeletonPipelineMulticlass.m} optionally drives the FSM from multiclass predictions through \texttt{RealtimeFsmFromActivityClass}. ROS integration, PID torque generation, and hardware actuation are \textbf{not implemented} in software.
 
 \section{List of MATLAB Libraries and Toolboxes}
 \subsection*{Components in active use}

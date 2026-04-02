@@ -25,7 +25,9 @@ Poliero et al.~\cite{poliero2022} compared active and passive BSEs in dynamic ta
 \section{Control Strategies: Intention Detection, Sensor Fusion, and Machine Learning}
 Effective BSE control requires real-time detection of user intent and environmental adaptation. Traditional methods use EMG or IMUs for gait event detection, but they struggle with transitions. Machine learning has emerged for intention prediction: Novak and Riener~\cite{novak2015} survey sensor fusion methods in wearable robotics and highlight intention detection as a central challenge. Separately, locomotion mode classification studies often use SVMs or LSTM networks and report $>90$\% accuracy in controlled settings. Recent applications include Jiang et al.'s EMG-based loading recognition for lumbar exoskeletons~\cite{jiang2024}. Chen et al.~\cite{chen2018} showed that simple kinematic thresholds on hip flexion angle and angular velocity can reliably detect the onset of lifting within 150--200~ms, offering a lightweight, non-ML baseline.
 
-Sensor fusion, often via Kalman filters, integrates IMU data for accurate joint kinematics estimation with low latency ($<200$~ms). Lazzaroni et al.~\cite{lazzaroni2022} improved efficacy with accelerometer-based control during manual handling. Toxiri et al.~\cite{toxiri2018} use finite state machines to modulate assistance based on trunk angle, reducing user effort by 25\%. Personalization is a growing focus: generic assistance profiles underperform across diverse users~\cite{kermavnar2021,luger2023}. Reinforcement learning for control optimization can reduce metabolic cost by 13--24\% in walking/stairs~\cite{luo2023}. Xiang et al.~\cite{xiang2023} dynamically evaluated multiple back-support exoskeletons and reported 19--69\% reductions in peak back-muscle activity across manual handling tasks, highlighting needs for ML in asymmetric tasks.
+Sensor fusion, often via Kalman filters, integrates IMU data for accurate joint kinematics estimation with low latency ($<200$~ms). Lazzaroni et al.~\cite{lazzaroni2022} improved efficacy with accelerometer-based control during manual handling. Toxiri et al.~\cite{toxiri2018} use finite state machines to modulate assistance based on trunk angle, reducing user effort by 25\%.
+
+Personalization is a growing focus: generic assistance profiles underperform across diverse users~\cite{kermavnar2021,luger2023}. Reinforcement learning for control optimization can reduce metabolic cost by 13--24\% in walking/stairs~\cite{luo2023}. Xiang et al.~\cite{xiang2023} dynamically evaluated multiple back-support exoskeletons and reported 19--69\% reductions in peak back-muscle activity across manual handling tasks, highlighting needs for ML in asymmetric tasks.
 
 \section{Evaluation Studies and User Acceptance}
 Empirical studies provide quantitative insights. For passive BSEs, van Sluijs et al.~\cite{vanSluijs2023} reported physiological benefits in lifting/leaning, while Alemi et al.~\cite{alemi2020} reported 4--13\% reductions in energy expenditure during repetitive lifting. Qu et al.~\cite{qu2021} evaluated a commercial passive exoskeleton in real industrial lifting tasks and reported 18--32\% lower back-muscle activity (iEMG) and improved subjective comfort. Active systems reduce activity during lifting with subjective comfort improvements~\cite{schwartz2023}. Quasi-passive systems use Gaussian mixture models for periodic assistance~\cite{jamsek2020}. User acceptance studies show soft actuated BSEs influence multimodal measurements positively, but gender differences exist in overhead tasks~\cite{refai2023,nussbaum2023}.
@@ -36,7 +38,7 @@ Tr\"oster et al.~\cite{troster2022} used a musculoskeletal model to compare stoo
 The present work addresses software-centric rapid prototyping on IMU data with MATLAB-based fusion and classification~\cite{zhang2012,chereshnev2018}, targeting $>90$\% accuracy on public gait data as a stepping stone toward hardware integration.
 
 The present work directly addresses gaps repeatedly identified in recent reviews~\cite{pesenti2021,kermavnar2021,troster2022,lin2025}:
-\begin{itemize}[noitemsep]
+\begin{itemize}
   \item Lack of real-time personalization and user-specific adaptation (future work).
   \item Insufficient handling of asymmetric and highly dynamic load-transportation tasks.
   \item Delayed or reactive assistance onset in active/quasi-passive systems.
@@ -49,6 +51,7 @@ The present work directly addresses gaps repeatedly identified in recent reviews
   \small
   \caption{Representative back-support exoskeletons (adapted from the literature).}
   \label{tab:exo_summary}
+  \resizebox{\textwidth}{!}{%
   \begin{tabular}{@{}p{2.6cm}p{1.2cm}p{1.1cm}p{3.2cm}p{3.0cm}@{}}
     \toprule
     \textbf{Device / Study} & \textbf{Type} & \textbf{Torque (N$\cdot$m)} & \textbf{Reported benefit} & \textbf{Key limitation} \\
@@ -64,5 +67,6 @@ The present work directly addresses gaps repeatedly identified in recent reviews
     Auxivo LiftSuit (2024) & Quasi-passive & 30--45 & 15--28\% metabolic; $\sim$35\% EMG & Limited customization \\
     Hyundai / German Bionic & Active & 50--75 & 20--40\% back load reduction & Cost; rigid harness \\
     \bottomrule
-  \end{tabular}
+  \end{tabular}%
+  }
 \end{table}

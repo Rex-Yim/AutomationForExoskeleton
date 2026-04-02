@@ -5,7 +5,11 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
+\usepackage{microtype}
 \usepackage[a4paper,margin=1in]{geometry}
+% fancyhdr: avoid "headheight too small" warnings with 12pt body + header text
+\setlength{\headheight}{14pt}
+\addtolength{\topmargin}{-2pt}
 \usepackage{setspace}
 \setstretch{1.15}
 \usepackage{fancyhdr}
@@ -13,7 +17,6 @@
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{longtable}
-\usepackage{enumitem}
 \usepackage{amsmath,amssymb}
 % IEEE-style numeric citations (compression, sorting); load before hyperref
 \usepackage{cite}
@@ -104,9 +107,9 @@ The module was specified to integrate: (i)~a \textbf{data acquisition and proces
 
 \subsection*{Current implementation emphasis (repository)}
 The module integrates two core components as realized in code:
-\begin{itemize}[noitemsep]
-  \item \textbf{Data Acquisition and Processing Pipeline:} Three-phone CSV prototype; Kalman fusion (\texttt{imufilter}); \textbf{binary} RBF SVM training on merged USC-HAD and HuGaDB (30-D window features) with USC-only / HuGaDB-only ablations; optional \textbf{twelve-class} ECOC SVM; optional \textbf{binary LSTM} on sequence-shaped IMU windows (\texttt{TrainLstmBinary}, \texttt{RunExoskeletonPipelineLstm}). Embedded deployment remains future work.
-  \item \textbf{Proactive Real-Time Locomotion Intent Recognition:} Binary task = \textbf{locomotion-like} vs.\ \textbf{non-locomotion} from dataset label maps. The $>90$\% target is met for USC-HAD-only and merged binary SVM training; HuGaDB-only binary accuracy is lower (imbalance and label noise). The optional LSTM uses a 20\% holdout metric (not five-fold OOF). The 100--200~ms horizon is a design target, not re-benchmarked here for the submitted baselines.
+\begin{itemize}
+  \item \textbf{Data acquisition and processing:} Three-phone CSV prototype; Kalman fusion (\texttt{imufilter}); \textbf{binary} RBF SVM on merged USC-HAD and HuGaDB (30-D window features) with USC-only / HuGaDB-only ablations; optional \textbf{twelve-class} ECOC SVM; optional \textbf{binary LSTM} on sequence-shaped IMU windows (\texttt{TrainLstmBinary}, \texttt{RunExoskeletonPipelineLstm}). Embedded deployment remains future work.
+  \item \textbf{Binary locomotion intent:} Labels map activity to \textbf{locomotion-like} vs.\ \textbf{non-locomotion}. The $>90$\% target is met for USC-HAD-only and merged binary SVM training; HuGaDB-only binary accuracy is lower (imbalance and label noise). The optional LSTM uses a 20\% holdout metric (not five-fold OOF). The 100--200~ms horizon is a design target, not re-benchmarked here for the submitted baselines.
 \end{itemize}
 
 Being entirely software-based, the solution enables seamless integration into existing hardware prototypes, rapid deployment, and scalability across future platforms.
