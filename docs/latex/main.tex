@@ -26,6 +26,9 @@
 
 % Figure path: project results folder (compile from docs/latex/)
 \graphicspath{{../../results/}}
+% Tall MATLAB figures (confusion + pipeline): cap height so nothing is clipped at page bottom
+\newcommand{\includegraphicsresult}[1]{%
+  \includegraphics[width=0.92\linewidth,height=0.68\textheight,keepaspectratio]{#1}}
 
 \pagestyle{fancy}
 \fancyhf{}

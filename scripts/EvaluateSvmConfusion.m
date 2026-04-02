@@ -104,11 +104,13 @@ function EvaluateSvmConfusion(varargin)
     fprintf('Specificity (Stand): %.4f\n', specStand);
     fprintf('-------------------------------------------------------------\n');
 
-    %% 4. Figure
+    %% 4. Figure (taller layout + no axes clipping so metrics text is fully visible in PNG/PDF)
     fig = figure('Name', sprintf('SVM Confusion — %s', poolLabel), 'Color', 'w', ...
-        'Position', [100, 100, 720, 520]);
+        'Position', [100, 100, 720, 780]);
 
     tiled = tiledlayout(fig, 2, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
+    % Bottom metrics panel needs more height than a compact confusion chart
+    tiled.RowHeights = {'1.2x', '1.5x'};
 
     nexttile(tiled);
     labelsCat = categorical(labelsAll, [0, 1], {'Stand (0)', 'Walk (1)'});
@@ -120,8 +122,9 @@ function EvaluateSvmConfusion(varargin)
     hcm.XLabel = 'Predicted';
     hcm.YLabel = 'True';
 
-    nexttile(tiled);
-    axis off;
+    axTxt = nexttile(tiled);
+    axis(axTxt, 'off');
+    axTxt.Clipping = 'off';
     txt = {
         sprintf('Pool: %s', poolLabel);
         sprintf('Samples: %d windows', n);
@@ -140,8 +143,8 @@ function EvaluateSvmConfusion(varargin)
         sprintf('  TN=%d  FP=%d', TN, FP);
         sprintf('  FN=%d  TP=%d', FN, TP);
         };
-    text(0.05, 0.95, txt, 'Units', 'normalized', 'VerticalAlignment', 'top', ...
-        'FontName', 'FixedWidth', 'FontSize', 11);
+    text(axTxt, 0.05, 0.98, txt, 'Units', 'normalized', 'VerticalAlignment', 'top', ...
+        'FontName', 'FixedWidth', 'FontSize', 10);
 
     resultsDir = fullfile(projectRoot, 'results');
     if ~exist(resultsDir, 'dir')
@@ -156,7 +159,7 @@ function EvaluateSvmConfusion(varargin)
         matPath = fullfile(resultsDir, 'svm_evaluation_metrics.mat');
     end
 
-    saveas(fig, pngPath);
+    saveFigurePng(fig, pngPath);
     close(fig);
     fprintf('\nFigure saved: %s\n', pngPath);
 
@@ -165,6 +168,16 @@ function EvaluateSvmConfusion(varargin)
     fprintf('Metrics saved: %s\n', matPath);
 
     fprintf('===========================================================\n');
+end
+
+function saveFigurePng(fig, pngPath)
+% Prefer exportgraphics (tight bounds); fall back to print for older MATLAB.
+    if exist('exportgraphics', 'file') == 2
+        exportgraphics(fig, pngPath, 'Resolution', 200);
+    else
+        set(fig, 'PaperPositionMode', 'auto');
+        print(fig, pngPath, '-dpng', '-r200');
+    end
 end
 
 function s = datasetPoolLabel(inclU, inclH)
