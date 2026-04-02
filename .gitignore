@@ -9,6 +9,9 @@ data/public/HuGaDB/HuGaDB_v2_raw/
 data/public/USC-HAD/usc_had_dataset.mat
 data/public/HuGaDB/hugadb_dataset.mat
 
+# LSTM trainNetwork checkpoints (large)
+models/lstm_checkpoints/
+
 data/public/.DS_Store
 
 # LaTeX build artifacts (docs/latex — keep sources + main.pdf only)

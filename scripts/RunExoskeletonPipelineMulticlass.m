@@ -8,6 +8,7 @@ projectRoot = fileparts(scriptPath);
 
 addpath(fullfile(projectRoot, 'config'));
 addpath(genpath(fullfile(projectRoot, 'src')));
+addpath(scriptPath);
 
 cfg = ExoConfig();
 ACTIVITY_NAME = cfg.ACTIVITY_SIMULATION;
@@ -96,6 +97,12 @@ title('Predicted activity class (updates each window step)');
 xlabel('Time (s)'); grid on;
 linkaxes([ax1, ax2, ax3], 'x');
 
+styleReportFigureColors(gcf);
+
 resultsFile = fullfile(projectRoot, 'results', 'pipeline_multiclass_output.png');
-saveas(gcf, resultsFile);
+if exist('exportgraphics', 'file') == 2
+    exportgraphics(gcf, resultsFile, 'Resolution', 200, 'Padding', 'loose');
+else
+    saveas(gcf, resultsFile);
+end
 fprintf('Plot saved: %s\n', resultsFile);

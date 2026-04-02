@@ -56,6 +56,7 @@ function ExportMetricsForReport()
         fprintf(fid, '\\newcommand{\\HasLstmMetrics}{1}\n');
     else
         fprintf(fid, '%% Optional: run TrainLstmBinary + EvaluateLstmConfusion, then re-export.\n');
+        fprintf(fid, '\\newcommand{\\LstmHoldoutAcc}{0}\n');
         fprintf(fid, '\\newcommand{\\HasLstmMetrics}{0}\n');
     end
 

@@ -101,47 +101,6 @@ function EvaluateLstmConfusion(varargin)
 
     poolLabel = datasetPoolLabel(inclU, inclH);
 
-    fig = figure('Name', sprintf('LSTM Confusion — %s', poolLabel), 'Color', 'w', ...
-        'Position', [100, 100, 720, 520]);
-
-    tiled = tiledlayout(fig, 2, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
-
-    nexttile(tiled);
-    hcm = confusionchart(YVal, Yhat, ...
-        'Title', sprintf('%s | 20%% holdout | Acc = %.2f%%', poolLabel, valAcc * 100), ...
-        'RowSummary', 'row-normalized', ...
-        'ColumnSummary', 'column-normalized');
-    hcm.XLabel = 'Predicted';
-    hcm.YLabel = 'True';
-
-    nexttile(tiled);
-    axis off;
-    arch = '2x LSTM(128), dropout 0.25, Adam (see TrainLstmBinary.m)';
-    if isfield(L.ModelMetadata, 'lstmHidden1')
-        arch = sprintf('2x LSTM(%d), dropout 0.25, Adam', L.ModelMetadata.lstmHidden1);
-    end
-    txt = {
-        sprintf('Pool: %s', poolLabel);
-        sprintf('Samples: %d windows | holdout ~%d', n, numel(XVal));
-        sprintf('USC-HAD windows: %d  |  HuGaDB windows: %d', ModelMetadata.nWindowsUSCHAD, ModelMetadata.nWindowsHuGaDB);
-        sprintf('Input: %d x %d (features x time)', ModelMetadata.sequenceInputSize, ModelMetadata.sequenceLength);
-        sprintf('Model: %s', arch);
-        sprintf('Fs=%d Hz, window=%d, step=%d', ModelMetadata.fs, ModelMetadata.windowSize, ModelMetadata.stepSize);
-        sprintf('RNG seed (holdout): %d', seed);
-        ' ';
-        sprintf('Accuracy (holdout): %.4f%%', valAcc * 100);
-        sprintf('Precision (Walk): %.4f', precWalk);
-        sprintf('Recall (Walk): %.4f', recWalk);
-        sprintf('F1 (Walk): %.4f', f1Walk);
-        sprintf('Specificity (Stand): %.4f', specStand);
-        ' ';
-        'Confusion counts [True x Pred], order Stand, Walk:';
-        sprintf('  TN=%d  FP=%d', TN, FP);
-        sprintf('  FN=%d  TP=%d', FN, TP);
-        };
-    text(0.05, 0.95, txt, 'Units', 'normalized', 'VerticalAlignment', 'top', ...
-        'FontName', 'FixedWidth', 'FontSize', 11);
-
     resultsDir = fullfile(projectRoot, 'results');
     if ~exist(resultsDir, 'dir')
         mkdir(resultsDir);
@@ -155,8 +114,12 @@ function EvaluateLstmConfusion(varargin)
         matPath = fullfile(resultsDir, 'lstm_evaluation_metrics.mat');
     end
 
-    saveas(fig, pngPath);
-    close(fig);
+    lstmH = [];
+    if isfield(L.ModelMetadata, 'lstmHidden1')
+        lstmH = L.ModelMetadata.lstmHidden1;
+    end
+    exportLstmConfusionMatrixPng(pngPath, YVal, Yhat, poolLabel, valAcc, precWalk, recWalk, f1Walk, ...
+        specStand, ModelMetadata, seed, TN, FP, FN, TP, n, lstmH, {});
     fprintf('\nFigure saved: %s\n', pngPath);
 
     save(matPath, 'cm', 'TP', 'TN', 'FP', 'FN', 'valAcc', 'precWalk', 'recWalk', 'f1Walk', ...

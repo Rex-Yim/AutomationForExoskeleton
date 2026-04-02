@@ -17,6 +17,7 @@ projectRoot = fileparts(scriptPath);
 % Add necessary paths just in case startup.m wasn't run
 addpath(fullfile(projectRoot, 'config'));
 addpath(genpath(fullfile(projectRoot, 'src')));
+addpath(scriptPath);
 
 cfg = ExoConfig();
 ACTIVITY_NAME = cfg.ACTIVITY_SIMULATION; % e.g., 'walking_straight'
@@ -126,12 +127,19 @@ if ~isempty(annotations) && ismember('Label', annotations.Properties.VariableNam
     title('Ground Truth (Annotation.csv)');
     ylim([-0.2 1.2]);
 else
-    text(0.5, 0.5, 'No Ground Truth Available', 'HorizontalAlignment', 'center');
+    text(ax3, 0.5, 0.5, 'No Ground Truth Available', 'HorizontalAlignment', 'center', ...
+        'Units', 'normalized', 'Color', [0 0 0]);
 end
 linkaxes([ax1, ax2, ax3], 'x');
 xlabel('Time (s)');
 
+styleReportFigureColors(gcf);
+
 % Save Result
 resultsFile = fullfile(projectRoot, 'results', 'pipeline_output.png');
-saveas(gcf, resultsFile);
+if exist('exportgraphics', 'file') == 2
+    exportgraphics(gcf, resultsFile, 'Resolution', 200, 'Padding', 'loose');
+else
+    saveas(gcf, resultsFile);
+end
 fprintf('Plot saved to: %s\n', resultsFile);

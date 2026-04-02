@@ -2,6 +2,7 @@ function EvaluateMulticlassConfusion(varargin)
 %% Multiclass  K-fold OOF confusion. Default: stratified subsample for speed (full ECOC CV is very slow).
     here = fileparts(mfilename('fullpath'));
     projectRoot = fileparts(here);
+    addpath(here);
     addpath(fullfile(projectRoot, 'config'));
     addpath(genpath(fullfile(projectRoot, 'src')));
 
@@ -63,9 +64,15 @@ function EvaluateMulticlassConfusion(varargin)
     h.Title = sprintf('%d-fold OOF%s | Acc = %.2f%%', p.Results.KFolds, sub, oofAcc);
     h.XLabel = 'Predicted';
     h.YLabel = 'True';
+    styleConfusionChartBlack(h);
+    styleReportFigureColors(fig);
 
     pngPath = fullfile(resultsDir, 'multiclass_confusion_matrix.png');
-    saveas(fig, pngPath);
+    if exist('exportgraphics', 'file') == 2
+        exportgraphics(fig, pngPath, 'Resolution', 200, 'Padding', 'loose');
+    else
+        saveas(fig, pngPath);
+    end
     close(fig);
     fprintf('Figure: %s\n', pngPath);
 

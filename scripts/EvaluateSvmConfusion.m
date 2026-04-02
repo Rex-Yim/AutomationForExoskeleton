@@ -14,6 +14,9 @@ function EvaluateSvmConfusion(varargin)
 
     here = fileparts(mfilename('fullpath'));
     projectRoot = fileparts(here);
+    % ExoConfig paths are relative to project root (data/public/...); batch runs often start in scripts/.
+    cd(projectRoot);
+    addpath(here);
     addpath(fullfile(projectRoot, 'config'));
     addpath(genpath(fullfile(projectRoot, 'src')));
 
@@ -104,48 +107,7 @@ function EvaluateSvmConfusion(varargin)
     fprintf('Specificity (Stand): %.4f\n', specStand);
     fprintf('-------------------------------------------------------------\n');
 
-    %% 4. Figure (taller layout + no axes clipping so metrics text is fully visible in PNG/PDF)
-    fig = figure('Name', sprintf('SVM Confusion — %s', poolLabel), 'Color', 'w', ...
-        'Position', [100, 100, 720, 780]);
-
-    tiled = tiledlayout(fig, 2, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
-    % Bottom metrics panel needs more height than a compact confusion chart
-    tiled.RowHeights = {'1.2x', '1.5x'};
-
-    nexttile(tiled);
-    labelsCat = categorical(labelsAll, [0, 1], {'Stand (0)', 'Walk (1)'});
-    yHatCat = categorical(yHat, [0, 1], {'Stand (0)', 'Walk (1)'});
-    hcm = confusionchart(labelsCat, yHatCat, ...
-        'Title', sprintf('%s | %d-fold OOF | Acc = %.2f%%', poolLabel, K, oofAccuracy), ...
-        'RowSummary', 'row-normalized', ...
-        'ColumnSummary', 'column-normalized');
-    hcm.XLabel = 'Predicted';
-    hcm.YLabel = 'True';
-
-    axTxt = nexttile(tiled);
-    axis(axTxt, 'off');
-    axTxt.Clipping = 'off';
-    txt = {
-        sprintf('Pool: %s', poolLabel);
-        sprintf('Samples: %d windows', n);
-        sprintf('USC-HAD windows: %d  |  HuGaDB windows: %d', ModelMetadata.nWindowsUSCHAD, ModelMetadata.nWindowsHuGaDB);
-        sprintf('Model: RBF SVM, standardized, BoxConstraint=1.0');
-        sprintf('Features: %d (see Features.m)', ModelMetadata.featureCount);
-        sprintf('Fs=%d Hz, window=%d, step=%d', ModelMetadata.fs, ModelMetadata.windowSize, ModelMetadata.stepSize);
-        ' ';
-        sprintf('Accuracy (OOF): %.4f%%', oofAccuracy);
-        sprintf('Precision (Walk): %.4f', precWalk);
-        sprintf('Recall (Walk): %.4f', recWalk);
-        sprintf('F1 (Walk): %.4f', f1Walk);
-        sprintf('Specificity (Stand): %.4f', specStand);
-        ' ';
-        'Confusion counts [True x Pred], order Stand, Walk:';
-        sprintf('  TN=%d  FP=%d', TN, FP);
-        sprintf('  FN=%d  TP=%d', FN, TP);
-        };
-    text(axTxt, 0.05, 0.98, txt, 'Units', 'normalized', 'VerticalAlignment', 'top', ...
-        'FontName', 'FixedWidth', 'FontSize', 10);
-
+    %% 4. Figure (see exportSvmConfusionMatrixPng.m; RedrawSvmConfusionFromMetrics for PNG-only refresh)
     resultsDir = fullfile(projectRoot, 'results');
     if ~exist(resultsDir, 'dir')
         mkdir(resultsDir);
@@ -159,8 +121,8 @@ function EvaluateSvmConfusion(varargin)
         matPath = fullfile(resultsDir, 'svm_evaluation_metrics.mat');
     end
 
-    saveFigurePng(fig, pngPath);
-    close(fig);
+    exportSvmConfusionMatrixPng(pngPath, labelsAll, yHat, poolLabel, K, oofAccuracy, ...
+        TN, FP, FN, TP, ModelMetadata, precWalk, recWalk, f1Walk, specStand);
     fprintf('\nFigure saved: %s\n', pngPath);
 
     save(matPath, 'cm', 'TP', 'TN', 'FP', 'FN', 'oofAccuracy', 'precWalk', 'recWalk', 'f1Walk', ...
@@ -168,16 +130,6 @@ function EvaluateSvmConfusion(varargin)
     fprintf('Metrics saved: %s\n', matPath);
 
     fprintf('===========================================================\n');
-end
-
-function saveFigurePng(fig, pngPath)
-% Prefer exportgraphics (tight bounds); fall back to print for older MATLAB.
-    if exist('exportgraphics', 'file') == 2
-        exportgraphics(fig, pngPath, 'Resolution', 200);
-    else
-        set(fig, 'PaperPositionMode', 'auto');
-        print(fig, pngPath, '-dpng', '-r200');
-    end
 end
 
 function s = datasetPoolLabel(inclU, inclH)
