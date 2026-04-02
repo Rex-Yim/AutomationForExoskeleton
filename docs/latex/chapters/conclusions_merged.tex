@@ -2,8 +2,8 @@
 \section{Remaining tasks and roadmap (from interim report, Jan 2026)}
 The following items were listed in the original submission as work remaining toward completion:
 \begin{itemize}[noitemsep]
-  \item \textbf{Intention detection:} Expand the SVM toward LSTM-based multi-mode transitions and speed variations; pursue $>90$\% accuracy via further training and ensembles.
-  \item \textbf{Machine learning deployment:} Train and deploy full SVM/LSTM stacks for terrain recognition; generate confusion matrices, F1-scores, and embedded deployment scripts.
+  \item \textbf{Intention detection:} Optional LSTM baseline exists in-repo; further work on multi-mode transitions, speed variations, and SVM+LSTM ensembles; pursue $>90$\% accuracy via domain-specific tuning.
+  \item \textbf{Machine learning deployment:} Deploy trained SVM/LSTM models for terrain recognition on embedded targets; extend confusion-matrix reporting; add embedded deployment scripts (MATLAB Coder).
   \item \textbf{Hardware integration:} Deploy validated control software onto the ExoTechHK microcontroller.
   \item \textbf{Testing and validation:} Bench tests, ethical user trials with torque limits, performance evaluation (accuracy, confusion matrix, precision, recall).
   \item \textbf{Documentation and presentation:} Final report, slides, video demonstration, comparative literature benchmarks.
@@ -55,6 +55,6 @@ Table~\ref{tab:risks} summarizes risks and mitigations from the Jan 2026 report.
 \end{table}
 
 \section{Repository status (consolidated, 2026)}
-Relative to the interim plan, the following are \textbf{delivered in software}: Kalman fusion baseline; binary RBF SVM with merged USC-HAD+HuGaDB training and dataset ablation scripts; optional twelve-class ECOC SVM; asymmetric FSM; documentation and evaluation figures. \textbf{Not delivered:} LSTM training, MATLAB Coder deployment, ROS/PID torque layer, hardware controller integration, and prospective user trials---these remain aligned with the roadmap and risk tables above.
+Relative to the interim plan, the following are \textbf{delivered in software}: Kalman fusion baseline; binary RBF SVM with merged USC-HAD+HuGaDB training and dataset ablation scripts; optional twelve-class ECOC SVM; optional binary LSTM sequence classifier (\texttt{TrainLstmBinary}, \texttt{EvaluateLstmConfusion}, \texttt{RunExoskeletonPipelineLstm}); asymmetric FSM; documentation and evaluation figures. \textbf{Not delivered:} hybrid SVM+LSTM fusion as in the original pseudocode, MATLAB Coder deployment, ROS/PID torque layer, hardware controller integration, and prospective user trials---these remain aligned with the roadmap and risk tables above.
 
 \textbf{Synthesis:} The LaTeX report intentionally preserves the \textbf{full interim narrative} (objectives, proposed LSTM/EKF/ROS extensions, timeline, risks) while adding a \textbf{faithful description of the implemented repository}, so readers can distinguish planned scope from validated baseline.

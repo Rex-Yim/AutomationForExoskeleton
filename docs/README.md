@@ -41,6 +41,7 @@ startup
 2. **Binary model**  
    - `TrainSvmBinary` — merged training if both `.mat` exist  
    - `TrainLstmBinary` — optional sequence classifier (Deep Learning Toolbox)  
+   - `EvaluateLstmConfusion` — holdout confusion matrix + metrics for the trained LSTM (`results/lstm_confusion_matrix.png`)  
    - `RunSvmDatasetAblation` — USC-only, HuGaDB-only, merged + default model copy  
    - `EvaluateSvmConfusion` — confusion + metrics for reports  
 
@@ -54,7 +55,7 @@ startup
    - `RunExoskeletonPipelineLstm` — binary LSTM (after `TrainLstmBinary`) → `results/pipeline_output_lstm.png`  
 
 ## Report / LaTeX
-Sources under `docs/latex/`; figures read from `results/` (e.g. `svm_confusion_matrix.png`, `multiclass_confusion_matrix.png`, `pipeline_output.png`). See `docs/latex/README.md` and CI workflow `.github/workflows/build-latex-pdf.yml`.
+Sources under `docs/latex/`; figures read from `results/` (e.g. `svm_confusion_matrix.png`, `multiclass_confusion_matrix.png`, `pipeline_output.png`). After LSTM training, run `EvaluateLstmConfusion` to add `lstm_confusion_matrix.png` (the PDF includes it when present). See `docs/latex/README.md` and CI workflow `.github/workflows/build-latex-pdf.yml`.
 
 ## Acknowledgments
 - **ExoTechHK Limited**, **HKSTP**, **Prof. Wei-Hsin Liao** (CUHK).  

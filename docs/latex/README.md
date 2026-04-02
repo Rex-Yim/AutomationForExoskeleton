@@ -1,6 +1,6 @@
 # Final Report (LaTeX) — MAEG4999 replica
 
-This folder builds a **PDF report** aligned to the **current MATLAB codebase**: merged **USC-HAD + HuGaDB** binary SVM (30-D features), dataset ablation metrics, optional **multiclass ECOC** figure, Kalman fusion, and FSM.
+This folder builds a **PDF report** aligned to the **current MATLAB codebase**: merged **USC-HAD + HuGaDB** binary SVM (30-D features), dataset ablation metrics, optional **multiclass ECOC** figure, optional **binary LSTM** holdout figure, Kalman fusion, and FSM.
 
 ## Files
 
@@ -31,6 +31,8 @@ From the **project root**, run MATLAB so these exist (commit them for GitHub Act
 - `results/svm_confusion_matrix.png` — merged binary (default after `RunSvmDatasetAblation` or copied from merged run)
 - `results/multiclass_confusion_matrix.png` — from `EvaluateMulticlassConfusion`
 - `results/pipeline_output.png` — from `RunExoskeletonPipeline`
+
+**Optional** (for Chapter 4 LSTM subsection): `TrainLstmBinary` then `EvaluateLstmConfusion` → `results/lstm_confusion_matrix.png`. The LaTeX source includes this figure only if the file exists (`\IfFileExists`).
 
 ## Install LaTeX on macOS
 

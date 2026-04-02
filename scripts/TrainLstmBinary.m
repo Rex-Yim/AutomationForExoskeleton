@@ -39,7 +39,8 @@ fprintf('Samples: %d | input %d x %d (features x time)\n', n, inputSize, ModelMe
 Ycat = categorical(labelsAll, [0 1], {'Stand', 'Walk'});
 fprintf('  Stand: %d  |  Walk: %d\n', sum(labelsAll == 0), sum(labelsAll == 1));
 
-%% Stratified holdout validation
+%% Stratified holdout validation (fixed RNG so EvaluateLstmConfusion reproduces the split)
+rng(42);
 cvp = cvpartition(Ycat, 'HoldOut', 0.2);
 tr = training(cvp);
 te = test(cvp);
@@ -89,6 +90,7 @@ disp(cm);
 
 ModelMetadata.lstmHidden1 = 128;
 ModelMetadata.lstmHidden2 = 128;
+ModelMetadata.holdoutRNGSeed = 42;
 ModelMetadata.validationAccuracy = valAcc;
 ModelMetadata.validationConfusion = cm;
 ModelMetadata.categoryOrder = {'Stand', 'Walk'};
