@@ -70,8 +70,19 @@ Figure~\ref{fig:pipeline} presents the output of the online MATLAB pipeline on a
 
 This behavior is significant because the FSM design directly addresses a practical control issue: a high-accuracy classifier can still generate undesirable actuator chatter if predictions fluctuate near transition boundaries. Requiring three consecutive active predictions to enter assist and five consecutive inactive predictions to exit assist makes the controller conservative in a useful way. The trade-off is extra response delay, so latency remains a separate performance dimension that would need direct benchmarking in future hardware-oriented validation.
 
+\section{Multiclass LSTM replay (HuGaDB subject \ReplayHuGaDBSubject{}, session \ReplayHuGaDBSession{})}
+\label{sec:multiclass_lstm_replay}
+The binary SVM path above remains the headline metric for assist gating, but this chapter \textbf{emphasizes} the \textbf{multiclass LSTM} pseudo-real-time replay as the principal sequence-model demonstration. Figure~\ref{fig:multiclass_lstm_replay} shows native twelve-class HuGaDB predictions over time on the same held-out session as the binary pipeline replays (subject~\ReplayHuGaDBSubject{}, session~\ReplayHuGaDBSession{}), so the reader can inspect how activity labels evolve alongside IMU magnitude in a streaming-style recording.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphicsresult{pipeline_multiclass_lstm_output.png}
+  \caption{Multiclass LSTM replay on held-out HuGaDB (subject~\ReplayHuGaDBSubject{}, session~\ReplayHuGaDBSession{}): multiclass pipeline output versus IMU magnitude. This is the same session visualized for the binary SVM replay in Figure~\ref{fig:pipeline} and for the consolidated multiclass replay row in Figure~\ref{fig:replay_gallery_row}.}
+  \label{fig:multiclass_lstm_replay}
+\end{figure}
+
 \section{Sequence-Model Status}
-The repository now includes per-dataset LSTM baselines for the same pivot: binary sequence models on USC-HAD and HuGaDB, plus dataset-native multiclass sequence models on USC-HAD and HuGaDB. These are intentionally not treated as the primary reported result in this chapter because their current evaluation uses a stratified 20\% holdout rather than the five-fold OOF protocol used for the SVM baselines.
+The repository now includes per-dataset LSTM baselines for the same pivot: binary sequence models on USC-HAD and HuGaDB, plus dataset-native multiclass sequence models on USC-HAD and HuGaDB. Scalar holdout accuracies for those models are reported below for completeness, but they use a stratified 20\% holdout rather than the five-fold OOF protocol used for the SVM baselines; the \textbf{narrative emphasis} of this chapter for sequence models is the multiclass LSTM replay in Section~\ref{sec:multiclass_lstm_replay} and Figure~\ref{fig:multiclass_lstm_replay}.
 
 Figure~\ref{fig:lstm_training} shows training and validation loss and accuracy versus iteration for the representative USC-HAD \texttt{trainNetwork} runs used for the binary and native multiclass LSTM baselines (the same quantities as the console logs archived under \path{results/logs/binary/} and \path{results/logs/multiclass/}).
 
@@ -219,14 +230,15 @@ For traceability, the report also includes the full set of distinct generated PN
   \begin{minipage}[t]{0.48\linewidth}
     \centering
     \includegraphics[width=\linewidth,height=0.24\textheight,keepaspectratio]{pipeline_multiclass_lstm_output.png}\\
-    \small Multiclass LSTM replay (subject \ReplayHuGaDBSubject{}, session \ReplayHuGaDBSession{}).
+    \small Multiclass LSTM replay (subject \ReplayHuGaDBSubject{}, session \ReplayHuGaDBSession{})---also Figure~\ref{fig:multiclass_lstm_replay}.
   \end{minipage}
   \caption{Replay-pipeline figures from \texttt{RunExoskeletonPipelineMulticlass} and \texttt{RunExoskeletonPipelineMulticlassLstm} (same held-out session as the binary replays).}
+  \label{fig:replay_gallery_row}
 \end{figure}
 
 \clearpage
 \section{Overall Interpretation}
-Taken together, the results show that the project has successfully delivered a reproducible software baseline for exoskeleton assist gating. The final repository now separates benchmark comparison from the actual deployment path: USC-HAD and HuGaDB are evaluated separately for comparison evidence, while the active binary SVM pipeline is based on the HuGaDB multi-activity streaming policy and reserves subjects 06 and 08 for simulation. The Kalman and FSM blocks remain integrated into an end-to-end control flow, and the report metrics are traceable to versioned MATLAB outputs. At the same time, the discussion also makes clear what remains unfinished: subject-specific tuning, truly predictive transition detection, hardware deployment, and controlled user validation under realistic load-transport tasks.
+Taken together, the results show that the project has successfully delivered a reproducible software baseline for exoskeleton assist gating. The multiclass LSTM pseudo-real-time replay on HuGaDB subject~\ReplayHuGaDBSubject{}, session~\ReplayHuGaDBSession{} (Section~\ref{sec:multiclass_lstm_replay}) is the emphasized sequence-model artifact alongside the binary SVM headline metrics. The final repository separates benchmark comparison from the operational path: USC-HAD and HuGaDB are evaluated separately for comparison evidence, while the active binary SVM pipeline is based on the HuGaDB multi-activity streaming policy and reserves subjects 06 and 08 for simulation. The Kalman and FSM blocks remain integrated into an end-to-end control flow, and the report metrics are traceable to versioned MATLAB outputs. At the same time, the discussion also makes clear what remains unfinished: subject-specific tuning, truly predictive transition detection, hardware deployment, and controlled user validation under realistic load-transport tasks.
 
 \section{Visualization Tools and Software Architecture}
 Real-time visualization is integrated in MATLAB through scripts such as \texttt{RunExoskeletonPipeline.m}.
