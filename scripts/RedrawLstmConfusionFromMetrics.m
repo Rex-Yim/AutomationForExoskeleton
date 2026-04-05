@@ -30,13 +30,20 @@ function RedrawLstmConfusionFromMetrics(matPath)
         end
     end
 
+    [~, baseName, ~] = fileparts(matPath);
+    prefix = 'lstm_evaluation_metrics_';
+    if ~startsWith(baseName, prefix)
+        error('Expected filename lstm_evaluation_metrics_<tag>.mat, got: %s', baseName);
+    end
+    tag = extractAfter(baseName, prefix);
+
     nTotal = numel(S.labelsAll);
     lstmH = [];
     if isfield(S.ModelMetadata, 'lstmHidden1')
         lstmH = S.ModelMetadata.lstmHidden1;
     end
 
-    pngPath = ResultsArtifactPath(projectRoot, 'figures', 'binary', 'lstm_confusion_matrix_hugadb_streaming.png');
+    pngPath = ResultsArtifactPath(projectRoot, 'figures', 'binary', ['lstm_confusion_matrix_' tag '.png']);
     exportLstmConfusionMatrixPng(pngPath, S.YVal, S.Yhat, S.poolLabel, S.valAcc, ...
         S.precWalk, S.recWalk, S.f1Walk, S.specStand, S.ModelMetadata, S.seed, ...
         S.TN, S.FP, S.FN, S.TP, nTotal, lstmH);

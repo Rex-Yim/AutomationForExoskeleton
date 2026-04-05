@@ -1,5 +1,5 @@
 % LSTM training log (multiclass, tag=usc_had)
-% Generated: 2026-04-06 01:42:05
+% Generated: 2026-04-06 02:44:22
 % Early stop: multiclass LSTM (usc_had) validation accuracy reached 90.00% at epoch 12 (target 90.00%).
 % MiniBatchSize: 128
 % MaxEpochs (requested): 12

@@ -85,7 +85,7 @@ yyaxis(ax2, 'left');
 hMag = plot(t, acc_mag, 'Color', [0.75 0.75 0.75]);
 ylabel('IMU magnitude');
 yyaxis(ax2, 'right');
-hCmd = stairs(t, fsm_plot, 'Color', 'r', 'LineWidth', 2);
+hCmd = stairs(t, fsm_plot, 'Color', [0.2 0.75 0.35], 'LineWidth', 2);
 ylim([-0.1 1.1]);
 yticks([0 1]);
 yticklabels({'OFF', 'ON'});
@@ -94,7 +94,7 @@ legend([hMag, hCmd], {'IMU magnitude', 'Exo command'}, 'Location', 'northeast');
 grid on;
 
 ax3 = subplot(2, 1, 2);
-stairs(t, activity_gt_plot, 'Color', [0.35 0.35 0.35], 'LineWidth', 1.0); hold on;
+stairs(t, activity_gt_plot, 'Color', [0.85 0.2 0.2], 'LineWidth', 1.0); hold on;
 plot(t, activity_plot, 'LineWidth', 1.2, 'Color', [0 0.4470 0.7410]);
 ylim([0.5, K + 0.5]);
 yticks(1:K);

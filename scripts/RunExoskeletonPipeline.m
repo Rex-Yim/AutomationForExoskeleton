@@ -104,7 +104,7 @@ yyaxis(axCmd, 'left');
 hMag = plot(t, acc_mag, 'Color', [0.7 0.7 0.7]);
 ylabel('IMU magnitude');
 yyaxis(axCmd, 'right');
-hCmd = stairs(t, fsm_plot, 'Color', 'r', 'LineWidth', 2);
+hCmd = stairs(t, fsm_plot, 'Color', [0.2 0.75 0.35], 'LineWidth', 2);
 ylim([-0.1 1.1]);
 yticks([0 1]);
 yticklabels({'OFF', 'ON'});
@@ -114,7 +114,7 @@ grid on;
 
 if hasGt
     axGt = subplot(nRows, 1, 2);
-    stairs(t, sim.binaryLabel, 'Color', [0.2 0.75 0.35], 'LineWidth', 1.8);
+    stairs(t, sim.binaryLabel, 'Color', [0.85 0.2 0.2], 'LineWidth', 1.8);
     title(sprintf('Ground truth (subject %s, session %s)', sim.subjectId, sim.sessionId));
     ylabel('State');
     ylim([-0.1 1.1]);

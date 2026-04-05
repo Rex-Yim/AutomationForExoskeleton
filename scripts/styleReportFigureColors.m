@@ -1,15 +1,41 @@
 function styleReportFigureColors(fig)
-%% styleReportFigureColors — force axes/titles/ticks/labels/legends to black for PDF reports.
+%% styleReportFigureColors — white figure/axes backgrounds; black text for PDF reports.
 % Call after building a figure (subplots, pipelines, etc.).
 
     if nargin < 1 || ~isgraphics(fig)
         return
     end
     blk = [0 0 0];
+    try
+        fig.Color = 'w';
+        if isprop(fig, 'InvertHardcopy')
+            fig.InvertHardcopy = 'off';
+        end
+    catch
+    end
+    tls = findall(fig, 'Type', 'tiledchartlayout');
+    for i = 1:numel(tls)
+        try
+            if isprop(tls(i), 'Color')
+                tls(i).Color = 'w';
+            end
+        catch
+        end
+    end
+    pns = findall(fig, 'Type', 'uipanel');
+    for i = 1:numel(pns)
+        try
+            if isprop(pns(i), 'BackgroundColor')
+                pns(i).BackgroundColor = 'w';
+            end
+        catch
+        end
+    end
     axs = findall(fig, 'Type', 'axes');
     for i = 1:numel(axs)
         ax = axs(i);
         try
+            ax.Color = 'w';
             ax.XColor = blk;
             ax.YColor = blk;
             if isprop(ax, 'ZColor')
@@ -27,6 +53,22 @@ function styleReportFigureColors(fig)
             if isprop(ax, 'TickLabelColor')
                 ax.TickLabelColor = blk;
             end
+        catch
+        end
+    end
+    pols = findall(fig, 'Type', 'polaraxes');
+    for i = 1:numel(pols)
+        try
+            pols(i).Color = 'w';
+            pols(i).RColor = blk;
+            pols(i).ThetaColor = blk;
+        catch
+        end
+    end
+    sgt = findall(fig, 'Type', 'subplottext');
+    for i = 1:numel(sgt)
+        try
+            sgt(i).Color = blk;
         catch
         end
     end

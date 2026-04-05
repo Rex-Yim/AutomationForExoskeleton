@@ -82,7 +82,7 @@
 \newcommand{\metriccard}[4][0.198\textwidth]{%
   \setlength{\fboxsep}{8pt}%
   \setlength{\fboxrule}{0.7pt}%
-  \fcolorbox{stripborder}{white}{%
+  \fcolorbox{stripborder}{accentsoft}{%
     \begin{minipage}[c][7.2em][c]{#1}
       \centering
       {\fontsize{18}{22}\selectfont\bfseries\color{bodytext} #2}\\[0.18em]
@@ -95,11 +95,11 @@
 \newcommand{\metriccardcompact}[4][0.112\linewidth]{%
   \setlength{\fboxsep}{4pt}%
   \setlength{\fboxrule}{0.6pt}%
-  \fcolorbox{stripborder}{white}{%
-    \begin{minipage}[c][5.0em][c]{#1}
+  \fcolorbox{stripborder}{accentsoft}{%
+    \begin{minipage}[c][7.6em][c]{#1}
       \centering
       {\fontsize{11.5}{13.5}\selectfont\bfseries\color{bodytext} #2}\\[0.06em]
-      {\color{accent}\parbox[c][1.75em][c]{0.98\linewidth}{\centering\fontsize{17}{19}\selectfont\bfseries #3}}\\[0.05em]
+      {\color{accent}\parbox[c][3.55em][c]{0.98\linewidth}{\centering\fontsize{38}{42}\selectfont\bfseries #3}}\\[0.05em]
       {\fontsize{10}{12}\selectfont\color{footfg} #4}
     \end{minipage}%
   }%
@@ -132,12 +132,14 @@
   }%
 }
 
+% Slightly larger bold keywords inside pipeline workflow steps (see Pipeline at a glance).
+\newcommand{\workflowkw}[1]{{\fontsize{23}{27}\selectfont\bfseries #1}}
 \newcommand{\workflowstep}[2]{%
   \fcolorbox{stripborder}{accentsoft}{%
-    \parbox[c][3.6em][c]{0.145\linewidth}{%
+    \parbox[c][4.85em][c]{0.145\linewidth}{%
       \centering
-      {\fontsize{14}{17}\selectfont\bfseries #1}\\[0.06em]
-      {\fontsize{15}{18}\selectfont #2}
+      {\fontsize{17}{21}\selectfont\bfseries #1}\\[0.06em]
+      {\fontsize{18}{22}\selectfont #2}
     }%
   }%
 }
@@ -183,7 +185,7 @@
 \noindent
 \setlength{\fboxsep}{5pt}%
 \setlength{\fboxrule}{0.7pt}%
-\fcolorbox{stripborder}{accentsoft}{%
+\fcolorbox{stripborder}{white}{%
   \parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule}{%
     \centering
     {\fontsize{20}{24}\selectfont\bfseries\color{bodytext}
@@ -197,7 +199,7 @@
 \noindent
 \setlength{\fboxsep}{5pt}%
 \setlength{\fboxrule}{0.7pt}%
-\fcolorbox{stripborder}{accentsoft}{%
+\fcolorbox{stripborder}{white}{%
   \begin{minipage}[c]{\dimexpr\linewidth-2\fboxsep-2\fboxrule}%
     \raggedleft
     \metriccardcompact{Binary SVM, 5-fold OOF}{\BinaryOofAccHuGa\%}{HuGaDB}\hfill
@@ -323,17 +325,15 @@
 \vspace{0.06em}
 \posterbox{Pipeline at a glance}{
   \begin{center}
-    \workflowstep{1}{Train pool\\and held-out replay}\hfill
+    \workflowstep{1.\ Train pool}{and held-out \workflowkw{Replay}}\hfill
     {\fontsize{28}{28}\selectfont\color{accent}$\rightarrow$}\hfill
-    \workflowstep{2}{Optional Kalman\\visualization trace}\hfill
+    \workflowstep{2.\ \workflowkw{30-D} features}{per window}\hfill
     {\fontsize{28}{28}\selectfont\color{accent}$\rightarrow$}\hfill
-    \workflowstep{3}{30-D features\\per window}\hfill
+    \workflowstep{3.\ Binary \workflowkw{SVM}}{prediction}\hfill
     {\fontsize{28}{28}\selectfont\color{accent}$\rightarrow$}\hfill
-    \workflowstep{4}{Binary SVM\\prediction}\hfill
+    \workflowstep{4.\ \workflowkw{FSM} hysteresis}{for assist}\hfill
     {\fontsize{28}{28}\selectfont\color{accent}$\rightarrow$}\hfill
-    \workflowstep{5}{FSM hysteresis\\for assist}\hfill
-    {\fontsize{28}{28}\selectfont\color{accent}$\rightarrow$}\hfill
-    \workflowstep{6}{Stable on/off\\command}
+    \workflowstep{5.\ Exoskeleton \workflowkw{actuator}}{\workflowkw{On/Off} command}
   \end{center}
 }
 

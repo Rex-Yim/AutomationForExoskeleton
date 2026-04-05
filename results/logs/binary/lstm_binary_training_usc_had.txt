@@ -1,5 +1,5 @@
 % LSTM training log (binary, tag=usc_had)
-% Generated: 2026-04-06 01:25:09
+% Generated: 2026-04-06 02:44:19
 % Early stop: binary LSTM validation accuracy reached 99.46% at epoch 3 (target 99.40%).
 % MiniBatchSize: 128
 % MaxEpochs (requested): 12
