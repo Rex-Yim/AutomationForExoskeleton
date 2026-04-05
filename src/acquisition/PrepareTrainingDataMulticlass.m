@@ -1,7 +1,6 @@
-%% PrepareTrainingDataMulticlass.m
-% Sliding-window features + unified activity class 1..K (ActivityClassRegistry).
-% Same feature layout as PrepareTrainingData (LOCOMOTION vector size).
-% NAME-VALUE: 'IncludeUSCHAD', 'IncludeHuGaDB' (defaults true).
+% Prepare sliding-window features and native activity labels for one dataset.
+% Supports `Dataset` values `usc_had` and `hugadb` and returns the same
+% feature layout as `PrepareTrainingData`.
 
 function [features, labels_class, ModelMetadata] = PrepareTrainingDataMulticlass(cfg, varargin)
 
@@ -10,13 +9,13 @@ function [features, labels_class, ModelMetadata] = PrepareTrainingDataMulticlass
     end
 
     p = inputParser;
-    addParameter(p, 'IncludeUSCHAD', true, @islogical);
-    addParameter(p, 'IncludeHuGaDB', true, @islogical);
+    addParameter(p, 'Dataset', 'hugadb', @(s) ischar(s) || isstring(s));
     parse(p, varargin{:});
 
-    if ~p.Results.IncludeUSCHAD && ~p.Results.IncludeHuGaDB
-        error('AutomationForExoskeleton:PrepareTrainingDataMulticlass:NoSource', ...
-            'At least one of IncludeUSCHAD and IncludeHuGaDB must be true.');
+    ds = lower(char(p.Results.Dataset));
+    if ~ismember(ds, {'usc_had', 'hugadb'})
+        error('AutomationForExoskeleton:PrepareTrainingDataMulticlass:Dataset', ...
+            'Dataset must be ''usc_had'' or ''hugadb''.');
     end
 
     features = [];
@@ -24,12 +23,19 @@ function [features, labels_class, ModelMetadata] = PrepareTrainingDataMulticlass
     n_usc = 0;
     n_hu = 0;
 
-    if p.Results.IncludeUSCHAD && exist(cfg.FILE.USCHAD_DATA, 'file')
+    if strcmp(ds, 'usc_had')
+
+        if ~exist(cfg.FILE.USCHAD_DATA, 'file')
+            error('AutomationForExoskeleton:PrepareTrainingDataMulticlass:MissingUSCHAD', ...
+                'USC-HAD not found at %s.', cfg.FILE.USCHAD_DATA);
+        end
+
         loadedData = load(cfg.FILE.USCHAD_DATA, 'usc');
         usc = loadedData.usc;
         all_trial_names = fieldnames(usc);
 
-        fprintf('Preparing USC-HAD (multiclass): %d trials...\n', length(all_trial_names));
+        fprintf('Preparing USC-HAD (multiclass, native 1..%d): %d trials...\n', ...
+            ActivityClassRegistry.USCHAD_N_CLASSES, length(all_trial_names));
 
         for i = 1:length(all_trial_names)
             trial = usc.(all_trial_names{i});
@@ -42,7 +48,7 @@ function [features, labels_class, ModelMetadata] = PrepareTrainingDataMulticlass
                 continue;
             end
 
-            c = ActivityClassRegistry.mapUSCHAD(raw_label(1));
+            c = ActivityClassRegistry.validateUSCHADNative(raw_label(1));
             if c < 1
                 continue;
             end
@@ -59,17 +65,20 @@ function [features, labels_class, ModelMetadata] = PrepareTrainingDataMulticlass
                 n_usc = n_usc + 1;
             end
         end
-    elseif p.Results.IncludeUSCHAD
-        warning('AutomationForExoskeleton:MissingUSCHAD', ...
-            'USC-HAD not found at %s.', cfg.FILE.USCHAD_DATA);
-    end
 
-    if p.Results.IncludeHuGaDB && exist(cfg.FILE.HUGADB_DATA, 'file')
+    else
+
+        if ~exist(cfg.FILE.HUGADB_DATA, 'file')
+            error('AutomationForExoskeleton:PrepareTrainingDataMulticlass:MissingHuGaDB', ...
+                'HuGaDB not found at %s.', cfg.FILE.HUGADB_DATA);
+        end
+
         S = load(cfg.FILE.HUGADB_DATA, 'hugadb');
         hug = S.hugadb;
         hnames = fieldnames(hug);
 
-        fprintf('Preparing HuGaDB (multiclass): %d sessions...\n', numel(hnames));
+        fprintf('Preparing HuGaDB (multiclass, native 1..%d): %d sessions...\n', ...
+            ActivityClassRegistry.HUGADB_N_CLASSES, numel(hnames));
 
         for i = 1:numel(hnames)
             trial = hug.(hnames{i});
@@ -86,7 +95,7 @@ function [features, labels_class, ModelMetadata] = PrepareTrainingDataMulticlass
                 ws = k;
                 we = k + cfg.WINDOW_SIZE - 1;
                 chunk = lf(ws:we);
-                c = ActivityClassRegistry.hugadbWindowClass(chunk);
+                c = ActivityClassRegistry.hugadbNativeWindowClass(chunk);
                 if c < 1
                     continue;
                 end
@@ -107,9 +116,6 @@ function [features, labels_class, ModelMetadata] = PrepareTrainingDataMulticlass
                 n_hu = n_hu + 1;
             end
         end
-    elseif p.Results.IncludeHuGaDB
-        warning('AutomationForExoskeleton:MissingHuGaDB', ...
-            'HuGaDB not found at %s.', cfg.FILE.HUGADB_DATA);
     end
 
     if isempty(features)
@@ -125,11 +131,16 @@ function [features, labels_class, ModelMetadata] = PrepareTrainingDataMulticlass
     ModelMetadata.dateTrained = char(datetime('now'));
     ModelMetadata.nWindowsUSCHAD = n_usc;
     ModelMetadata.nWindowsHuGaDB = n_hu;
-    ModelMetadata.includeUSCHAD = p.Results.IncludeUSCHAD;
-    ModelMetadata.includeHuGaDB = p.Results.IncludeHuGaDB;
-    ModelMetadata.task = 'multiclass';
-    ModelMetadata.classNames = ActivityClassRegistry.CLASS_NAMES;
-    ModelMetadata.nClasses = ActivityClassRegistry.N_CLASSES;
+    ModelMetadata.dataset = ds;
+    ModelMetadata.task = 'multiclass_native';
+
+    if strcmp(ds, 'usc_had')
+        ModelMetadata.classNames = ActivityClassRegistry.USCHAD_CLASS_NAMES;
+        ModelMetadata.nClasses = ActivityClassRegistry.USCHAD_N_CLASSES;
+    else
+        ModelMetadata.classNames = ActivityClassRegistry.HUGADB_CLASS_NAMES;
+        ModelMetadata.nClasses = ActivityClassRegistry.HUGADB_N_CLASSES;
+    end
 
     fprintf(['Multiclass feature extraction complete. Total %d windows (%d features). ', ...
         'USC-HAD windows: %d | HuGaDB windows: %d\n'], ...

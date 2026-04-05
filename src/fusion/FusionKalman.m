@@ -1,17 +1,19 @@
-%% FusionKalman.m
-% --------------------------------------------------------------------------
-% CLASS: FusionKalman
-% PURPOSE: Static helper class for Kinematics and Sensor Fusion.
-%          Contains methods to initialize filters and calculate joint angles.
-% --------------------------------------------------------------------------
-% LOCATION: src/fusion/FusionKalman.m
-% --------------------------------------------------------------------------
-% DATE CREATED: 2025-12-11
-% LAST MODIFIED: 2025-12-17
-% --------------------------------------------------------------------------
+% Static helpers for IMU fusion and joint-angle estimation.
 
 classdef FusionKalman
     methods (Static)
+        function fuse = initializeSingleFilter(Fs)
+            % initializeSingleFilter: Sets up one IMU filter for visualization traces.
+            ACCEL_NOISE = 0.01;
+            GYRO_NOISE = 0.005;
+
+            fprintf('Initializing Kalman IMU Filter (SampleRate: %d Hz)...\n', Fs);
+            fuse = imufilter('SampleRate', Fs, ...
+                'AccelerometerNoise', ACCEL_NOISE, ...
+                'GyroscopeNoise', GYRO_NOISE, ...
+                'ReferenceFrame', 'ENU');
+        end
+
         function [fuse_back, fuse_hipL] = initializeFilters(Fs)
             % initializeFilters: Sets up IMU filters for Back and Hip.
             % Tuning parameters (Optimized for human motion)
@@ -53,6 +55,17 @@ classdef FusionKalman
             
             % Convert to Degrees
             hipFlexionAngle = angle_rad * (180/pi);
+        end
+
+        function pitchDeg = estimatePitchAngle(orientationQuat)
+            % estimatePitchAngle: Returns the pitch angle of one filtered IMU.
+            if any(isnan(orientationQuat))
+                pitchDeg = 0;
+                return;
+            end
+
+            eul = quat2eul(orientationQuat, 'ZYX');
+            pitchDeg = eul(2) * (180/pi);
         end
     end
 end

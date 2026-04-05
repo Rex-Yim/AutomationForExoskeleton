@@ -14,7 +14,10 @@ models/lstm_checkpoints/
 
 data/public/.DS_Store
 
-# LaTeX build artifacts (docs/latex — keep sources + main.pdf only)
+# Deliverable PDFs at docs/final_report.pdf and docs/poster.pdf (copied from docs/latex/)
+docs/final/
+
+# LaTeX build artifacts (report + poster sources in docs/latex/)
 docs/latex/*.aux
 docs/latex/*.bbl
 docs/latex/*.blg

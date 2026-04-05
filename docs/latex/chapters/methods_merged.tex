@@ -19,9 +19,9 @@ intent = fuseModeAndTransition(mode, predictedTransition);
 \end{verbatim}
 
 \subsection*{Implemented baseline (repository)}
-The delivered system classifies on overlapping windows (100 samples, step 50) using \textbf{RBF SVMs} only. Per IMU, five features are computed (mean/variance of acc and gyro magnitudes, dominant frequency of vertical acc FFT)---see \texttt{Features.m}. For merged public-data training, HuGaDB provides six IMUs per window (\texttt{FeaturesFromImuStack} $\rightarrow$ \textbf{30-D} feature row); USC-HAD provides one smartphone IMU with zero-padded slots (\texttt{LocomotionFeatureVector}). On-line simulation uses the same padding with the back IMU stream.
+The delivered system classifies on overlapping windows (100 samples, step 50) using an \textbf{RBF SVM} baseline. Per IMU, five features are computed (mean/variance of acc and gyro magnitudes, dominant frequency of vertical acc FFT)---see \texttt{Features.m}. For public-data benchmarking, HuGaDB provides six IMUs per window (\texttt{FeaturesFromImuStack} $\rightarrow$ \textbf{30-D} feature row); USC-HAD provides one smartphone IMU with zero-padded slots (\texttt{LocomotionFeatureVector}). The current deployment path trains on HuGaDB and replays held-out HuGaDB sessions directly in simulation with the same six-IMU feature layout.
 
-\textbf{Binary model} (\texttt{fitcsvm}): locomotion-like vs.\ non-locomotion for assist gating. \textbf{Multiclass model} (\texttt{fitcecoc}, one-vs-all): twelve unified labels in \texttt{ActivityClassRegistry.m}.
+\textbf{Binary model} (\texttt{fitcsvm}): active movement vs.\ inactive for assist gating. \textbf{Multiclass model} (\texttt{fitcecoc}, one-vs-all): \textbf{dataset-native} labels in \texttt{ActivityClassRegistry.m} (USC-HAD twelve trial classes; HuGaDB twelve sample classes), trained and evaluated per dataset.
 
 \textbf{Optional binary LSTM} (Deep Learning Toolbox): sliding windows are encoded as \textbf{sequences} $(6 \times N_{\mathrm{IMU\,slots}}) \times 100$ (features $\times$ time) via \texttt{ImuWindowToSequenceMatrix.m}; training data are built with \texttt{PrepareTrainingDataSequences.m} (same USC-HAD / HuGaDB sources and binary label maps as the SVM pipeline).
 
@@ -39,7 +39,7 @@ hipAngle = computeJointAngle(orientation);
 \end{verbatim}
 
 \subsection*{Implemented baseline}
-The repository uses \texttt{imufilter} as in the snippet for the simulation pipeline (\texttt{FusionKalman.m}). EKF/magnetometer extensions and motion-capture RMSE studies are \textbf{not implemented} in the submitted codebase.
+The repository uses \texttt{imufilter} as in the snippet for the simulation pipeline (\texttt{FusionKalman.m}), but under the HuGaDB deployment pivot it is used for a visualization-side segment-pitch trace rather than for mandatory classifier preprocessing. EKF/magnetometer extensions and motion-capture RMSE studies are \textbf{not implemented} in the submitted codebase.
 
 \section{Machine Learning Model Training and Deployment (planned and implemented)}
 \subsection*{Original proposal}
@@ -51,7 +51,7 @@ Utilize the Statistics and Machine Learning Toolbox for SVMs and the Deep Learni
 
 \textbf{Scripts:} \texttt{TrainSvmBinary}, \texttt{TrainSvmMulticlass}, \texttt{EvaluateSvmConfusion}, \texttt{EvaluateMulticlassConfusion}, \texttt{RunSvmDatasetAblation}.
 
-\textbf{Models:} \texttt{Binary\_SVM\_Model.mat} (merged default), \texttt{Multiclass\_SVM\_ECOC.mat}.
+\textbf{Models:} \texttt{Binary\_SVM\_Model\_hugadb\_only.mat} (default deployment checkpoint), \texttt{Multiclass\_SVM\_ECOC\_usc\_had.mat}, \texttt{Multiclass\_SVM\_ECOC\_hugadb.mat}.
 
 \textbf{Optional (Deep Learning Toolbox):} \texttt{trainNetwork}, sequence input + LSTM layers. \textbf{Scripts:} \texttt{TrainLstmBinary}, \texttt{EvaluateLstmConfusion}. \textbf{Model:} \texttt{Binary\_LSTM\_Network.mat}.
 }

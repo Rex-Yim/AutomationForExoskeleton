@@ -27,8 +27,8 @@
 \usepackage[hyphens]{url}
 \usepackage[hidelinks]{hyperref}
 
-% Figure path: project results folder (compile from docs/latex/)
-\graphicspath{{../../results/}}
+% Figure path: project results folders. Build: docs/latex/compile.sh → docs/final_report.pdf
+\graphicspath{{../../results/figures/binary/}{../../results/figures/multiclass/}{../../results/figures/pipeline/}}
 % Tall MATLAB figures (confusion + pipeline): cap height so nothing is clipped at page bottom
 \newcommand{\includegraphicsresult}[1]{%
   \includegraphics[width=0.92\linewidth,height=0.68\textheight,keepaspectratio]{#1}}
@@ -50,7 +50,7 @@
   pdfauthor={Yim Fu Chong}
 }
 
-% Numeric results synced with results/*.mat — regenerate via scripts/ExportMetricsForReport.m
+% Numeric results synced with results/metrics/*/*.mat — regenerate via scripts/ExportMetricsForReport.m
 \input{generated_metrics}
 
 \begin{document}
@@ -115,8 +115,8 @@ The module was specified to integrate: (i)~a \textbf{data acquisition and proces
 \subsection*{Current implementation emphasis (repository)}
 The module integrates two core components as realized in code:
 \begin{itemize}
-  \item \textbf{Data acquisition and processing:} Three-phone CSV prototype; Kalman fusion (\texttt{imufilter}); \textbf{binary} RBF SVM on merged USC-HAD and HuGaDB (30-D window features) with USC-only / HuGaDB-only ablations; optional \textbf{twelve-class} ECOC SVM; optional \textbf{binary LSTM} on sequence-shaped IMU windows (\texttt{TrainLstmBinary}, \texttt{RunExoskeletonPipelineLstm}). Embedded deployment remains future work.
-  \item \textbf{Binary locomotion intent:} Labels map activity to \textbf{locomotion-like} vs.\ \textbf{non-locomotion}. The $>90$\% target is met for USC-HAD-only and merged binary SVM training; HuGaDB-only binary accuracy is lower (imbalance and label noise). The optional LSTM uses a 20\% holdout metric (not five-fold OOF). The 100--200~ms horizon is a design target, not re-benchmarked here for the submitted baselines.
+  \item \textbf{Data acquisition and processing:} \textbf{HuGaDB} deployment path; held-out HuGaDB replay for pseudo-real-time testing; optional Kalman visualization (\texttt{imufilter}); \textbf{binary} RBF SVM on HuGaDB 30-D window features with USC-HAD / HuGaDB benchmark comparisons retained for the paper and poster; optional \textbf{native ECOC} SVMs (twelve USC-HAD / twelve HuGaDB activity classes); optional \textbf{binary and multiclass LSTM} sequence models on per-dataset IMU windows (\texttt{TrainLstmBinary}, \texttt{TrainLstmMulticlass}, \texttt{RunExoskeletonPipelineLstm}). Embedded deployment remains future work.
+  \item \textbf{Binary active-movement intent:} Labels map activity to \textbf{active movement} vs.\ \textbf{inactive}. The final pipeline trains on the HuGaDB binary SVM path, while public-dataset comparison and replay-based simulation remain separate supporting workflows. The optional LSTM uses a 20\% holdout metric (not five-fold OOF). The 100--200~ms horizon is a design target, not re-benchmarked here for the submitted baselines.
 \end{itemize}
 
 Being entirely software-based, the solution enables seamless integration into existing hardware prototypes, rapid deployment, and scalability across future platforms.
@@ -124,7 +124,7 @@ Being entirely software-based, the solution enables seamless integration into ex
 \section{Significance of the Project}
 This project directly addresses a major occupational health challenge affecting industrial workers, logistics and construction personnel, and military operators exposed to heavy manual handling. In Hong Kong, manual handling injuries are a leading cause of absenteeism and healthcare expenditure. By providing proactive, personalized torque assistance at the hips and knees using cooperative control strategies---in which the exoskeleton follows rather than leads the user---the system aims for high accuracy in intent detection; recent field evidence shows that such user-following approaches improve usability compared to fixed profiles~\cite{le2024}.
 
-Conducted in close collaboration with ExoTechHK Limited under the HKSTP incubation programme, the project offers a pathway for technology transfer and commercialization. Software-centric design enables low-cost retrofitting to existing lower-limb platforms and upgrades across hardware generations, with potential to broaden adoption. The technology aligns with United Nations Sustainable Development Goal 8 (Decent Work and Economic Growth) and strengthens Hong Kong's innovation ecosystem through industry--academia partnership. The standardized mobile-phone IMU protocol supports reproducibility and open collaboration in biomechanics and wearable technology.
+Conducted in close collaboration with ExoTechHK Limited under the HKSTP incubation programme, the project offers a pathway for technology transfer and commercialization. Software-centric design enables low-cost retrofitting to existing lower-limb platforms and upgrades across hardware generations, with potential to broaden adoption. The technology aligns with United Nations Sustainable Development Goal 8 (Decent Work and Economic Growth) and strengthens Hong Kong's innovation ecosystem through industry--academia partnership. The reproducible HuGaDB training and held-out replay protocol supports repeatable evaluation without relying on project-specific phone recordings.
 
 \input{chapters/literature_review}
 

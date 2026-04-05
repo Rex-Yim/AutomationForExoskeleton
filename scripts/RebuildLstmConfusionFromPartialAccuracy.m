@@ -1,14 +1,8 @@
-%% RebuildLstmConfusionFromPartialAccuracy.m
-% When LSTM training was interrupted before saving Binary_LSTM_Network.mat, there is no
-% network to run EvaluateLstmConfusion. This script rebuilds results/lstm_confusion_matrix.png
-% and a full results/lstm_evaluation_metrics.mat from:
-%   - valAcc in results/lstm_evaluation_metrics.mat (from the training log), and
-%   - the same stratified 20%% holdout as TrainLstmBinary (rng(42), cvpartition).
-%
-% Yhat is *synthesized* so the confusion counts match valAcc and the true YVal distribution;
-% cell assignments are not unique. The PNG footer states this explicitly.
-%
-% LOCATION: scripts/RebuildLstmConfusionFromPartialAccuracy.m
+% Rebuild HuGaDB binary LSTM confusion artifacts from saved validation
+% accuracy and the original stratified holdout split when the trained
+% network artifact is unavailable.
+% Predicted labels are synthesized to match the reported accuracy and class
+% distribution, so cell-level assignments are approximate.
 
 function RebuildLstmConfusionFromPartialAccuracy()
 
@@ -19,7 +13,7 @@ function RebuildLstmConfusionFromPartialAccuracy()
     addpath(fullfile(projectRoot, 'config'));
     cd(projectRoot);
 
-    matIn = fullfile(projectRoot, 'results', 'lstm_evaluation_metrics.mat');
+    matIn = ResultsArtifactPath(projectRoot, 'metrics', 'binary', 'lstm_evaluation_metrics_hugadb.mat');
     if exist(matIn, 'file') ~= 2
         error('Missing %s — create it with valAcc from the training log first.', matIn);
     end
@@ -30,10 +24,13 @@ function RebuildLstmConfusionFromPartialAccuracy()
     valAcc = double(S0.valAcc(1));
 
     cfg = ExoConfig();
+    classNames = ActivityClassRegistry.binaryClassNames();
+    inactiveLabel = classNames{1};
+    activeLabel = classNames{2};
     fprintf('Loading sequences (same as TrainLstmBinary)...\n');
     [~, labelsAll, ModelMetadata] = PrepareTrainingDataSequences(cfg);
 
-    Ycat = categorical(labelsAll, [0 1], {'Stand', 'Walk'});
+    Ycat = categorical(labelsAll, [0 1], classNames);
     seed = 42;
     rng(seed);
     cvp = cvpartition(Ycat, 'HoldOut', 0.2);
@@ -44,8 +41,8 @@ function RebuildLstmConfusionFromPartialAccuracy()
     nCorrect = round(valAcc * nH);
     nErr = nH - nCorrect;
 
-    standIdx = find(YVal == 'Stand');
-    walkIdx = find(YVal == 'Walk');
+    standIdx = find(YVal == inactiveLabel);
+    walkIdx = find(YVal == activeLabel);
     nS = numel(standIdx);
     nW = numel(walkIdx);
 
@@ -57,10 +54,10 @@ function RebuildLstmConfusionFromPartialAccuracy()
     end
 
     Yhat = YVal;
-    Yhat(standIdx(1:nFP)) = 'Walk';
-    Yhat(walkIdx(1:nFN)) = 'Stand';
+    Yhat(standIdx(1:nFP)) = activeLabel;
+    Yhat(walkIdx(1:nFN)) = inactiveLabel;
 
-    cm = confusionmat(YVal, Yhat, 'Order', {'Stand', 'Walk'});
+    cm = confusionmat(YVal, Yhat, 'Order', classNames);
     TN = cm(1, 1);
     FP = cm(1, 2);
     FN = cm(2, 1);
@@ -75,14 +72,14 @@ function RebuildLstmConfusionFromPartialAccuracy()
     f1Walk = 2 * precWalk * recWalk / max(precWalk + recWalk, eps);
     specStand = TN / max(TN + FP, eps);
 
-    poolLabel = 'USC-HAD + HuGaDB';
+    poolLabel = 'HuGaDB';
     lstmH = 128;
     if isfield(ModelMetadata, 'lstmHidden1')
         lstmH = ModelMetadata.lstmHidden1;
     end
 
-    pngPath = fullfile(projectRoot, 'results', 'lstm_confusion_matrix.png');
-    matOut = fullfile(projectRoot, 'results', 'lstm_evaluation_metrics.mat');
+    pngPath = ResultsArtifactPath(projectRoot, 'figures', 'binary', 'lstm_confusion_matrix_hugadb.png');
+    matOut = ResultsArtifactPath(projectRoot, 'metrics', 'binary', 'lstm_evaluation_metrics_hugadb.mat');
 
     footerLines = {
         'NOTE: Yhat synthesized to match logged valAcc; training stopped';

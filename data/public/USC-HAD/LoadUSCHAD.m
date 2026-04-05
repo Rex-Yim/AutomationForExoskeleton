@@ -1,23 +1,7 @@
-%% LoadUSCHAD.m
-% --------------------------------------------------------------------------
-% FUNCTION: usc = LoadUSCHAD(rawDir)
-% PURPOSE: Loads all raw USC-HAD .mat files (recursively from subfolders),
-%          normalizes the structure, and saves all trials into a single
-%          usc_had_dataset.mat file.
-% --------------------------------------------------------------------------
-% DATE CREATED: 2025-12-12
-% LAST MODIFIED: 2025-12-16 (Fixed for sensor_readings, units, regex; extract subj from folder)
-% --------------------------------------------------------------------------
-% DEPENDENCIES: 
-% - MATLAB built-in functions (dir, load, regexp)
-% --------------------------------------------------------------------------
-% NOTES:
-% - Extracts from 'sensor_readings' (Nx6: acc_xyz, gyro_xyz).
-% - Converts units: acc g→m/s², gyro dps→rad/s.
-% - Filenames: a<act>t<trial>.mat (no _); subj from folder.
-% - Recursively searches subfolders (e.g., SubjectX/) for .mat files.
-% - Call without arguments to use default path.
-% --------------------------------------------------------------------------
+% Load raw USC-HAD trials, normalize the record structure, and save
+% `usc_had_dataset.mat` for downstream training.
+% Sensor readings are read from `sensor_readings`, converted to SI units,
+% and discovered recursively from the subject subfolders.
 
 function usc = LoadUSCHAD(rawDir)
     % Directory containing this file (.../data/public/USC-HAD/)

@@ -1,5 +1,5 @@
 % A0 portrait poster — MAEG4999 / AutomationForExoskeleton
-% Build: cd docs/latex && pdflatex -interaction=nonstopmode poster.tex
+% Build: docs/latex/compile_poster.sh → docs/poster.pdf
 \documentclass[20pt]{extarticle}
 
 \usepackage[utf8]{inputenc}
@@ -22,7 +22,7 @@
 \setlength{\parskip}{0.25em}
 \setstretch{1.02}
 
-\graphicspath{{../../results/}{assets/}}
+\graphicspath{{../../results/figures/binary/}{../../results/figures/multiclass/}{../../results/figures/pipeline/}{assets/}}
 
 \input{generated_metrics}
 
@@ -63,7 +63,7 @@
     \begin{minipage}[c][7.2em][c]{0.255\textwidth}
       \centering
       {\fontsize{18}{22}\selectfont\bfseries\color{bodytext} #1}\\[0.18em]
-      {\fontsize{44}{50}\selectfont\bfseries\color{accent} #2}\\[0.14em]
+      {\color{accent}\parbox[c][2.4em][c]{0.92\linewidth}{\centering\fontsize{27}{31}\selectfont\bfseries #2}}\\[0.14em]
       {\fontsize{18}{22}\selectfont\color{footfg} #3}
     \end{minipage}%
   }%
@@ -80,6 +80,18 @@
     \end{minipage}%
   }\\[0.18em]
   {\centering\color{captionfg}\fontsize{20}{24}\selectfont\bfseries #2\par}%
+}
+
+\newcommand{\gallerythumb}[2]{%
+  \begin{minipage}[t]{0.235\textwidth}
+    \centering
+    \setlength{\fboxsep}{3pt}%
+    \setlength{\fboxrule}{0.6pt}%
+    \fcolorbox{stripborder}{figbg}{%
+      \includegraphics[width=\linewidth,height=0.12\textheight,keepaspectratio]{#1}%
+    }\\[0.14em]
+    {\color{captionfg}\fontsize{15}{18}\selectfont\bfseries #2\par}%
+  \end{minipage}%
 }
 
 \newcommand{\posterbox}[2]{%
@@ -164,7 +176,7 @@
   \parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule}{%
     \centering
     {\fontsize{28}{33}\selectfont\bfseries\color{bodytext}
-    Key message: a reproducible MATLAB pipeline combines Kalman fusion, binary SVM classification, and FSM hysteresis to turn noisy IMU data into a stable assist on/off command.}
+    Key message: the validated baseline is a reproducible HuGaDB MATLAB assist-gating pipeline: 30-D IMU features feed a binary active-vs-inactive SVM, and FSM hysteresis turns noisy window predictions into a stable assist on/off command.}
   }%
 }
 
@@ -172,10 +184,10 @@
 
 % ---------- Headline metrics ----------
 \noindent
-\metriccard{Deployment baseline\\Binary SVM, merged 5-fold OOF}{\BinaryOofAccMerged\%}{Best validated claim for assist gating}\hfill
-\metriccard{Exploratory activity model\\12-class ECOC, 5-fold OOF}{\MulticlassOofAcc\%}{Useful for analysis, not direct control}\hfill
-\ifnum\HasLstmMetrics=1
-  \metriccard{Sequence baseline\\Binary LSTM, 20\% holdout}{\LstmHoldoutAcc\%}{Separate protocol, not directly comparable}\hfill
+\metriccard{Binary SVM\\5-fold OOF}{USC-HAD \BinaryOofAccUsc\%\\HuGaDB \BinaryOofAccHuGa\%}{Benchmark comparison across datasets}\hfill
+\metriccard{Multiclass SVM\\5-fold OOF}{USC \MulticlassOofAccUsc\%\\HuGaDB \MulticlassOofAccHuGa\%}{Native multiclass activity recognition per dataset}\hfill
+\ifnum\HasBinaryLstmMetrics=1
+  \metriccard{Sequence baseline\\Binary LSTM, 20\% holdout}{USC-HAD \LstmBinaryHoldoutAccUsc\%\\HuGaDB \LstmBinaryHoldoutAccHuGa\%}{Separate holdout protocol, supporting baseline}\hfill
 \else
   \metriccard{Sequence baseline\\Binary LSTM, 20\% holdout}{---}{Run training and export metrics}\hfill
 \fi
@@ -190,26 +202,26 @@
   \posterbox{Problem and approach}{
     \begin{compactitem}
       \item Manual load handling above 20~kg raises fatigue and musculoskeletal injury risk.
-      \item An exoskeleton is only useful if assistance engages and releases at the right time.
-      \item This work targets a \textbf{software supervisor}: infer locomotion-like intent from IMUs and issue a reliable assist on/off signal without EMG.
+      \item An exoskeleton is useful when assistance engages and releases at the right time.
+      \item This work targets a \textbf{software supervisor}: infer active movement from IMUs and issue a reliable assist on/off signal without EMG.
       \item The goal is not full torque control yet; it is a robust decision layer that can sit above future hardware control.
     \end{compactitem}
   }
 
   \posterbox{Implemented workflow}{
     \begin{compactitem}
-      \item \textbf{Input:} public IMU datasets plus a three-phone CSV replay prototype.
-      \item \textbf{Fusion:} Kalman-based hip-angle estimation using \texttt{imufilter}.
+      \item \textbf{Input:} HuGaDB for training and held-out HuGaDB replay for simulation; USC-HAD is retained as a comparison benchmark.
+      \item \textbf{Fusion:} Kalman filtering is optional and used for a replay-time segment-pitch visualization trace, not for classifier preprocessing.
       \item \textbf{Windowing:} 1.0~s windows at 100~Hz with 50\% overlap.
-      \item \textbf{Features:} \textbf{30-D} vector, five statistics per IMU slot across six slots.
-      \item \textbf{Primary model:} RBF SVM for locomotion-like vs.\ non-locomotion.
-      \item \textbf{Supervisory smoothing:} FSM hysteresis, 3 positives to engage assist and 5 negatives to release.
+      \item \textbf{Features:} \textbf{30-D} handcrafted vector, five statistics per IMU slot across six slots.
+      \item \textbf{Primary model:} RBF SVM for \textbf{binary gating}: active-movement windows vs.\ inactive windows, using dataset-specific activity-to-binary maps.
+      \item \textbf{Supervisory smoothing:} FSM hysteresis, 3 active predictions to engage assist and 5 inactive predictions to release.
     \end{compactitem}
   }
 \end{minipage}\hfill
 \begin{minipage}[t]{0.485\textwidth}
   \posterbox{Main validated result}{
-    The strongest deployable claim is the \textbf{merged binary SVM}: it reaches \textbf{\BinaryOofAccMerged\%} five-fold out-of-fold accuracy while preserving a practical trade-off between false assist activation and missed locomotion onset.
+    The strongest binary-SVM claim in the current repository is the \textbf{HuGaDB} model: it reaches \textbf{\BinaryOofAccHuGa\%} five-fold out-of-fold accuracy on the HuGaDB benchmark split.
 
     \vspace{0.14em}
     \setlength{\tabcolsep}{8pt}
@@ -219,22 +231,22 @@
       \rowcolor{accentsoft}
       \textbf{Training data} & \textbf{OOF acc.} \\
       \midrule
-      USC-HAD only & \textbf{\BinaryOofAccUsc\%} \\
-      HuGaDB only & \textbf{\BinaryOofAccHuGa\%} \\
-      USC-HAD + HuGaDB & \textbf{\textcolor{accent}{\BinaryOofAccMerged\%}} \\
+      USC-HAD & \textbf{\BinaryOofAccUsc\%} \\
+      HuGaDB & \textbf{\BinaryOofAccHuGa\%} \\
       \bottomrule
     \end{tabular}
 
     \vspace{0.16em}
-    The USC-only score is numerically highest, but the \textbf{merged} model is the better poster result because it generalizes across a broader sensing setup and label mixture.
+    This table is kept as \textbf{benchmark context}. The final project path does \textbf{not} merge datasets; it trains on HuGaDB and keeps replay-based simulation as a separate step.
   }
 
   \posterbox{Data and evaluation protocol}{
     \begin{compactitem}
-      \item \textbf{HuGaDB} contributes six on-body IMU streams per window.
-      \item \textbf{USC-HAD} contributes one IMU stream; the remaining slots are zero-padded so both datasets share the same 30-D layout.
-      \item The \textbf{binary SVM} is the deployment baseline and is evaluated with five-fold out-of-fold predictions.
-      \item The \textbf{12-class ECOC} and \textbf{binary LSTM} are supporting baselines; the LSTM uses a separate stratified 20\% holdout and is therefore not directly comparable.
+      \item \textbf{HuGaDB} contributes six on-body IMU streams per window and is the dataset used by the final pipeline.
+      \item \textbf{USC-HAD} contributes one IMU stream; it remains in the poster to compare dataset effects under the same 30-D layout.
+      \item The \textbf{binary SVM} is the main baseline; the active checkpoint is the HuGaDB model.
+      \item \textbf{Binary} asks a simple control question: should assist stay \textbf{off} or turn \textbf{on}? \textbf{Multiclass} asks a harder recognition question: which exact activity is occurring?
+      \item \textbf{Multiclass SVM} (12 USC / 12 HuGaDB classes) and \textbf{binary/multiclass LSTM} are supporting baselines; the SVM uses stratified subsamples and the LSTMs use separate stratified 20\% holdouts, so neither is a direct deployment comparison.
     \end{compactitem}
   }
 \end{minipage}
@@ -242,9 +254,9 @@
 \vspace{0.14em}
 \posterbox{Pipeline at a glance}{
   \begin{center}
-    \workflowstep{1}{IMU data\\and CSV replay}\hfill
+    \workflowstep{1}{HuGaDB train pool\\and held-out replay}\hfill
     {\fontsize{38}{38}\selectfont\color{accent}$\rightarrow$}\hfill
-    \workflowstep{2}{Kalman fusion\\for hip state}\hfill
+    \workflowstep{2}{Optional Kalman\\visualization trace}\hfill
     {\fontsize{38}{38}\selectfont\color{accent}$\rightarrow$}\hfill
     \workflowstep{3}{30-D features\\per window}\hfill
     {\fontsize{38}{38}\selectfont\color{accent}$\rightarrow$}\hfill
@@ -261,20 +273,20 @@
 % ---------- Main figures ----------
 \noindent
 \begin{minipage}[t]{0.485\textwidth}
-  \posterfigcap{svm_confusion_matrix.png}{Merged binary SVM: the main validated result for assist gating}{0.248\textheight}
+  \posterfigcap{svm_confusion_matrix_hugadb.png}{HuGaDB binary SVM: predicts assist-gating on/off, not the exact activity class}{0.248\textheight}
 \end{minipage}\hfill
 \begin{minipage}[t]{0.485\textwidth}
-  \posterfigcap{pipeline_output.png}{Real-time MATLAB replay: fused hip angle and FSM-latched assist output}{0.248\textheight}
+  \posterfigcap{pipeline_binary_svm_output.png}{Held-out HuGaDB replay: Kalman visualization plus FSM-latched assist output}{0.248\textheight}
 \end{minipage}
 
 \vspace{0.14em}
 
 \noindent
 \begin{minipage}[t]{0.485\textwidth}
-  \posterfigcap{multiclass_confusion_matrix.png}{12-class ECOC: exploratory activity recognition is much harder than binary gating}{0.228\textheight}
+  \posterfigcap{multiclass_confusion_matrix_hugadb.png}{HuGaDB multiclass SVM: predicts the exact activity label, so it is exploratory and harder than binary gating}{0.228\textheight}
 \end{minipage}\hfill
 \begin{minipage}[t]{0.485\textwidth}
-  \posterfigcap{lstm_confusion_matrix.png}{Binary LSTM: supporting sequence baseline on a separate 20\% holdout split}{0.228\textheight}
+  \posterfigcap{lstm_confusion_matrix_hugadb.png}{Binary LSTM: supporting sequence baseline on a separate 20\% holdout split}{0.228\textheight}
 \end{minipage}
 
 \vspace{0.14em}
@@ -285,7 +297,7 @@
   \parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule}{%
     \centering
     {\fontsize{31}{36}\selectfont\bfseries
-    Take-home message: the repository now delivers a complete MATLAB baseline for IMU-based \textbf{binary assist gating}, with reproducible public-dataset metrics, CSV replay, sensor fusion, and FSM-stabilized control output.}
+    Take-home message: the repository now delivers a traceable MATLAB baseline for IMU-based \textbf{binary assist gating}, centered on HuGaDB training, benchmark comparison tables, replay-based simulation, and FSM-stabilized control output.}
   }%
 }
 
@@ -294,9 +306,11 @@
 \begin{minipage}[t]{0.485\textwidth}
   \posterbox{How to read the supporting baselines}{
     \begin{compactitem}
-      \item The pipeline plot shows why the FSM matters: it turns noisy frame-level predictions into a smoother and more usable assist signal.
-      \item The multiclass ECOC score of \textbf{\MulticlassOofAcc\%} is informative for analysis, but not yet strong enough for fine-grained control.
-      \item \ifnum\HasLstmMetrics=1 LSTM holdout accuracy is \textbf{\LstmHoldoutAcc\%}, but it uses a different validation protocol, so it is a supporting baseline rather than a direct SVM comparison.\else LSTM metrics are not exported, so it is not part of the validated poster claim.\fi
+      \item The pipeline plot shows why the FSM matters: it turns noisy window-level predictions into a smoother and more usable assist signal.
+      \item The \textbf{binary} task is easier because several activities are merged into two groups; the \textbf{multiclass} task is harder because it must separate the exact activity label.
+      \item Multiclass SVM OOF scores (\textbf{\MulticlassOofAccUsc\%} USC-HAD; \textbf{\MulticlassOofAccHuGa\%} HuGaDB) are informative for analysis, but not yet strong enough for fine-grained control.
+      \item \ifnum\HasBinaryLstmMetrics=1 Binary LSTM holdout accuracy is \textbf{\LstmBinaryHoldoutAccUsc\%} on USC-HAD and \textbf{\LstmBinaryHoldoutAccHuGa\%} on HuGaDB; it uses a different validation protocol and remains a supporting baseline rather than a direct SVM comparison.\else Binary LSTM metrics are not exported, so they are not part of the validated poster claim.\fi
+      \item \ifnum\HasMulticlassLstmMetrics=1 Multiclass LSTM holdout accuracy is \textbf{\LstmMulticlassHoldoutAccUsc\%} on USC-HAD and \textbf{\LstmMulticlassHoldoutAccHuGa\%} on HuGaDB; because the datasets remain distinct native label spaces, the comparison is a summary metric.\else Multiclass LSTM metrics are optional and are omitted until the per-dataset sequence models are trained.\fi
     \end{compactitem}
   }
 
@@ -305,13 +319,14 @@
       \item No hardware-in-the-loop or human-subject load trials are reported here.
       \item The 100--200~ms predictive horizon remains a \textbf{design target}, not a re-benchmarked final result.
       \item Current output is \textbf{assist gating}, not full torque scheduling or terrain-aware control.
+      \item Multiclass and LSTM baselines still need a stronger evaluation protocol aligned with the main binary SVM path.
     \end{compactitem}
   }
 \end{minipage}\hfill
 \begin{minipage}[t]{0.485\textwidth}
   \posterbox{Next steps}{
     \begin{compactitem}
-      \item Align SVM and LSTM evaluation under the same cross-validation protocol.
+      \item Align multiclass and LSTM evaluation with the same level of rigor used for the main binary SVM baseline.
       \item Add hardware integration, latency measurement, and load-carrying trials.
       \item Move from binary assist gating toward subject-specific, activity-aware assistance.
     \end{compactitem}
@@ -319,12 +334,43 @@
 
   \posterbox{Summary}{
     \begin{compactitem}
-      \item \textbf{Delivered:} Kalman fusion, binary SVM, FSM smoothing, reproducible metrics, and CSV replay in MATLAB.
-      \item \textbf{Best validated result:} merged binary SVM achieves \textbf{\BinaryOofAccMerged\%} five-fold OOF accuracy.
+      \item \textbf{Delivered:} HuGaDB binary SVM, optional Kalman visualization, FSM smoothing, reproducible metrics, and replay in MATLAB.
+      \item \textbf{Best validated result:} HuGaDB binary SVM achieves \textbf{\BinaryOofAccHuGa\%} five-fold OOF accuracy.
       \item \textbf{System role:} simulation-level assist gating supervisor.
-      \item \textbf{Value:} a credible, traceable software baseline that separates validated results from future ambition.
+      \item \textbf{Value:} a credible, traceable software baseline that separates benchmark comparisons from the final deployed method.
     \end{compactitem}
   }
 \end{minipage}
+
+\newpage
+\noindent\colorbox{bannerbg}{%
+  \parbox{\dimexpr\linewidth-2\fboxsep}{%
+    \color{bannerfg}
+    \vspace{0.22em}
+    \centering
+    {\fontsize{40}{46}\selectfont\bfseries Complete Generated Figure Gallery}\\[0.10em]
+    {\fontsize{20}{25}\selectfont All distinct PNG artifacts currently written under \texttt{results/figures/}.}
+    \vspace{0.18em}
+  }%
+}
+
+\vspace{0.18em}
+\gallerythumb{svm_confusion_matrix_usc_had.png}{Binary SVM\\USC-HAD}\hfill
+\gallerythumb{svm_confusion_matrix_hugadb.png}{Binary SVM\\HuGaDB}\hfill
+
+\vspace{0.18em}
+\gallerythumb{multiclass_confusion_matrix_usc_had.png}{Multiclass SVM\\USC-HAD}\hfill
+\gallerythumb{multiclass_confusion_matrix_hugadb.png}{Multiclass SVM\\HuGaDB}\hfill
+\gallerythumb{lstm_confusion_matrix_usc_had.png}{Binary LSTM\\USC-HAD}
+
+\vspace{0.18em}
+\gallerythumb{lstm_confusion_matrix_hugadb.png}{Binary LSTM\\HuGaDB}\hfill
+\gallerythumb{lstm_multiclass_confusion_matrix_usc_had.png}{Multiclass LSTM\\USC-HAD}\hfill
+\gallerythumb{lstm_multiclass_confusion_matrix_hugadb.png}{Multiclass LSTM\\HuGaDB}
+
+\vspace{0.18em}
+\gallerythumb{pipeline_binary_svm_output.png}{Binary SVM\\pipeline replay}\hfill
+\gallerythumb{pipeline_output_lstm.png}{Binary LSTM\\pipeline replay}\hfill
+\gallerythumb{pipeline_multiclass_output.png}{Multiclass SVM\\pipeline replay}
 
 \end{document}

@@ -1,13 +1,6 @@
-%% TrainSvmBinary.m
-% --------------------------------------------------------------------------
-% SCRIPT: TrainSvmBinary
-% PURPOSE: Trains the binary SVM (Walking vs. Standing) and saves the model.
-% --------------------------------------------------------------------------
-% LOCATION: scripts/TrainSvmBinary.m
-% --------------------------------------------------------------------------
-% DATE CREATED: 2025-12-13
-% LAST MODIFIED: 2025-12-17
-% --------------------------------------------------------------------------
+% Train the binary active-vs-inactive SVM and save the default deployment model.
+% Training uses the configured dataset mix while excluding held-out HuGaDB
+% simulation subjects from the deployment artifact.
 
 clc; clear; close all;
 
@@ -15,15 +8,15 @@ clc; clear; close all;
 cfg = ExoConfig();
 
 fprintf('===========================================================\n');
-fprintf('   Training SVM Binary Classifier (Walk vs. Stand)\n');
+fprintf('   Training SVM Binary Classifier (Active vs. Inactive)\n');
 fprintf('===========================================================\n');
 
 % --- 1. Prepare Data ---
 try
-    % Default: USC-HAD + HuGaDB when both .mat files exist. For ablation runs
-    % (single-source + merged), use scripts/RunSvmDatasetAblation.m or call
-    % PrepareTrainingData(cfg,'IncludeUSCHAD',false,'IncludeHuGaDB',true), etc.
-    [featuresAll, labelsAll, ModelMetadata] = PrepareTrainingData(cfg);
+    [featuresAll, labelsAll, ModelMetadata] = PrepareTrainingData(cfg, ...
+        'IncludeUSCHAD', cfg.TRAINING.DEFAULT_INCLUDE_USCHAD, ...
+        'IncludeHuGaDB', cfg.TRAINING.DEFAULT_INCLUDE_HUGADB, ...
+        'ExcludeHuGaDBSubjects', {});
 catch ME
     error('Data preparation failed: %s', ME.message);
 end
@@ -35,6 +28,10 @@ end
 if isfield(ModelMetadata, 'nWindowsUSCHAD')
     fprintf('Window counts — USC-HAD: %d | HuGaDB: %d\n', ...
         ModelMetadata.nWindowsUSCHAD, ModelMetadata.nWindowsHuGaDB);
+end
+if isfield(ModelMetadata, 'excludeHuGaDBSubjects')
+    fprintf('Held-out HuGaDB subjects excluded from training: %s\n', ...
+        strjoin(ModelMetadata.excludeHuGaDBSubjects, ', '));
 end
 
 % --- 2. Train SVM Model ---
@@ -56,7 +53,7 @@ cvError = kfoldLoss(cvModel);
 cvAccuracy = (1 - cvError) * 100;
 
 fprintf('-----------------------------------------------------------\n');
-fprintf('   Model Accuracy (5-Fold CV): %.2f%%\n', cvAccuracy);
+fprintf('   Model Accuracy (5-Fold CV on active training pool): %.2f%%\n', cvAccuracy);
 fprintf('-----------------------------------------------------------\n');
 
 % --- 4. Save Model ---

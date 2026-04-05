@@ -2,12 +2,12 @@
 \section{Experimental Outputs Used in This Chapter}
 The final results are generated from the committed MATLAB evaluation scripts rather than from the earlier interim write-up. Public-dataset experiments use sliding windows of 1.0~s with 0.5~s step size at 100~Hz.
 
-Binary classification uses five-fold out-of-fold (OOF) predictions (\texttt{EvaluateSvmConfusion.m}, \texttt{RunSvmDatasetAblation.m}); multiclass evaluation uses \texttt{EvaluateMulticlassConfusion.m}. Percentages match \texttt{generated\_metrics.tex}, exported from \texttt{results/*.mat}.
+Binary classification uses five-fold out-of-fold (OOF) predictions (\texttt{EvaluateSvmConfusion.m}, \texttt{RunSvmDatasetAblation.m}); multiclass SVM evaluation uses \texttt{EvaluateMulticlassConfusion.m}; LSTM evaluation uses a stratified 20\% holdout via \texttt{EvaluateLstmConfusion.m} and \texttt{EvaluateLstmMulticlassConfusion.m}. Percentages match \texttt{generated\_metrics.tex}, exported from \texttt{results/metrics/*/*.mat}.
 
-In parallel with public-dataset training, a three-phone acquisition prototype was completed for simulation-oriented testing. Phones mounted at the lower back and hips provide CSV recordings that can be replayed by the real-time MATLAB pipeline. This prototype is sufficient to validate signal flow, Kalman fusion, and assist-command generation, but it is not yet a substitute for instrumented human-subject trials under load.
+The repository keeps \textbf{benchmark comparison} and the \textbf{simulation path} distinct. USC-HAD and HuGaDB runs are compared with the same training scripts but are kept fully separate. The final project pipeline itself is centered on \textbf{HuGaDB}, while pseudo-real-time replay remains a separate simulation step.
 
-\section{Binary Locomotion Recognition Results}
-Table~\ref{tab:binarycv} summarizes the main quantitative result of the project: binary recognition of locomotion-like versus non-locomotion activity using the implemented 30-D SVM feature pipeline. The comparison between USC-HAD only, HuGaDB only, and merged training is important because it shows how performance changes when the model is exposed to broader but more heterogeneous data.
+\section{Binary Active-Movement Recognition Results}
+Table~\ref{tab:binarycv} summarizes the benchmark comparison that remains useful in the report and poster: binary recognition of active movement versus inactive activity using the implemented 30-D SVM feature pipeline. The comparison between USC-HAD and HuGaDB training is retained because it shows how performance changes when the same classifier family is exposed to different sensing layouts and dataset definitions.
 
 \begin{table}[htbp]
   \centering
@@ -17,81 +17,177 @@ Table~\ref{tab:binarycv} summarizes the main quantitative result of the project:
     \toprule
     \textbf{Training data} & \textbf{OOF accuracy} \\
     \midrule
-    USC-HAD only & \BinaryOofAccUsc\% \\
-    HuGaDB only & \BinaryOofAccHuGa\% \\
-    USC-HAD + HuGaDB (merged) & \BinaryOofAccMerged\% \\
+    USC-HAD & \BinaryOofAccUsc\% \\
+    HuGaDB & \BinaryOofAccHuGa\% \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-Two observations stand out. First, the binary target of exceeding 90\% accuracy is achieved for USC-HAD only (\BinaryOofAccUsc\%) and for the merged setting (\BinaryOofAccMerged\%). Second, HuGaDB-only training is lower at \BinaryOofAccHuGa\%, indicating that cross-session variability and label ambiguity in that dataset make the classification problem harder.
+Two observations stand out. First, the binary target of exceeding 90\% accuracy is achieved for USC-HAD training (\BinaryOofAccUsc\%). Second, HuGaDB training is lower at \BinaryOofAccHuGa\%, indicating that cross-session variability and label ambiguity in that dataset make the classification problem harder.
 
-The USC-HAD-only model gives the highest numerical accuracy, but it is not the best deployment candidate for this project because it is trained from a narrower sensing configuration. The merged model is therefore the more meaningful default baseline: its accuracy is lower than the single-dataset USC-HAD result, yet it generalizes across a broader mixture of sensing layouts and activity definitions and is the model copied to \texttt{Binary\_SVM\_Model.mat} for the real-time pipeline.
+Those values should now be read as \textbf{comparison evidence}, not as competing deployment candidates. The final project direction deliberately drops USC-HAD from the operational pipeline and keeps the default binary model on the \textbf{HuGaDB} training setup.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphicsresult{svm_confusion_matrix.png}
-  \caption{Binary confusion matrix for the merged SVM model using five-fold OOF predictions.}
+  \includegraphicsresult{svm_confusion_matrix_hugadb.png}
+  \caption{Binary confusion matrix for the active HuGaDB model using five-fold OOF predictions.}
   \label{fig:cm}
 \end{figure}
 
-Figure~\ref{fig:cm} shows the confusion matrix for the merged model. In practical terms, this figure matters more than the scalar accuracy alone because it describes the balance between missed locomotion events and false activations of assistance. For an exoskeleton controller, both error types matter: false negatives can delay assistance when the user starts moving, while false positives can produce unwanted assist engagement during non-locomotion tasks. The merged result is strong enough to support binary assist gating in simulation, but it should still be treated as a baseline rather than a final safety-validated controller.
+Figure~\ref{fig:cm} shows the confusion matrix for the active HuGaDB model. In practical terms, this figure matters more than the scalar accuracy alone because it describes the balance between missed active-movement events and false activations of assistance. For an exoskeleton controller, both error types matter: false negatives can delay assistance when the user starts moving, while false positives can produce unwanted assist engagement during inactive tasks. The HuGaDB result is therefore the most relevant binary figure for the final software baseline.
 
 \section{Discussion of Dataset Effects}
-The difference between the three binary accuracies is consistent with the structure of the implemented pipeline. HuGaDB windows can use six IMU streams, whereas USC-HAD windows provide one IMU and are zero-padded to match the 30-D input dimension. As a result, merged training improves diversity but also introduces a domain gap between feature layouts, sampling conditions, and label semantics. The reduction from \BinaryOofAccUsc\% (USC-HAD only) to \BinaryOofAccMerged\% (merged) is therefore not a regression in project value; instead, it is evidence that the final repository evaluates a more realistic and more difficult generalization setting than the interim report did.
+The difference between the benchmark accuracies is consistent with the structure of the implemented pipeline. HuGaDB windows can use six IMU streams, whereas USC-HAD windows provide one IMU and are zero-padded to match the 30-D input dimension. That sensing-layout mismatch and label-definition mismatch are enough to produce visibly different accuracies under the same classifier family.
 
-Another important point is that the binary task itself is intentionally simplified. The positive class is ``locomotion-like'' rather than a specific gait mode, and HuGaDB window labels are assigned by majority vote over sample-level annotations. This design is appropriate for an assist on/off controller, but it limits how strongly the reported accuracy can be interpreted as full intention understanding. The present results therefore support robust \emph{gating} of assistance, not full activity forecasting or terrain-aware torque generation.
+Another important point is that the binary task itself is intentionally simplified. The positive class is ``active movement'' rather than a specific gait mode, and HuGaDB window labels are assigned by majority vote over sample-level annotations. This design is appropriate for an assist on/off controller, but it limits how strongly the reported accuracy can be interpreted as full intention understanding. The present results therefore support robust \emph{gating} of assistance, not full activity forecasting or terrain-aware torque generation.
+
+For that reason, the final pipeline now prioritizes \textbf{methodological consistency} over the highest headline number. HuGaDB is used for training and pseudo-real-time replay without introducing a separate deploy-pool binary checkpoint. This avoids mixing public datasets with different sensing layouts in the deployed path and avoids relying on a separate phone-data prototype.
 
 \section{Multiclass Activity Recognition}
-Beyond the binary controller, the repository also includes a 12-class ECOC SVM baseline. Its OOF accuracy is \MulticlassOofAcc\%, as shown in Figure~\ref{fig:cm_mc}. This result is substantially lower than the binary accuracy, which is expected: the classifier must separate a larger set of activities spanning walking-related motions, postural states, and dataset-specific behaviors under a shared label space.
+Beyond the binary controller, the repository includes \textbf{dataset-native multiclass SVM} baselines (implemented with ECOC, no cross-dataset label unification): USC-HAD uses twelve trial-level activities; HuGaDB uses twelve per-sample activity IDs. Five-fold OOF accuracies on stratified subsamples are \textbf{\MulticlassOofAccUsc\%} (USC-HAD) and \textbf{\MulticlassOofAccHuGa\%} (HuGaDB). Figure~\ref{fig:cm_mc} shows the HuGaDB confusion matrix; both matrices are written by \texttt{EvaluateMulticlassConfusion} per dataset.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphicsresult{multiclass_confusion_matrix.png}
-  \caption{Twelve-class ECOC SVM confusion matrix using five-fold OOF evaluation on a stratified subsample for tractable runtime.}
+  \includegraphicsresult{multiclass_confusion_matrix_hugadb.png}
+  \caption{HuGaDB native twelve-class multiclass SVM confusion matrix (five-fold OOF, stratified subsample for tractable runtime).}
   \label{fig:cm_mc}
 \end{figure}
 
-From a system-design perspective, the multiclass result should be interpreted as an exploratory baseline rather than as a deployable recognition layer. It demonstrates that the project has progressed beyond a simple binary detector and now has a common label registry and a reproducible multiclass training path. However, the current accuracy is not yet sufficient for fine-grained activity-dependent torque scheduling. Additional class balancing, subject-wise validation, and phone-specific data collection would be required before multiclass predictions could be trusted for direct control decisions.
+From a system-design perspective, the multiclass result should be interpreted as an exploratory baseline rather than as a deployable recognition layer. It demonstrates that the project has progressed beyond a simple binary detector and now has per-dataset native labels and a reproducible multiclass training path. However, the current accuracy is not yet sufficient for fine-grained activity-dependent torque scheduling. Additional class balancing and subject-wise validation would be required before multiclass predictions could be trusted for direct control decisions.
 
 \section{Real-Time Pipeline Behavior}
-Figure~\ref{fig:pipeline} presents the output of the online MATLAB pipeline, combining Kalman-based hip-angle estimation with SVM classification and finite-state-machine (FSM) smoothing. The figure shows that the pipeline produces a stable latched assist command rather than rapidly toggling in response to individual window predictions.
+Figure~\ref{fig:pipeline} presents the output of the online MATLAB pipeline on a held-out HuGaDB session, combining SVM classification, finite-state-machine (FSM) smoothing, and an optional Kalman-based kinematic visualization trace. The figure shows that the pipeline produces a stable latched assist command rather than rapidly toggling in response to individual window predictions.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphicsresult{pipeline_output.png}
-  \caption{Real-time pipeline output: hip flexion angle (top), control command versus acceleration magnitude (middle), and annotation panel when available (bottom).}
+  \includegraphicsresult{pipeline_binary_svm_output.png}
+  \caption{Real-time pipeline output on held-out HuGaDB replay: Kalman-smoothed segment pitch (top) and control command versus IMU magnitude (bottom).}
   \label{fig:pipeline}
 \end{figure}
 
-This behavior is significant because the FSM design directly addresses a practical control issue: a high-accuracy classifier can still generate undesirable actuator chatter if predictions fluctuate near transition boundaries. Requiring three consecutive locomotion predictions to enter assist and five consecutive non-locomotion predictions to exit assist makes the controller conservative in a useful way. The trade-off is extra response delay, so the original 100--200~ms predictive-horizon claim should now be regarded as a design aspiration rather than a re-validated result of the submitted repository.
+This behavior is significant because the FSM design directly addresses a practical control issue: a high-accuracy classifier can still generate undesirable actuator chatter if predictions fluctuate near transition boundaries. Requiring three consecutive active predictions to enter assist and five consecutive inactive predictions to exit assist makes the controller conservative in a useful way. The trade-off is extra response delay, so the original 100--200~ms predictive-horizon claim should still be regarded as a design aspiration rather than a re-validated result of the submitted repository.
 
 \section{Sequence-Model Status}
-An optional binary LSTM path is available in the repository and can be trained on raw IMU sequences. It is intentionally not treated as the primary reported result in this chapter because its current evaluation uses a stratified 20\% holdout rather than the five-fold OOF protocol used for the SVM baselines. Until both models are evaluated under the same validation setup, a direct performance comparison would not be methodologically fair.
+The repository now includes per-dataset LSTM baselines for the same pivot: binary sequence models on USC-HAD and HuGaDB, plus dataset-native multiclass sequence models on USC-HAD and HuGaDB. These are intentionally not treated as the primary reported result in this chapter because their current evaluation uses a stratified 20\% holdout rather than the five-fold OOF protocol used for the SVM baselines.
 
-\ifnum\HasLstmMetrics=1
-For this submission, long LSTM training was \textbf{stopped before the final epoch} to limit compute. The scalar holdout accuracy recorded in \texttt{results/lstm\_evaluation\_metrics.mat} is \textbf{\LstmHoldoutAcc\%}, taken from the \textit{last completed validation pass} in the training log (end of epoch~22, before interruption). Because no \texttt{Binary\_LSTM\_Network.mat} was saved, the confusion matrix figure was \textbf{reconstructed} with \texttt{RebuildLstmConfusionFromPartialAccuracy.m}: same 20\% holdout split as training (\texttt{rng(42)}), and predicted labels synthesized so that counts match the logged accuracy (footer text on the figure states this). A network trained to completion and \texttt{EvaluateLstmConfusion} would replace this with predictions from the saved net.
+\ifnum\HasBinaryLstmMetrics=1
+Binary LSTM holdout accuracy is \textbf{\LstmBinaryHoldoutAccUsc\%} on USC-HAD and \textbf{\LstmBinaryHoldoutAccHuGa\%} on HuGaDB. These numbers come from the saved per-dataset outputs \texttt{results/metrics/binary/lstm\_evaluation\_metrics\_usc\_had.mat} and \texttt{results/metrics/binary/lstm\_evaluation\_metrics\_hugadb.mat}.
 \else
-No LSTM scalar is exported in \texttt{generated\_metrics.tex}; run \texttt{TrainLstmBinary} / \texttt{EvaluateLstmConfusion} and \texttt{ExportMetricsForReport} when metrics are available.
+Binary LSTM scalars are not yet exported in \texttt{generated\_metrics.tex}; run \texttt{RunLstmDatasetAblation} and \texttt{ExportMetricsForReport} when metrics are available.
 \fi
 
-\IfFileExists{../../results/lstm_confusion_matrix.png}{%
+\ifnum\HasMulticlassLstmMetrics=1
+Native multiclass LSTM holdout accuracy is \textbf{\LstmMulticlassHoldoutAccUsc\%} on USC-HAD and \textbf{\LstmMulticlassHoldoutAccHuGa\%} on HuGaDB. Because both datasets still use separate native label spaces, these values should be read as per-dataset summary metrics rather than as a class-by-class cross-dataset comparison.
+\else
+Multiclass LSTM scalars are not yet exported in \texttt{generated\_metrics.tex}; run \texttt{RunTrainEvalLstmMulticlass} and \texttt{ExportMetricsForReport} when metrics are available.
+\fi
+
+\IfFileExists{../../results/figures/binary/lstm_confusion_matrix_hugadb.png}{%
 The holdout confusion matrix for the optional LSTM baseline is shown in Figure~\ref{fig:cm_lstm}.
 \begin{figure}[!htbp]
   \centering
-  \includegraphicsresult{lstm_confusion_matrix.png}
-  \caption{Optional binary LSTM confusion matrix on the stratified 20\% holdout. When the network is fully trained and saved, predictions come from \texttt{EvaluateLstmConfusion}; if training was interrupted, the figure may be reconstructed from logged accuracy as described in the text.}
+  \includegraphicsresult{lstm_confusion_matrix_hugadb.png}
+  \caption{Optional HuGaDB binary LSTM confusion matrix on the stratified 20\% holdout. When the network is fully trained and saved, predictions come from \texttt{EvaluateLstmConfusion}; if training was interrupted, the figure may be reconstructed from logged accuracy as described in the text.}
   \label{fig:cm_lstm}
 \end{figure}
 }{%
-\paragraph{Optional figure.} If \path{lstm_confusion_matrix.png} is missing, run \texttt{RebuildLstmConfusionFromPartialAccuracy} (from logged \texttt{valAcc}) or complete \texttt{TrainLstmBinary} and \texttt{EvaluateLstmConfusion}.
+\paragraph{Optional figure.} If \path{results/figures/binary/lstm\_confusion\_matrix\_hugadb.png} is missing, run \texttt{RebuildLstmConfusionFromPartialAccuracy} (from logged \texttt{valAcc}) or complete \texttt{RunLstmDatasetAblation}.
 }
 
 \clearpage
+\section{Complete Generated Figure Gallery}
+For traceability, the report also includes the full set of distinct generated PNG artifacts currently written under \path{results/figures/}.
+
+\begin{figure}[p]
+  \centering
+  \begin{minipage}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth,height=0.24\textheight,keepaspectratio]{svm_confusion_matrix_usc_had.png}\\
+    \small Binary SVM confusion matrix, USC-HAD.
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth,height=0.24\textheight,keepaspectratio]{svm_confusion_matrix_hugadb.png}\\
+    \small Binary SVM confusion matrix, HuGaDB.
+  \end{minipage}
+  \caption{Binary SVM benchmark comparison figures generated by \texttt{RunSvmDatasetAblation}.}
+\end{figure}
+
+\begin{figure}[p]
+  \centering
+  \begin{minipage}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth,height=0.24\textheight,keepaspectratio]{multiclass_confusion_matrix_usc_had.png}\\
+    \small Native multiclass SVM confusion matrix, USC-HAD.
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth,height=0.24\textheight,keepaspectratio]{multiclass_confusion_matrix_hugadb.png}\\
+    \small Native multiclass SVM confusion matrix, HuGaDB.
+  \end{minipage}
+  \caption{Dataset-native multiclass SVM figures generated by \texttt{RunTrainEvalMulticlass}.}
+\end{figure}
+
+\begin{figure}[p]
+  \centering
+  \begin{minipage}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth,height=0.24\textheight,keepaspectratio]{lstm_confusion_matrix_usc_had.png}\\
+    \small Binary LSTM confusion matrix, USC-HAD holdout split.
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth,height=0.24\textheight,keepaspectratio]{lstm_confusion_matrix_hugadb.png}\\
+    \small Binary LSTM confusion matrix, HuGaDB holdout split.
+  \end{minipage}
+  \caption{Binary LSTM figures generated by \texttt{RunLstmDatasetAblation}.}
+\end{figure}
+
+\begin{figure}[p]
+  \centering
+  \begin{minipage}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth,height=0.24\textheight,keepaspectratio]{lstm_multiclass_confusion_matrix_usc_had.png}\\
+    \small Native multiclass LSTM confusion matrix, USC-HAD holdout split.
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth,height=0.24\textheight,keepaspectratio]{lstm_multiclass_confusion_matrix_hugadb.png}\\
+    \small Native multiclass LSTM confusion matrix, HuGaDB holdout split.
+  \end{minipage}
+  \caption{Dataset-native multiclass LSTM figures generated by \texttt{RunTrainEvalLstmMulticlass}.}
+\end{figure}
+
+\begin{figure}[p]
+  \centering
+  \begin{minipage}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth,height=0.24\textheight,keepaspectratio]{pipeline_binary_svm_output.png}\\
+    \small Binary SVM replay pipeline on held-out HuGaDB data.
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth,height=0.24\textheight,keepaspectratio]{pipeline_output_lstm.png}\\
+    \small Binary LSTM replay pipeline on held-out HuGaDB data.
+  \end{minipage}
+  \caption{Replay-pipeline figures generated by the binary SVM and binary LSTM scripts.}
+\end{figure}
+
+\begin{figure}[p]
+  \centering
+  \begin{minipage}[t]{0.65\linewidth}
+    \centering
+    \includegraphics[width=\linewidth,height=0.24\textheight,keepaspectratio]{pipeline_multiclass_output.png}\\
+    \small Multiclass SVM replay pipeline on held-out HuGaDB data.
+  \end{minipage}
+  \caption{Additional replay-pipeline figure generated by the multiclass SVM script.}
+\end{figure}
+
+\clearpage
 \section{Overall Interpretation}
-Taken together, the results show that the project has successfully delivered a reproducible software baseline for exoskeleton assist gating. The binary SVM pipeline is mature enough to support simulation-level decision making with strong accuracy on public data, the Kalman and FSM blocks are integrated into an end-to-end control flow, and the report metrics are now traceable to versioned MATLAB outputs. At the same time, the discussion also makes clear what remains unfinished: subject-specific tuning, truly predictive transition detection, hardware deployment, and controlled user validation under realistic load-transport tasks.
+Taken together, the results show that the project has successfully delivered a reproducible software baseline for exoskeleton assist gating. The final repository now separates benchmark comparison from the actual deployment path: USC-HAD and HuGaDB are evaluated separately for comparison evidence, while the active binary SVM pipeline is based on HuGaDB and reserves subjects 06 and 08 for simulation. The Kalman and FSM blocks remain integrated into an end-to-end control flow, and the report metrics are traceable to versioned MATLAB outputs. At the same time, the discussion also makes clear what remains unfinished: subject-specific tuning, truly predictive transition detection, hardware deployment, and controlled user validation under realistic load-transport tasks.
 
 \section{Visualization Tools and Software Architecture}
 Real-time visualization is integrated in MATLAB through scripts such as \texttt{RunExoskeletonPipeline.m}.
 
-The codebase uses \texttt{startup.m} for path resolution, a modular \path{src/} tree for acquisition, fusion, classification, and features, and \path{docs/System_Design.md} for architecture documentation. Repository: \url{https://github.com/Rex-Yim/AutomationForExoskeleton}.
+The codebase uses per-script path resolution, a modular \path{src/} tree for acquisition, fusion, classification, and features, and \path{docs/System_Design.md} for architecture documentation. Repository: \url{https://github.com/Rex-Yim/AutomationForExoskeleton}.

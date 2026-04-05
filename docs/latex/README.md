@@ -1,13 +1,14 @@
 # Final Report (LaTeX) — MAEG4999 replica
 
-This folder builds a **PDF report** aligned to the **current MATLAB codebase**: merged **USC-HAD + HuGaDB** binary SVM (30-D features), dataset ablation metrics, optional **multiclass ECOC** figure, optional **binary LSTM** holdout figure, Kalman fusion, and FSM.
+This folder builds a **PDF report** aligned to the **current MATLAB codebase**: per-dataset **USC-HAD** and **HuGaDB** binary SVM comparisons (30-D features), dataset ablation metrics, optional **multiclass ECOC** figures, optional **binary and multiclass LSTM** holdout metrics, Kalman fusion, and FSM.
 
 ## Files
 
 | File | Role |
 |------|------|
-| `main.tex` | Title page, Ch.1--2 inputs, Ch.3--5 chapter headings + merged bodies |
-| `main.pdf` | **Built report** (commit after recompiling; see build commands below) |
+| `main.tex` | Title page, Ch.1--2 inputs, Ch.3--5 chapter headings + chapter bodies |
+| `../final_report.pdf` | **Built report** at `docs/final_report.pdf` (see `compile.sh` below) |
+| `poster.tex` / `../poster.pdf` | Poster source; built PDF copied to **`docs/poster.pdf`** via `compile_poster.sh` |
 | `chapters/abstract_merged.tex` | Abstract: interim PDF + repository corrections/updates |
 | `chapters/methods_merged.tex` | Ch.3: planned (PDF) vs implemented methods |
 | `chapters/results_merged.tex` | Ch.4: interim narrative + updated metrics/figures |
@@ -16,7 +17,7 @@ This folder builds a **PDF report** aligned to the **current MATLAB codebase**: 
 | `references.bib` | BibTeX database (all cited works) |
 | `IEEEtran.bst` | IEEE bibliography style (bundled for BasicTeX / CI; same as CTAN) |
 | `chapters/references.tex` | Invokes `\bibliographystyle{IEEEtran}` + `\bibliography{references}` |
-| `generated_metrics.tex` | **Auto-generated** SVM/multiclass accuracies for tables/abstract (`scripts/ExportMetricsForReport.m`) |
+| `generated_metrics.tex` | **Auto-generated** SVM/LSTM accuracies for tables/abstract (`scripts/ExportMetricsForReport.m`) |
 
 ## References (IEEE style)
 
@@ -28,15 +29,15 @@ Each entry in `references.bib` includes **`url={https://doi.org/...}`** (derived
 
 ## Figures (required before compile)
 
-From the **project root**, run MATLAB so these exist (commit them for GitHub Actions):
+From the **project root**, run MATLAB so these exist (commit figures if you ship a PDF):
 
-- `results/svm_confusion_matrix.png` — merged binary (default after `RunSvmDatasetAblation` or copied from merged run)
-- `results/multiclass_confusion_matrix.png` — from `EvaluateMulticlassConfusion`
-- `results/pipeline_output.png` — from `RunExoskeletonPipeline`
+- `results/figures/binary/svm_confusion_matrix_hugadb.png` — HuGaDB binary SVM
+- `results/figures/multiclass/multiclass_confusion_matrix_usc_had.png` / `multiclass_confusion_matrix_hugadb.png` — from `EvaluateMulticlassConfusion` per dataset
+- `results/figures/pipeline/pipeline_binary_svm_output.png` — from `RunExoskeletonPipeline`
 
-**Optional** (for Chapter 4 LSTM subsection): `TrainLstmBinary` then `EvaluateLstmConfusion` → `results/lstm_confusion_matrix.png`. The LaTeX source includes this figure only if the file exists (`\IfFileExists`).
+**Optional** (for Chapter 4 LSTM subsection): `RunLstmDatasetAblation` → `results/figures/binary/lstm_confusion_matrix_usc_had.png` / `results/figures/binary/lstm_confusion_matrix_hugadb.png`. `RunTrainEvalLstmMulticlass` writes `results/figures/multiclass/lstm_multiclass_confusion_matrix_usc_had.png` / `results/figures/multiclass/lstm_multiclass_confusion_matrix_hugadb.png`.
 
-**Before committing a “final” PDF:** run `ExportMetricsForReport` in MATLAB so `generated_metrics.tex` matches `results/svm_evaluation_metrics_*.mat` and `multiclass_evaluation_metrics.mat`.
+**Before committing a “final” PDF:** run `ExportMetricsForReport` in MATLAB so `generated_metrics.tex` matches the current `results/metrics/*/*_evaluation_metrics_*.mat` files for SVM and LSTM.
 
 ## Install LaTeX on macOS
 
@@ -52,7 +53,7 @@ When the installer finishes, restart the terminal or run:
 eval "$(/usr/libexec/path_helper)"
 ```
 
-Install extra packages (first time only):
+Install extra packages on first setup:
 
 ```bash
 sudo tlmgr update --self
@@ -63,35 +64,32 @@ sudo tlmgr install collection-latexextra
 
 ## Compile PDF
 
+From `docs/latex/`:
+
 ```bash
-cd /Users/rexyim/Documents/MATLAB/AutomationForExoskeleton/docs/latex
+./compile.sh
+```
+
+Or manually: compile here, then **`cp main.pdf ../final_report.pdf`**.
+
+```bash
+cd /path/to/AutomationForExoskeleton/docs/latex
 pdflatex -interaction=nonstopmode main.tex
 bibtex main
 pdflatex -interaction=nonstopmode main.tex
 pdflatex -interaction=nonstopmode main.tex
+cp -f main.pdf ../final_report.pdf
 ```
 
-Output: **`main.pdf`** in this folder.
+**Poster:** `./compile_poster.sh` or `pdflatex poster.tex` then **`cp poster.pdf ../poster.pdf`**.
 
-Alternative (Homebrew `tectonic`, no full TeX Live install):
-
-```bash
-tectonic -X compile main.tex
-```
+Alternative (Homebrew `tectonic`): compile in this folder, then copy outputs to `../final_report.pdf` / `../poster.pdf` as above.
 
 Optional:
 
 ```bash
-latexmk -pdf -interaction=nonstopmode main.tex
+latexmk -pdf -interaction=nonstopmode main.tex && cp -f main.pdf ../final_report.pdf
 ```
-
-## Build PDF on GitHub (no local TeX)
-
-If you **push** this repo to GitHub, the workflow [`.github/workflows/build-latex-pdf.yml`](../../.github/workflows/build-latex-pdf.yml) compiles `main.pdf` on GitHub’s servers.
-
-1. **Commit** `docs/latex/**` and **`results/*.png`** (figures must be in the repo for the build).
-2. Push to `main` (or **Actions → Build LaTeX PDF → Run workflow**).
-3. Open **Actions** → latest run → **Artifacts** → download **FYP-Final-Report-PDF** (contains `main.pdf`).
 
 ## Note on `WHL3.`
 

@@ -7,22 +7,32 @@ function EvaluateMulticlassConfusion(varargin)
     addpath(genpath(fullfile(projectRoot, 'src')));
 
     p = inputParser;
-    addParameter(p, 'IncludeUSCHAD', true, @islogical);
-    addParameter(p, 'IncludeHuGaDB', true, @islogical);
+    addParameter(p, 'Dataset', 'hugadb', @(s) ischar(s) || isstring(s));
     addParameter(p, 'MaxWindowsForCV', 20000, @(x) isnumeric(x) && isscalar(x) && x > 0);
     addParameter(p, 'KFolds', 5, @(x) isnumeric(x) && isscalar(x) && x >= 2);
     parse(p, varargin{:});
 
+    ds = lower(char(p.Results.Dataset));
+    if ~ismember(ds, {'usc_had', 'hugadb'})
+        error('Dataset must be ''usc_had'' or ''hugadb''.');
+    end
+
     cfg = ExoConfig();
-    K = ActivityClassRegistry.N_CLASSES;
-    names = ActivityClassRegistry.CLASS_NAMES;
+    if strcmp(ds, 'usc_had')
+        K = ActivityClassRegistry.USCHAD_N_CLASSES;
+        names = ActivityClassRegistry.USCHAD_CLASS_NAMES;
+        tag = 'usc_had';
+    else
+        K = ActivityClassRegistry.HUGADB_N_CLASSES;
+        names = ActivityClassRegistry.HUGADB_CLASS_NAMES;
+        tag = 'hugadb';
+    end
 
     fprintf('===========================================================\n');
-    fprintf('   Multiclass evaluation (%d-fold OOF)\n', p.Results.KFolds);
+    fprintf('   Multiclass evaluation (%s, %d-fold OOF)\n', ds, p.Results.KFolds);
     fprintf('===========================================================\n');
 
-    [featuresAll, labelsAll, ModelMetadata] = PrepareTrainingDataMulticlass(cfg, ...
-        'IncludeUSCHAD', p.Results.IncludeUSCHAD, 'IncludeHuGaDB', p.Results.IncludeHuGaDB);
+    [featuresAll, labelsAll, ModelMetadata] = PrepareTrainingDataMulticlass(cfg, 'Dataset', ds);
 
     n0 = size(featuresAll, 1);
     usedSubsamp = false;
@@ -48,12 +58,8 @@ function EvaluateMulticlassConfusion(varargin)
 
     cm = confusionmat(labelsAll, yHatNum, 'Order', 1:K);
 
-    resultsDir = fullfile(projectRoot, 'results');
-    if ~exist(resultsDir, 'dir')
-        mkdir(resultsDir);
-    end
-
-    fig = figure('Name', 'Multiclass confusion', 'Color', 'w', 'Position', [80, 80, 900, 720]);
+    fig = figure('Name', sprintf('Multiclass confusion (%s)', ds), 'Color', 'w', ...
+        'ToolBar', 'none', 'Position', [80, 80, 900, 720]);
     catTrue = categorical(labelsAll, 1:K, names, 'Ordinal', true);
     catPred = categorical(yHatNum, 1:K, names, 'Ordinal', true);
     h = confusionchart(catTrue, catPred);
@@ -61,13 +67,13 @@ function EvaluateMulticlassConfusion(varargin)
     if usedSubsamp
         sub = ' (stratified subsample CV)';
     end
-    h.Title = sprintf('%d-fold OOF%s | Acc = %.2f%%', p.Results.KFolds, sub, oofAcc);
+    h.Title = sprintf('%s | %d-fold OOF%s | Acc = %.2f%%', ds, p.Results.KFolds, sub, oofAcc);
     h.XLabel = 'Predicted';
     h.YLabel = 'True';
     styleConfusionChartBlack(h);
     styleReportFigureColors(fig);
 
-    pngPath = fullfile(resultsDir, 'multiclass_confusion_matrix.png');
+    pngPath = ResultsArtifactPath(projectRoot, 'figures', 'multiclass', sprintf('multiclass_confusion_matrix_%s.png', tag));
     if exist('exportgraphics', 'file') == 2
         exportgraphics(fig, pngPath, 'Resolution', 200, 'Padding', 'loose');
     else
@@ -77,9 +83,9 @@ function EvaluateMulticlassConfusion(varargin)
     fprintf('Figure: %s\n', pngPath);
 
     nOriginalWindows = n0;
-    matPath = fullfile(resultsDir, 'multiclass_evaluation_metrics.mat');
+    matPath = ResultsArtifactPath(projectRoot, 'metrics', 'multiclass', sprintf('multiclass_evaluation_metrics_%s.mat', tag));
     save(matPath, 'cm', 'oofAcc', 'labelsAll', 'yHatNum', 'ModelMetadata', 'K', ...
-        'usedSubsamp', 'nOriginalWindows', '-v7.3');
+        'usedSubsamp', 'nOriginalWindows', 'ds', '-v7.3');
     fprintf('Metrics: %s\n', matPath);
     fprintf('===========================================================\n');
 end

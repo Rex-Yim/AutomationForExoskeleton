@@ -1,12 +1,6 @@
-%% LoadHuGaDB.m
-% --------------------------------------------------------------------------
-% FUNCTION: hugadb = LoadHuGaDB(rawDir)
-% PURPOSE:  Parse HuGaDB v2 .txt trials and save hugadb_dataset.mat for
-%           training (all six on-body IMUs per row, per-sample activity IDs).
-% --------------------------------------------------------------------------
-% SENSOR:   Six IMUs in file order: rf, rs, rt, lf, ls, lt (acc xyz, gyro xyz each).
-% UNITS:    acc columns scaled by /1000 -> m/s^2 (HuGaDB int format). Gyro deg/s -> rad/s.
-% --------------------------------------------------------------------------
+% Parse HuGaDB v2 raw trials and save `hugadb_dataset.mat` for training.
+% The loader preserves all six on-body IMUs per sample and converts
+% accelerometer and gyroscope channels to SI units.
 
 function hugadb = LoadHuGaDB(rawDir)
 
@@ -67,15 +61,30 @@ function hugadb = LoadHuGaDB(rawDir)
         act = double(M(:, end));
 
         sid = files(i).name(1:end - 4); % strip .txt
+        meta = ParseHuGaDBSessionName(sid);
         key = matlab.lang.makeValidName(['s_' sid], 'ReplacementStyle', 'underscore');
         hugadb.(key).acc = acc;
         hugadb.(key).gyro = gyro;
         hugadb.(key).label_full = act;
         hugadb.(key).fs = 100;
         hugadb.(key).imuOrder = {'rf', 'rs', 'rt', 'lf', 'ls', 'lt'};
+        hugadb.(key).subjectId = meta.subjectId;
+        hugadb.(key).sessionId = meta.sessionId;
     end
 
     out = fullfile(loaderDir, 'hugadb_dataset.mat');
     save(out, 'hugadb', '-v7.3');
     fprintf('HuGaDB saved: %s (%d sessions).\n', out, numel(fieldnames(hugadb)));
+end
+
+function meta = ParseHuGaDBSessionName(sessionName)
+    tokens = regexp(sessionName, 'HuGaDB_v2_[^_]+_(\d{2})_(\d{2})$', 'tokens', 'once');
+    if isempty(tokens)
+        error('LoadHuGaDB:InvalidSessionName', ...
+            'Could not parse HuGaDB subject/session from "%s".', sessionName);
+    end
+
+    meta = struct();
+    meta.subjectId = tokens{1};
+    meta.sessionId = tokens{2};
 end

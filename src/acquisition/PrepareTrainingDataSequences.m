@@ -1,10 +1,7 @@
-%% PrepareTrainingDataSequences.m
-% --------------------------------------------------------------------------
-% [XCell, labels_binary, ModelMetadata] = PrepareTrainingDataSequences(cfg, varargin)
-% Sliding-window sequences for LSTM: each sample is (6*N_IMU_SLOTS) x WINDOW_SIZE,
-% same labeling and sources as PrepareTrainingData.m (USC-HAD + optional HuGaDB).
-% NAME-VALUE: 'IncludeUSCHAD', 'IncludeHuGaDB' (same defaults as PrepareTrainingData).
-% --------------------------------------------------------------------------
+% Prepare sliding-window sequence data for binary LSTM training.
+% Returns `XCell`, binary labels, and metadata using the same dataset controls
+% as `PrepareTrainingData`. Each sequence has size
+% `(6 * N_IMU_SLOTS) x WINDOW_SIZE`.
 
 function [XCell, labels_binary, ModelMetadata] = PrepareTrainingDataSequences(cfg, varargin)
 
@@ -12,20 +9,42 @@ function [XCell, labels_binary, ModelMetadata] = PrepareTrainingDataSequences(cf
         cfg = ExoConfig();
     end
 
+    defaultIncludeUSC = true;
+    defaultIncludeHu = true;
+    defaultExcludedSubjects = {};
+    if isprop(cfg, 'TRAINING')
+        defaultIncludeUSC = cfg.TRAINING.DEFAULT_INCLUDE_USCHAD;
+        defaultIncludeHu = cfg.TRAINING.DEFAULT_INCLUDE_HUGADB;
+    end
+    if isprop(cfg, 'HUGADB')
+        defaultExcludedSubjects = cfg.HUGADB.HELDOUT_SUBJECTS;
+    end
+
     p = inputParser;
-    addParameter(p, 'IncludeUSCHAD', true, @islogical);
-    addParameter(p, 'IncludeHuGaDB', true, @islogical);
+    addParameter(p, 'IncludeUSCHAD', defaultIncludeUSC, @islogical);
+    addParameter(p, 'IncludeHuGaDB', defaultIncludeHu, @islogical);
+    addParameter(p, 'IncludeHuGaDBSubjects', {}, @isValidSubjectFilter);
+    addParameter(p, 'ExcludeHuGaDBSubjects', defaultExcludedSubjects, @isValidSubjectFilter);
     parse(p, varargin{:});
 
     if ~p.Results.IncludeUSCHAD && ~p.Results.IncludeHuGaDB
         error('AutomationForExoskeleton:PrepareTrainingDataSequences:NoSource', ...
-            'At least one of IncludeUSCHAD and IncludeHuGaDB must be true.');
+            'Exactly one of IncludeUSCHAD and IncludeHuGaDB must be true.');
+    end
+
+    if p.Results.IncludeUSCHAD && p.Results.IncludeHuGaDB
+        error('AutomationForExoskeleton:PrepareTrainingDataSequences:CombinedDatasetRemoved', ...
+            ['Combined USC-HAD + HuGaDB sequence training has been removed. ', ...
+             'Choose either USC-HAD or HuGaDB.']);
     end
 
     XCell = {};
     labels_binary = [];
     n_usc = 0;
     n_hu = 0;
+    usedHuSubjects = {};
+    includeHuSubjects = NormalizeHuGaDBSubjectIds(p.Results.IncludeHuGaDBSubjects);
+    excludeHuSubjects = NormalizeHuGaDBSubjectIds(p.Results.ExcludeHuGaDBSubjects);
 
     nCh = cfg.LOCOMOTION.N_IMU_SLOTS * 6;
 
@@ -50,8 +69,8 @@ function [XCell, labels_binary, ModelMetadata] = PrepareTrainingDataSequences(cf
                 continue;
             end
 
-            is_walking = ismember(raw_label, cfg.DS.USCHAD.WALKING_LABELS);
-            trial_label_binary = double(is_walking);
+            is_active = ismember(raw_label, cfg.DS.USCHAD.ACTIVE_LABELS);
+            trial_label_binary = double(is_active);
 
             for k = 1:cfg.STEP_SIZE:(n_samples - cfg.WINDOW_SIZE + 1)
                 window_start = k;
@@ -79,10 +98,15 @@ function [XCell, labels_binary, ModelMetadata] = PrepareTrainingDataSequences(cf
 
         fprintf('Preparing HuGaDB sequences: %d sessions...\n', numel(hnames));
 
-        walkSet = cfg.DS.HUGADB.WALKING_LABELS;
+        activeSet = cfg.DS.HUGADB.ACTIVE_LABELS;
 
         for i = 1:numel(hnames)
             trial = hug.(hnames{i});
+            meta = ResolveHuGaDBTrialMetadata(hnames{i}, trial);
+            if ~shouldIncludeHuGaDBTrial(meta.subjectId, includeHuSubjects, excludeHuSubjects)
+                continue;
+            end
+
             acc = trial.acc;
             gyro = trial.gyro;
             lf = trial.label_full(:);
@@ -96,8 +120,8 @@ function [XCell, labels_binary, ModelMetadata] = PrepareTrainingDataSequences(cf
                 ws = k;
                 we = k + cfg.WINDOW_SIZE - 1;
                 chunk = lf(ws:we);
-                isW = ismember(chunk, walkSet);
-                trial_label_binary = double(mean(isW) >= 0.5);
+                isActive = ismember(chunk, activeSet);
+                trial_label_binary = double(mean(isActive) >= 0.5);
 
                 if ndims(acc) == 3 && size(acc, 2) == 3 && size(acc, 3) > 1
                     windowAcc = acc(ws:we, :, :);
@@ -117,6 +141,8 @@ function [XCell, labels_binary, ModelMetadata] = PrepareTrainingDataSequences(cf
                 labels_binary = [labels_binary; trial_label_binary]; %#ok<AGROW>
                 n_hu = n_hu + 1;
             end
+
+            usedHuSubjects{end + 1} = meta.subjectId; %#ok<AGROW>
         end
     elseif p.Results.IncludeHuGaDB
         warning('AutomationForExoskeleton:MissingHuGaDB', ...
@@ -136,8 +162,28 @@ function [XCell, labels_binary, ModelMetadata] = PrepareTrainingDataSequences(cf
     ModelMetadata.nWindowsHuGaDB = n_hu;
     ModelMetadata.includeUSCHAD = p.Results.IncludeUSCHAD;
     ModelMetadata.includeHuGaDB = p.Results.IncludeHuGaDB;
+    ModelMetadata.includeHuGaDBSubjects = includeHuSubjects;
+    ModelMetadata.excludeHuGaDBSubjects = excludeHuSubjects;
+    ModelMetadata.usedHuGaDBSubjects = unique(usedHuSubjects, 'stable');
     ModelMetadata.dateTrained = char(datetime('now'));
+    ModelMetadata.categoryOrder = ActivityClassRegistry.binaryClassNames();
+    ModelMetadata.labelNegative = ModelMetadata.categoryOrder{1};
+    ModelMetadata.labelPositive = ModelMetadata.categoryOrder{2};
 
     fprintf(['Sequence extraction complete. Total %d windows (%d x %d each). ', ...
         'USC-HAD: %d | HuGaDB: %d\n'], numel(XCell), nCh, cfg.WINDOW_SIZE, n_usc, n_hu);
+end
+
+function tf = isValidSubjectFilter(value)
+    tf = isempty(value) || isnumeric(value) || ischar(value) || isstring(value) || iscell(value);
+end
+
+function tf = shouldIncludeHuGaDBTrial(subjectId, includeSubjects, excludeSubjects)
+    tf = true;
+    if ~isempty(includeSubjects)
+        tf = any(strcmp(subjectId, includeSubjects));
+    end
+    if tf && ~isempty(excludeSubjects)
+        tf = ~any(strcmp(subjectId, excludeSubjects));
+    end
 end

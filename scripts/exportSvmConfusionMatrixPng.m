@@ -4,47 +4,24 @@ function exportSvmConfusionMatrixPng(pngPath, labelsAll, yHat, poolLabel, K, oof
 
     n = numel(labelsAll);
     fig = figure('Name', sprintf('SVM Confusion — %s', poolLabel), 'Color', 'w', ...
-        'Position', [100, 100, 760, 940]);
+        'Position', [100, 100, 760, 620]);
 
-    tiled = tiledlayout(fig, 2, 1, 'TileSpacing', 'compact', 'Padding', 'normal');
-    if isprop(tiled, 'RowHeights')
-        tiled.RowHeights = {'1.1x', '2.35x'};
+    classNames = ActivityClassRegistry.binaryClassNames();
+    if nargin >= 11 && isstruct(ModelMetadata) && isfield(ModelMetadata, 'categoryOrder') ...
+            && numel(ModelMetadata.categoryOrder) == 2
+        classNames = ModelMetadata.categoryOrder;
     end
-
-    nexttile(tiled);
-    labelsCat = categorical(labelsAll, [0, 1], {'Stand (0)', 'Walk (1)'});
-    yHatCat = categorical(yHat, [0, 1], {'Stand (0)', 'Walk (1)'});
+    labelsCat = categorical(labelsAll, [0, 1], ...
+        {sprintf('%s (0)', classNames{1}), sprintf('%s (1)', classNames{2})});
+    yHatCat = categorical(yHat, [0, 1], ...
+        {sprintf('%s (0)', classNames{1}), sprintf('%s (1)', classNames{2})});
     hcm = confusionchart(labelsCat, yHatCat, ...
         'Title', sprintf(['%s | %d-fold OOF | Acc = %.2f%%\n' ...
         'TN=%d  FP=%d  |  FN=%d  TP=%d  (rows=true, cols=pred)'], ...
-        poolLabel, K, oofAccuracy, TN, FP, FN, TP), ...
-        'RowSummary', 'row-normalized', ...
-        'ColumnSummary', 'column-normalized');
+        poolLabel, K, oofAccuracy, TN, FP, FN, TP));
     hcm.XLabel = 'Predicted';
     hcm.YLabel = 'True';
     styleConfusionChartBlack(hcm);
-
-    axTxt = nexttile(tiled);
-    axis(axTxt, 'off');
-    axTxt.Clipping = 'off';
-    txt = {
-        sprintf('Pool: %s', poolLabel);
-        sprintf('Samples: %d windows', n);
-        sprintf('USC-HAD windows: %d  |  HuGaDB windows: %d', ModelMetadata.nWindowsUSCHAD, ModelMetadata.nWindowsHuGaDB);
-        sprintf('Model: RBF SVM, standardized, BoxConstraint=1.0');
-        sprintf('Features: %d (see Features.m)', ModelMetadata.featureCount);
-        sprintf('Fs=%d Hz, window=%d, step=%d', ModelMetadata.fs, ModelMetadata.windowSize, ModelMetadata.stepSize);
-        ' ';
-        sprintf('Accuracy (OOF): %.4f%%', oofAccuracy);
-        sprintf('Precision (Walk): %.4f', precWalk);
-        sprintf('Recall (Walk): %.4f', recWalk);
-        sprintf('F1 (Walk): %.4f', f1Walk);
-        sprintf('Specificity (Stand): %.4f', specStand);
-        };
-    text(axTxt, 0.02, 0.99, txt, 'Units', 'normalized', 'VerticalAlignment', 'top', ...
-        'FontName', 'FixedWidth', 'FontSize', 9, 'Color', [0 0 0]);
-    xlim(axTxt, [0 1]);
-    ylim(axTxt, [-0.22 1.02]);
 
     if ~exist(fileparts(pngPath), 'dir')
         mkdir(fileparts(pngPath));

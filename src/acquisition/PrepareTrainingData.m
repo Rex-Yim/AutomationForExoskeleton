@@ -1,17 +1,8 @@
-%% PrepareTrainingData.m
-% --------------------------------------------------------------------------
-% FUNCTION: [features, labels_binary, ModelMetadata] = PrepareTrainingData(cfg, varargin)
-% PURPOSE:  Sliding-window features for binary Walk(1) vs Stand(0) from
-%           USC-HAD and/or HuGaDB. Vector length = N_IMU_SLOTS * FEATURES_PER_IMU
-%           (ExoConfig.LOCOMOTION): HuGaDB uses all 6 IMUs; USC-HAD / legacy HuGaDB
-%           use one IMU stream + zero padding for unused slots (inference matches).
-% --------------------------------------------------------------------------
-% NAME-VALUE:
-%   'IncludeUSCHAD' (logical, default true) — windows from usc_had_dataset.mat
-%   'IncludeHuGaDB' (logical, default true) — append hugadb_dataset.mat if present;
-%      otherwise warn and continue (when true).
-%   At least one of IncludeUSCHAD / IncludeHuGaDB must be true.
-% --------------------------------------------------------------------------
+% Prepare sliding-window features for binary active-vs-inactive classification.
+% Returns feature vectors and labels from USC-HAD and/or HuGaDB using the
+% dataset inclusion and HuGaDB subject-filter options in `varargin`.
+% Feature layout matches the configured locomotion feature vector, with
+% zero-padding used when a dataset provides fewer IMU streams.
 
 function [features, labels_binary, ModelMetadata] = PrepareTrainingData(cfg, varargin)
 
@@ -19,20 +10,42 @@ function [features, labels_binary, ModelMetadata] = PrepareTrainingData(cfg, var
         cfg = ExoConfig();
     end
 
+    defaultIncludeUSC = true;
+    defaultIncludeHu = true;
+    defaultExcludedSubjects = {};
+    if isprop(cfg, 'TRAINING')
+        defaultIncludeUSC = cfg.TRAINING.DEFAULT_INCLUDE_USCHAD;
+        defaultIncludeHu = cfg.TRAINING.DEFAULT_INCLUDE_HUGADB;
+    end
+    if isprop(cfg, 'HUGADB')
+        defaultExcludedSubjects = cfg.HUGADB.HELDOUT_SUBJECTS;
+    end
+
     p = inputParser;
-    addParameter(p, 'IncludeUSCHAD', true, @islogical);
-    addParameter(p, 'IncludeHuGaDB', true, @islogical);
+    addParameter(p, 'IncludeUSCHAD', defaultIncludeUSC, @islogical);
+    addParameter(p, 'IncludeHuGaDB', defaultIncludeHu, @islogical);
+    addParameter(p, 'IncludeHuGaDBSubjects', {}, @isValidSubjectFilter);
+    addParameter(p, 'ExcludeHuGaDBSubjects', defaultExcludedSubjects, @isValidSubjectFilter);
     parse(p, varargin{:});
 
     if ~p.Results.IncludeUSCHAD && ~p.Results.IncludeHuGaDB
         error('AutomationForExoskeleton:PrepareTrainingData:NoSource', ...
-            'At least one of IncludeUSCHAD and IncludeHuGaDB must be true.');
+            'Exactly one of IncludeUSCHAD and IncludeHuGaDB must be true.');
+    end
+
+    if p.Results.IncludeUSCHAD && p.Results.IncludeHuGaDB
+        error('AutomationForExoskeleton:PrepareTrainingData:CombinedDatasetRemoved', ...
+            ['Combined USC-HAD + HuGaDB training has been removed. ', ...
+             'Choose either USC-HAD or HuGaDB.']);
     end
 
     features = [];
     labels_binary = [];
     n_usc = 0;
     n_hu = 0;
+    usedHuSubjects = {};
+    includeHuSubjects = NormalizeHuGaDBSubjectIds(p.Results.IncludeHuGaDBSubjects);
+    excludeHuSubjects = NormalizeHuGaDBSubjectIds(p.Results.ExcludeHuGaDBSubjects);
 
     %% --- USC-HAD ---
     if p.Results.IncludeUSCHAD && exist(cfg.FILE.USCHAD_DATA, 'file')
@@ -55,8 +68,8 @@ function [features, labels_binary, ModelMetadata] = PrepareTrainingData(cfg, var
                 continue;
             end
 
-            is_walking = ismember(raw_label, cfg.DS.USCHAD.WALKING_LABELS);
-            trial_label_binary = double(is_walking);
+            is_active = ismember(raw_label, cfg.DS.USCHAD.ACTIVE_LABELS);
+            trial_label_binary = double(is_active);
 
             for k = 1:cfg.STEP_SIZE:(n_samples - cfg.WINDOW_SIZE + 1)
                 window_start = k;
@@ -74,7 +87,7 @@ function [features, labels_binary, ModelMetadata] = PrepareTrainingData(cfg, var
         end
     elseif p.Results.IncludeUSCHAD
         warning('AutomationForExoskeleton:MissingUSCHAD', ...
-            'USC-HAD not found at %s. Run LoadUSCHAD or set IncludeUSCHAD false for HuGaDB only.', cfg.FILE.USCHAD_DATA);
+            'USC-HAD not found at %s. Run LoadUSCHAD or set IncludeUSCHAD false for HuGaDB.', cfg.FILE.USCHAD_DATA);
     end
 
     %% --- HuGaDB (per-sample labels; majority vote inside each window) ---
@@ -85,10 +98,15 @@ function [features, labels_binary, ModelMetadata] = PrepareTrainingData(cfg, var
 
         fprintf('Preparing HuGaDB: %d sessions...\n', numel(hnames));
 
-        walkSet = cfg.DS.HUGADB.WALKING_LABELS;
+        activeSet = cfg.DS.HUGADB.ACTIVE_LABELS;
 
         for i = 1:numel(hnames)
             trial = hug.(hnames{i});
+            meta = ResolveHuGaDBTrialMetadata(hnames{i}, trial);
+            if ~shouldIncludeHuGaDBTrial(meta.subjectId, includeHuSubjects, excludeHuSubjects)
+                continue;
+            end
+
             acc = trial.acc;
             gyro = trial.gyro;
             lf = trial.label_full(:);
@@ -102,8 +120,8 @@ function [features, labels_binary, ModelMetadata] = PrepareTrainingData(cfg, var
                 ws = k;
                 we = k + cfg.WINDOW_SIZE - 1;
                 chunk = lf(ws:we);
-                isW = ismember(chunk, walkSet);
-                trial_label_binary = double(mean(isW) >= 0.5); % majority
+                isActive = ismember(chunk, activeSet);
+                trial_label_binary = double(mean(isActive) >= 0.5); % majority
 
                 if ndims(acc) == 3 && size(acc, 2) == 3 && size(acc, 3) > 1
                     feature_vector = FeaturesFromImuStack(acc(ws:we, :, :), gyro(ws:we, :, :), cfg.FS);
@@ -121,10 +139,12 @@ function [features, labels_binary, ModelMetadata] = PrepareTrainingData(cfg, var
                 labels_binary = [labels_binary; trial_label_binary]; %#ok<AGROW>
                 n_hu = n_hu + 1;
             end
+
+            usedHuSubjects{end + 1} = meta.subjectId; %#ok<AGROW>
         end
     elseif p.Results.IncludeHuGaDB
         warning('AutomationForExoskeleton:MissingHuGaDB', ...
-            'HuGaDB not found at %s. Run LoadHuGaDB, or training uses USC-HAD only.', cfg.FILE.HUGADB_DATA);
+            'HuGaDB not found at %s. Run LoadHuGaDB, or training uses USC-HAD.', cfg.FILE.HUGADB_DATA);
     end
 
     if isempty(features)
@@ -142,8 +162,28 @@ function [features, labels_binary, ModelMetadata] = PrepareTrainingData(cfg, var
     ModelMetadata.nWindowsHuGaDB = n_hu;
     ModelMetadata.includeUSCHAD = p.Results.IncludeUSCHAD;
     ModelMetadata.includeHuGaDB = p.Results.IncludeHuGaDB;
+    ModelMetadata.includeHuGaDBSubjects = includeHuSubjects;
+    ModelMetadata.excludeHuGaDBSubjects = excludeHuSubjects;
+    ModelMetadata.usedHuGaDBSubjects = unique(usedHuSubjects, 'stable');
+    ModelMetadata.categoryOrder = ActivityClassRegistry.binaryClassNames();
+    ModelMetadata.labelNegative = ModelMetadata.categoryOrder{1};
+    ModelMetadata.labelPositive = ModelMetadata.categoryOrder{2};
 
     fprintf(['Feature extraction complete. Total %d windows (%d features). ', ...
         'USC-HAD windows: %d | HuGaDB windows: %d\n'], ...
         size(features, 1), size(features, 2), n_usc, n_hu);
+end
+
+function tf = isValidSubjectFilter(value)
+    tf = isempty(value) || isnumeric(value) || ischar(value) || isstring(value) || iscell(value);
+end
+
+function tf = shouldIncludeHuGaDBTrial(subjectId, includeSubjects, excludeSubjects)
+    tf = true;
+    if ~isempty(includeSubjects)
+        tf = any(strcmp(subjectId, includeSubjects));
+    end
+    if tf && ~isempty(excludeSubjects)
+        tf = ~any(strcmp(subjectId, excludeSubjects));
+    end
 end

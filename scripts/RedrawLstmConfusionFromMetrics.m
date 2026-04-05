@@ -1,12 +1,12 @@
 function RedrawLstmConfusionFromMetrics(matPath)
-%% RedrawLstmConfusionFromMetrics — rebuild lstm_confusion_matrix.png from saved metrics only.
+%% RedrawLstmConfusionFromMetrics — rebuild the tagged HuGaDB LSTM confusion PNG from saved metrics.
 %
-% Requires results/lstm_evaluation_metrics.mat from EvaluateLstmConfusion (full run), which
+% Requires results/metrics/binary/lstm_evaluation_metrics_hugadb.mat from EvaluateLstmConfusion (full run), which
 % stores YVal, Yhat, TN, FP, FN, TP, etc. A file that only contains valAcc cannot redraw the chart.
 %
 % Usage:
 %   >> RedrawLstmConfusionFromMetrics
-%   >> RedrawLstmConfusionFromMetrics('/path/to/lstm_evaluation_metrics.mat')
+%   >> RedrawLstmConfusionFromMetrics('/path/to/lstm_evaluation_metrics_hugadb.mat')
 
     here = fileparts(mfilename('fullpath'));
     projectRoot = fileparts(here);
@@ -15,7 +15,7 @@ function RedrawLstmConfusionFromMetrics(matPath)
     addpath(fullfile(projectRoot, 'config'));
 
     if nargin < 1 || isempty(matPath)
-        matPath = fullfile(projectRoot, 'results', 'lstm_evaluation_metrics.mat');
+        matPath = ResultsArtifactPath(projectRoot, 'metrics', 'binary', 'lstm_evaluation_metrics_hugadb.mat');
     end
     if exist(matPath, 'file') ~= 2
         error('Metrics file not found: %s\nRun EvaluateLstmConfusion after TrainLstmBinary.', matPath);
@@ -26,7 +26,7 @@ function RedrawLstmConfusionFromMetrics(matPath)
     S = load(matPath, req{:});
     for i = 1:numel(req)
         if ~isfield(S, req{i})
-            error('lstm_evaluation_metrics.mat is missing field "%s". Run EvaluateLstmConfusion (needs trained net).', req{i});
+            error('lstm_evaluation_metrics_hugadb.mat is missing field "%s". Run EvaluateLstmConfusion (needs trained net).', req{i});
         end
     end
 
@@ -36,7 +36,7 @@ function RedrawLstmConfusionFromMetrics(matPath)
         lstmH = S.ModelMetadata.lstmHidden1;
     end
 
-    pngPath = fullfile(projectRoot, 'results', 'lstm_confusion_matrix.png');
+    pngPath = ResultsArtifactPath(projectRoot, 'figures', 'binary', 'lstm_confusion_matrix_hugadb.png');
     exportLstmConfusionMatrixPng(pngPath, S.YVal, S.Yhat, S.poolLabel, S.valAcc, ...
         S.precWalk, S.recWalk, S.f1Walk, S.specStand, S.ModelMetadata, S.seed, ...
         S.TN, S.FP, S.FN, S.TP, nTotal, lstmH);

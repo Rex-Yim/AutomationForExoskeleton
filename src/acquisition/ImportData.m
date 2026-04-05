@@ -1,29 +1,14 @@
-%% ImportData.m
-% --------------------------------------------------------------------------
-% FUNCTION: [back, hipL, hipR, annotations] = ImportData(activityName)
-% PURPOSE: Implements the Data Acquisition Protocol. It locates the 
-%          AutomationForExoskeleton project root dynamically and reads raw 
-%          CSV data.
-% --------------------------------------------------------------------------
-% LOCATION: src/acquisition/ImportData.m
-% --------------------------------------------------------------------------
-% DATE CREATED: 2025-12-11
-% LAST MODIFIED: 2025-12-17
-% --------------------------------------------------------------------------
+% Import raw accelerometer, gyroscope, and annotation CSV data for one
+% recorded activity from the project `data/raw` tree.
 
 function [back, hipL, hipR, annotations] = ImportData(activityName)
     
-    % --- 1. Path Management (Location Independent) ---
-    % Get the directory of THIS file (.../src/acquisition/)
     funcDir = fileparts(mfilename('fullpath'));
-    % Go up two levels to find Project Root (.../AutomationForExoskeleton/)
     projectRoot = fileparts(fileparts(funcDir));
-    
-    % Construct absolute path to data
+
     baseDir = fullfile(projectRoot, 'data', 'raw');
     activityPath = fullfile(baseDir, activityName);
-    
-    % --- 2. Validation ---
+
     if ~isfolder(activityPath)
         error('Activity folder not found at: %s', activityPath);
     end
@@ -36,8 +21,7 @@ function [back, hipL, hipR, annotations] = ImportData(activityName)
         error('Missing IMU CSV files in: %s', activityPath);
     end
     
-    % --- 3. Import Raw Tables ---
-    % Suppress warnings for modified variable names during import
+    % Preserve CSV column names exactly as stored on disk.
     opts = detectImportOptions(fileAcc);
     opts.VariableNamingRule = 'preserve'; 
     accTable = readtable(fileAcc, opts);
