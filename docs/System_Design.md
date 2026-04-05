@@ -1,14 +1,14 @@
 # Exoskeleton Control System
 ## System Design Document
-**Version:** 1.2  
-**Date:** March 22, 2026
+**Version:** 1.3  
+**Date:** April 5, 2026
 
 ---
 
 ## 1. Executive Summary
 This document describes the architecture of the software-centric control module for the ExoTechHK lower-limb exoskeleton. The system integrates inertial measurement units (IMUs), Support Vector Machine (SVM) classification, and optional Kalman Filter visualization to provide real-time, adaptive assistance.
 
-Version 1.2 documents a **HuGaDB-centered baseline** with replay-based simulation, while retaining **USC-HAD / HuGaDB** benchmark comparisons in the paper and poster. The common feature vector remains **30-dimensional** (six IMU slots × five statistics per slot), with **binary** and **multiclass** ECOC SVM paths and the asymmetric finite state machine for assist gating.
+Version 1.3 uses **HuGaDB** from **GitHub v1** only: `LoadHuGaDB.m` reads raw `.txt` files and applies the official gyro corruption matrix (CSV next to the loader). Binary and multiclass HuGaDB training/evaluation default to excluding `ExoConfig.HUGADB.HELDOUT_SUBJECTS` so the policy matches binary LSTM and held-out simulation. The common feature vector remains **30-dimensional** (six IMU slots × five statistics per slot), with **binary** and **multiclass** ECOC SVM paths and the asymmetric finite state machine for assist gating.
 
 ---
 
@@ -60,22 +60,25 @@ Asymmetric hysteresis: **3** consecutive active binary predictions to enter assi
 ## 4. Execution & File Organization
 
 ### 4.1 Path Management
-Main scripts resolve `projectRoot` locally and add `config/`, the active `scripts/` folder, and `src/` (recursive) as needed. Dataset loader functions remain under the public dataset folders and can be added to the MATLAB path when rebuilding local caches.
+Main scripts resolve `projectRoot` locally and add `config/`, the active `scripts/` folder, and `src/` (recursive) as needed. Dataset loader functions remain under `data/USC-HAD/`, `data/HuGaDB/`, etc., and can be added to the MATLAB path when rebuilding local caches.
 
-**USC-HAD:** `LoadUSCHAD.m` → `data/public/USC-HAD/usc_had_dataset.mat` (recursive raw `.mat` under `USC-HAD_raw/`).
+**USC-HAD:** `LoadUSCHAD.m` → `data/USC-HAD/usc_had_dataset.mat` (recursive raw `.mat` under `USC-HAD_raw/`).
 
-**HuGaDB:** `LoadHuGaDB.m` → `data/public/HuGaDB/hugadb_dataset.mat` (recursive `**/*.txt` under `HuGaDB_v2_raw/`, six IMUs per row).
+**HuGaDB:** `LoadHuGaDB.m` → `data/HuGaDB/hugadb_dataset.mat` (GitHub v1 under `v1_cleanup_github/` flat layout or legacy nested `v1_raw`/flat paths; official gyro corruption matrix zeroes bad IMU gyros; `readmatrix` treats `na` as missing when present; all-six-corrupt trials skipped; six IMUs per row; optional manifest adds `huGaDBProvenance` / **`huGaDBSessionProtocol`**).
 
 **Binary training / evaluation:** `TrainSvmBinary.m`, `EvaluateSvmConfusion.m`, `RunSvmDatasetAblation.m` (USC-HAD and HuGaDB).
 
 **Multiclass:** `PrepareTrainingDataMulticlass.m`, `TrainSvmMulticlass.m`, `EvaluateMulticlassConfusion.m`, `RunTrainEvalMulticlass.m`, `RunExoskeletonPipelineMulticlass.m`.
 
+**CUHK-REXYIM (local captures):** `ImportData.m` → `data/CUHK-REXYIM/<activity>/` with `Accelerometer.csv`, `Gyroscope.csv`, optional `Annotation.csv`.
+
 ### 4.2 Directory Structure (abridged)
 ```text
 AutomationForExoskeleton/
 ├── config/                 # ExoConfig.m, ActivityClassRegistry.m
-├── data/public/USC-HAD/    # LoadUSCHAD.m, usc_had_dataset.mat
-├── data/public/HuGaDB/     # LoadHuGaDB.m, hugadb_dataset.mat
+├── data/USC-HAD/           # LoadUSCHAD.m, usc_had_dataset.mat
+├── data/HuGaDB/            # LoadHuGaDB.m, hugadb_dataset.mat
+├── data/CUHK-REXYIM/       # project phone CSVs per activity (`ImportData.m`)
 ├── models/                 # Binary_SVM_Model*.mat, Multiclass_SVM_ECOC_usc_had.mat, Multiclass_SVM_ECOC_hugadb.mat
 ├── results/                # figures/ and metrics/ outputs
 ├── scripts/                # Train/eval/pipeline scripts

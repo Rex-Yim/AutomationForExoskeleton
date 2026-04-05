@@ -19,9 +19,9 @@ Values below match the committed `results/metrics/binary/svm_evaluation_metrics_
 | Training set | OOF accuracy |
 |--------------|----------------|
 | USC-HAD | 99.44% |
-| HuGaDB  | 96.80% |
+| HuGaDB  | 97.85% |
 
-These comparison rows are kept for the report/poster table. The active binary SVM checkpoint is `models/Binary_SVM_Model_hugadb_only.mat`, trained on the HuGaDB dataset without the removed deploy-pool variant.
+These comparison rows are kept for the report/poster table; **re-run** `RunSvmDatasetAblation` after refreshing `hugadb_dataset.mat` so the HuGaDB column matches the refreshed metrics files. The default binary HuGaDB model excludes subjects in `ExoConfig.HUGADB.HELDOUT_SUBJECTS` (same policy as binary LSTM) so held-out replay subjects stay out of training.
 
 Multiclass: run `EvaluateMulticlassConfusion('Dataset','usc_had')` and `...('Dataset','hugadb')` — default uses a **stratified subsample** for CV speed; metrics in `results/metrics/multiclass/multiclass_evaluation_metrics_usc_had.mat` and `results/metrics/multiclass/multiclass_evaluation_metrics_hugadb.mat`.
 
@@ -37,12 +37,12 @@ No global setup step is required for the main train/eval/simulation scripts; the
 1. **Build datasets (when raw data present)**  
    - If calling the dataset loaders from the project root, first add their folders to the MATLAB path:
    ```matlab
-   addpath(fullfile(pwd, 'data', 'public', 'USC-HAD'));
-   addpath(fullfile(pwd, 'data', 'public', 'HuGaDB'));
+   addpath(fullfile(pwd, 'data', 'USC-HAD'));
+   addpath(fullfile(pwd, 'data', 'HuGaDB'));
    ```
-   - USC-HAD: raw `.mat` under `data/public/USC-HAD/USC-HAD_raw/` → `LoadUSCHAD`  
-   - HuGaDB: `.txt` under `data/public/HuGaDB/HuGaDB_v2_raw/` → `LoadHuGaDB`  
-   - Those raw folders and the generated `usc_had_dataset.mat` / `hugadb_dataset.mat` caches are **not** in the GitHub repo; place downloads locally (official dataset releases), then run the loaders.
+   - USC-HAD: raw `.mat` under `data/USC-HAD/USC-HAD_raw/` → `LoadUSCHAD`  
+   - HuGaDB: GitHub v1 under `v1_cleanup_github/` (flat `HuGaDB_v1_*.txt`); run `LoadHuGaDB` (applies the official gyro corruption matrix from `hugadb_official_readme_gyro_corruption_matrix.csv` when reading raw `.txt` files; optional `scripts/RunBuildHuGaDBv1Cleanup.m` writes corrupted gyros as `na` in place).  
+   - Those raw folders and the generated `usc_had_dataset.mat` / `hugadb_dataset.mat` caches are **not** in the GitHub repo; place downloads locally (official dataset releases), then run the builder and loaders.
 
 2. **Binary model**  
    - `TrainSvmBinary` — default HuGaDB training  

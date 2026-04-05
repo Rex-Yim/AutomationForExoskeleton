@@ -176,7 +176,7 @@
   \parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule}{%
     \centering
     {\fontsize{28}{33}\selectfont\bfseries\color{bodytext}
-    Key message: the validated baseline is a reproducible HuGaDB MATLAB assist-gating pipeline: 30-D IMU features feed a binary active-vs-inactive SVM, and FSM hysteresis turns noisy window predictions into a stable assist on/off command.}
+    Key message: the validated baseline is a reproducible HuGaDB (GitHub v1 corpus) MATLAB assist-gating pipeline: canonical six-IMU windows feed 30-D features, a binary active-vs-inactive SVM, and FSM hysteresis that turns noisy window predictions into a stable assist on/off command.}
   }%
 }
 
@@ -210,7 +210,8 @@
 
   \posterbox{Implemented workflow}{
     \begin{compactitem}
-      \item \textbf{Input:} HuGaDB for training and held-out HuGaDB replay for simulation; USC-HAD is retained as a comparison benchmark.
+      \item \textbf{Input:} canonical \textbf{HuGaDB} (GitHub v1 raw under \texttt{v1\_cleanup\_github/}) for training and held-out HuGaDB replay for simulation; USC-HAD is retained as a comparison benchmark.
+      \item \textbf{Dataset handling:} loader applies the official gyro-corruption rules at read time, builds \texttt{hugadb\_dataset.mat}, and optionally reads \texttt{hugadb\_manifest.json} for per-session provenance and protocol metadata.
       \item \textbf{Fusion:} Kalman filtering is optional and used for a replay-time segment-pitch visualization trace, not for classifier preprocessing.
       \item \textbf{Windowing:} 1.0~s windows at 100~Hz with 50\% overlap.
       \item \textbf{Features:} \textbf{30-D} handcrafted vector, five statistics per IMU slot across six slots.
@@ -221,7 +222,7 @@
 \end{minipage}\hfill
 \begin{minipage}[t]{0.485\textwidth}
   \posterbox{Main validated result}{
-    The strongest binary-SVM claim in the current repository is the \textbf{HuGaDB} model: it reaches \textbf{\BinaryOofAccHuGa\%} five-fold out-of-fold accuracy on the HuGaDB benchmark split.
+    The strongest binary-SVM claim in the current repository is the \textbf{HuGaDB-trained} model: it reaches \textbf{\BinaryOofAccHuGa\%} five-fold out-of-fold accuracy on the HuGaDB benchmark split.
 
     \vspace{0.14em}
     \setlength{\tabcolsep}{8pt}
@@ -242,9 +243,10 @@
 
   \posterbox{Data and evaluation protocol}{
     \begin{compactitem}
-      \item \textbf{HuGaDB} contributes six on-body IMU streams per window and is the dataset used by the final pipeline.
+      \item \textbf{HuGaDB} contributes six on-body IMU streams per window, keeps the full native class coverage, and is the dataset used by the final pipeline.
+      \item The canonical raw layout is \texttt{v1\_cleanup\_github/} (flat \texttt{HuGaDB\_v1\_*.txt}); the loader threads optional manifest metadata into the cache for validation and rebuild traceability.
       \item \textbf{USC-HAD} contributes one IMU stream; it remains in the poster to compare dataset effects under the same 30-D layout.
-      \item The \textbf{binary SVM} is the main baseline; the active checkpoint is the HuGaDB model.
+      \item The \textbf{binary SVM} is the main baseline; the active checkpoint is the HuGaDB model trained under the held-out-subject policy used by replay evaluation.
       \item \textbf{Binary} asks a simple control question: should assist stay \textbf{off} or turn \textbf{on}? \textbf{Multiclass} asks a harder recognition question: which exact activity is occurring?
       \item \textbf{Multiclass SVM} (12 USC / 12 HuGaDB classes) and \textbf{binary/multiclass LSTM} are supporting baselines; the SVM uses stratified subsamples and the LSTMs use separate stratified 20\% holdouts, so neither is a direct deployment comparison.
     \end{compactitem}
@@ -297,7 +299,7 @@
   \parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule}{%
     \centering
     {\fontsize{31}{36}\selectfont\bfseries
-    Take-home message: the repository now delivers a traceable MATLAB baseline for IMU-based \textbf{binary assist gating}, centered on HuGaDB training, benchmark comparison tables, replay-based simulation, and FSM-stabilized control output.}
+    Take-home message: the repository now delivers a traceable MATLAB baseline for IMU-based \textbf{binary assist gating}, centered on canonical HuGaDB (GitHub v1) training, benchmark comparison tables, replay-based simulation, and FSM-stabilized control output.}
   }%
 }
 
@@ -334,8 +336,8 @@
 
   \posterbox{Summary}{
     \begin{compactitem}
-      \item \textbf{Delivered:} HuGaDB binary SVM, optional Kalman visualization, FSM smoothing, reproducible metrics, and replay in MATLAB.
-      \item \textbf{Best validated result:} HuGaDB binary SVM achieves \textbf{\BinaryOofAccHuGa\%} five-fold OOF accuracy.
+      \item \textbf{Delivered:} canonical HuGaDB (GitHub v1) data flow, HuGaDB binary SVM, optional Kalman visualization, FSM smoothing, reproducible metrics, and replay in MATLAB.
+      \item \textbf{Best validated result:} HuGaDB binary SVM achieves \textbf{\BinaryOofAccHuGa\%} five-fold OOF accuracy on the refreshed HuGaDB benchmark path.
       \item \textbf{System role:} simulation-level assist gating supervisor.
       \item \textbf{Value:} a credible, traceable software baseline that separates benchmark comparisons from the final deployed method.
     \end{compactitem}

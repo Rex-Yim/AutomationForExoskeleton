@@ -15,8 +15,7 @@ fprintf('===========================================================\n');
 try
     [featuresAll, labelsAll, ModelMetadata] = PrepareTrainingData(cfg, ...
         'IncludeUSCHAD', cfg.TRAINING.DEFAULT_INCLUDE_USCHAD, ...
-        'IncludeHuGaDB', cfg.TRAINING.DEFAULT_INCLUDE_HUGADB, ...
-        'ExcludeHuGaDBSubjects', {});
+        'IncludeHuGaDB', cfg.TRAINING.DEFAULT_INCLUDE_HUGADB);
 catch ME
     error('Data preparation failed: %s', ME.message);
 end

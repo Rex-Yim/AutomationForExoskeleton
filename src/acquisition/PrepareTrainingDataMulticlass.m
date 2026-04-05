@@ -8,11 +8,20 @@ function [features, labels_class, ModelMetadata] = PrepareTrainingDataMulticlass
         cfg = ExoConfig();
     end
 
+    defaultExcludedSubjects = {};
+    if isprop(cfg, 'HUGADB')
+        defaultExcludedSubjects = cfg.HUGADB.HELDOUT_SUBJECTS;
+    end
+
     p = inputParser;
     addParameter(p, 'Dataset', 'hugadb', @(s) ischar(s) || isstring(s));
+    addParameter(p, 'IncludeHuGaDBSubjects', {}, @(x) isempty(x) || isnumeric(x) || ischar(x) || isstring(x) || iscell(x));
+    addParameter(p, 'ExcludeHuGaDBSubjects', defaultExcludedSubjects, @(x) isempty(x) || isnumeric(x) || ischar(x) || isstring(x) || iscell(x));
     parse(p, varargin{:});
 
     ds = lower(char(p.Results.Dataset));
+    includeHuSubjects = NormalizeHuGaDBSubjectIds(p.Results.IncludeHuGaDBSubjects);
+    excludeHuSubjects = NormalizeHuGaDBSubjectIds(p.Results.ExcludeHuGaDBSubjects);
     if ~ismember(ds, {'usc_had', 'hugadb'})
         error('AutomationForExoskeleton:PrepareTrainingDataMulticlass:Dataset', ...
             'Dataset must be ''usc_had'' or ''hugadb''.');
@@ -82,6 +91,11 @@ function [features, labels_class, ModelMetadata] = PrepareTrainingDataMulticlass
 
         for i = 1:numel(hnames)
             trial = hug.(hnames{i});
+            meta = ResolveHuGaDBTrialMetadata(hnames{i}, trial);
+            if ~shouldIncludeHuGaDBTrialMc(meta.subjectId, includeHuSubjects, excludeHuSubjects)
+                continue;
+            end
+
             acc = trial.acc;
             gyro = trial.gyro;
             lf = trial.label_full(:);
@@ -133,6 +147,8 @@ function [features, labels_class, ModelMetadata] = PrepareTrainingDataMulticlass
     ModelMetadata.nWindowsHuGaDB = n_hu;
     ModelMetadata.dataset = ds;
     ModelMetadata.task = 'multiclass_native';
+    ModelMetadata.includeHuGaDBSubjects = includeHuSubjects;
+    ModelMetadata.excludeHuGaDBSubjects = excludeHuSubjects;
 
     if strcmp(ds, 'usc_had')
         ModelMetadata.classNames = ActivityClassRegistry.USCHAD_CLASS_NAMES;
@@ -145,4 +161,14 @@ function [features, labels_class, ModelMetadata] = PrepareTrainingDataMulticlass
     fprintf(['Multiclass feature extraction complete. Total %d windows (%d features). ', ...
         'USC-HAD windows: %d | HuGaDB windows: %d\n'], ...
         size(features, 1), size(features, 2), n_usc, n_hu);
+end
+
+function tf = shouldIncludeHuGaDBTrialMc(subjectId, includeSubjects, excludeSubjects)
+    tf = true;
+    if ~isempty(includeSubjects)
+        tf = any(strcmp(subjectId, includeSubjects));
+    end
+    if tf && ~isempty(excludeSubjects)
+        tf = ~any(strcmp(subjectId, excludeSubjects));
+    end
 end

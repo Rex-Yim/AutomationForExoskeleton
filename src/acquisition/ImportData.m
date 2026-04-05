@@ -1,12 +1,12 @@
 % Import raw accelerometer, gyroscope, and annotation CSV data for one
-% recorded activity from the project `data/raw` tree.
+% recorded activity from the project `data/CUHK-REXYIM` tree.
 
 function [back, hipL, hipR, annotations] = ImportData(activityName)
     
     funcDir = fileparts(mfilename('fullpath'));
     projectRoot = fileparts(fileparts(funcDir));
 
-    baseDir = fullfile(projectRoot, 'data', 'raw');
+    baseDir = fullfile(projectRoot, 'data', 'CUHK-REXYIM');
     activityPath = fullfile(baseDir, activityName);
 
     if ~isfolder(activityPath)

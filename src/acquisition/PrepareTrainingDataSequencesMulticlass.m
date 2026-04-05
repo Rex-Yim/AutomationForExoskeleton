@@ -7,11 +7,20 @@ function [XCell, labelsClass, ModelMetadata] = PrepareTrainingDataSequencesMulti
         cfg = ExoConfig();
     end
 
+    defaultExcludedSubjects = {};
+    if isprop(cfg, 'HUGADB')
+        defaultExcludedSubjects = cfg.HUGADB.HELDOUT_SUBJECTS;
+    end
+
     p = inputParser;
     addParameter(p, 'Dataset', 'hugadb', @(s) ischar(s) || isstring(s));
+    addParameter(p, 'IncludeHuGaDBSubjects', {}, @(x) isempty(x) || isnumeric(x) || ischar(x) || isstring(x) || iscell(x));
+    addParameter(p, 'ExcludeHuGaDBSubjects', defaultExcludedSubjects, @(x) isempty(x) || isnumeric(x) || ischar(x) || isstring(x) || iscell(x));
     parse(p, varargin{:});
 
     ds = lower(char(p.Results.Dataset));
+    includeHuSubjects = NormalizeHuGaDBSubjectIds(p.Results.IncludeHuGaDBSubjects);
+    excludeHuSubjects = NormalizeHuGaDBSubjectIds(p.Results.ExcludeHuGaDBSubjects);
     if ~ismember(ds, {'usc_had', 'hugadb'})
         error('AutomationForExoskeleton:PrepareTrainingDataSequencesMulticlass:Dataset', ...
             'Dataset must be ''usc_had'' or ''hugadb''.');
@@ -75,6 +84,11 @@ function [XCell, labelsClass, ModelMetadata] = PrepareTrainingDataSequencesMulti
         fprintf('Preparing HuGaDB multiclass sequences: %d sessions...\n', numel(hnames));
         for i = 1:numel(hnames)
             trial = hug.(hnames{i});
+            meta = ResolveHuGaDBTrialMetadata(hnames{i}, trial);
+            if ~shouldIncludeHuGaDBTrialSeqMc(meta.subjectId, includeHuSubjects, excludeHuSubjects)
+                continue;
+            end
+
             acc = trial.acc;
             gyro = trial.gyro;
             lf = trial.label_full(:);
@@ -130,7 +144,19 @@ function [XCell, labelsClass, ModelMetadata] = PrepareTrainingDataSequencesMulti
     ModelMetadata.classNames = classNames;
     ModelMetadata.nClasses = nClasses;
     ModelMetadata.dateTrained = char(datetime('now'));
+    ModelMetadata.includeHuGaDBSubjects = includeHuSubjects;
+    ModelMetadata.excludeHuGaDBSubjects = excludeHuSubjects;
 
     fprintf(['Multiclass sequence extraction complete. Total %d windows (%d x %d each). ', ...
         'USC-HAD: %d | HuGaDB: %d\n'], numel(XCell), nCh, cfg.WINDOW_SIZE, nUsc, nHu);
+end
+
+function tf = shouldIncludeHuGaDBTrialSeqMc(subjectId, includeSubjects, excludeSubjects)
+    tf = true;
+    if ~isempty(includeSubjects)
+        tf = any(strcmp(subjectId, includeSubjects));
+    end
+    if tf && ~isempty(excludeSubjects)
+        tf = ~any(strcmp(subjectId, excludeSubjects));
+    end
 end

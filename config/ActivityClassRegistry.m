@@ -1,5 +1,5 @@
 %% ActivityClassRegistry — native activity IDs per dataset (multiclass, no unified mapping)
-% USC-HAD: trial label 1..12. HuGaDB v2: per-sample act 1..12.
+% USC-HAD: trial label 1..12. HuGaDB: per-sample act 1..12.
 % Class 0 = unknown / skip window.
 
 classdef ActivityClassRegistry
@@ -94,6 +94,20 @@ classdef ActivityClassRegistry
             else
                 name = ActivityClassRegistry.HUGADB_CLASS_NAMES{classId};
             end
+        end
+
+        function tok = hugadbFilenameTokenForClass(classId)
+            % HuGaDB raw filenames use lowercase_snake_case activity slugs (GitHub layout).
+            if classId < 1 || classId > ActivityClassRegistry.HUGADB_N_CLASSES || floor(classId) ~= classId
+                tok = 'various';
+                return;
+            end
+            toks = { ...
+                'walking', 'running', 'going_up', 'going_down', ...
+                'sitting', 'sitting_down', 'standing_up', 'standing', ...
+                'bicycling', 'elevator_up', 'elevator_down', 'sitting_in_car' ...
+                };
+            tok = toks{classId};
         end
     end
 end

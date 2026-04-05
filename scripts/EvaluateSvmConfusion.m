@@ -5,7 +5,7 @@ function EvaluateSvmConfusion(varargin)
 %   'IncludeUSCHAD'   (logical, default cfg.TRAINING.DEFAULT_INCLUDE_USCHAD)
 %   'IncludeHuGaDB'   (logical, default cfg.TRAINING.DEFAULT_INCLUDE_HUGADB)
 %   'IncludeHuGaDBSubjects' (default {})
-%   'ExcludeHuGaDBSubjects' (default {})
+%   'ExcludeHuGaDBSubjects' (default cfg.HUGADB.HELDOUT_SUBJECTS when cfg available)
 %   'OutputTag'       (char/string, default auto) — saves
 %                     svm_confusion_matrix_<tag>.png and svm_evaluation_metrics_<tag>.mat
 %   'SaveModelPath'   (char/string, default '') — if nonempty, saves SVMModel + ModelMetadata there
@@ -16,7 +16,7 @@ function EvaluateSvmConfusion(varargin)
 
     here = fileparts(mfilename('fullpath'));
     projectRoot = fileparts(here);
-    % ExoConfig paths are relative to project root (data/public/...); batch runs often start in scripts/.
+    % ExoConfig paths are relative to project root (data/...); batch runs often start in scripts/.
     cd(projectRoot);
     addpath(here);
     addpath(fullfile(projectRoot, 'config'));
@@ -26,11 +26,16 @@ function EvaluateSvmConfusion(varargin)
     classNames = ActivityClassRegistry.binaryClassNames();
     inactiveLabel = classNames{1};
     activeLabel = classNames{2};
+    defaultExcludedSubjects = {};
+    if isprop(cfg, 'HUGADB')
+        defaultExcludedSubjects = cfg.HUGADB.HELDOUT_SUBJECTS;
+    end
+
     p = inputParser;
     addParameter(p, 'IncludeUSCHAD', cfg.TRAINING.DEFAULT_INCLUDE_USCHAD, @islogical);
     addParameter(p, 'IncludeHuGaDB', cfg.TRAINING.DEFAULT_INCLUDE_HUGADB, @islogical);
     addParameter(p, 'IncludeHuGaDBSubjects', {}, @(x) isempty(x) || isnumeric(x) || ischar(x) || isstring(x) || iscell(x));
-    addParameter(p, 'ExcludeHuGaDBSubjects', {}, @(x) isempty(x) || isnumeric(x) || ischar(x) || isstring(x) || iscell(x));
+    addParameter(p, 'ExcludeHuGaDBSubjects', defaultExcludedSubjects, @(x) isempty(x) || isnumeric(x) || ischar(x) || isstring(x) || iscell(x));
     addParameter(p, 'OutputTag', '', @(s) ischar(s) || isstring(s));
     addParameter(p, 'SaveModelPath', '', @(s) ischar(s) || isstring(s));
     parse(p, varargin{:});
