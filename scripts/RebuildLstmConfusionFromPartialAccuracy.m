@@ -13,7 +13,7 @@ function RebuildLstmConfusionFromPartialAccuracy()
     addpath(fullfile(projectRoot, 'config'));
     cd(projectRoot);
 
-    matIn = ResultsArtifactPath(projectRoot, 'metrics', 'binary', 'lstm_evaluation_metrics_hugadb.mat');
+    matIn = ResultsArtifactPath(projectRoot, 'metrics', 'binary', 'lstm_evaluation_metrics_hugadb_streaming.mat');
     if exist(matIn, 'file') ~= 2
         error('Missing %s — create it with valAcc from the training log first.', matIn);
     end
@@ -28,7 +28,8 @@ function RebuildLstmConfusionFromPartialAccuracy()
     inactiveLabel = classNames{1};
     activeLabel = classNames{2};
     fprintf('Loading sequences (same as TrainLstmBinary)...\n');
-    [~, labelsAll, ModelMetadata] = PrepareTrainingDataSequences(cfg);
+    [~, labelsAll, ModelMetadata] = PrepareTrainingDataSequences(cfg, ...
+        'HuGaDBSessionProtocols', cfg.HUGADB.DEFAULT_PROTOCOLS);
 
     Ycat = categorical(labelsAll, [0 1], classNames);
     seed = 42;
@@ -72,14 +73,14 @@ function RebuildLstmConfusionFromPartialAccuracy()
     f1Walk = 2 * precWalk * recWalk / max(precWalk + recWalk, eps);
     specStand = TN / max(TN + FP, eps);
 
-    poolLabel = 'HuGaDB';
+    poolLabel = 'HuGaDB | protocols: multi_activity_sequence';
     lstmH = 128;
     if isfield(ModelMetadata, 'lstmHidden1')
         lstmH = ModelMetadata.lstmHidden1;
     end
 
-    pngPath = ResultsArtifactPath(projectRoot, 'figures', 'binary', 'lstm_confusion_matrix_hugadb.png');
-    matOut = ResultsArtifactPath(projectRoot, 'metrics', 'binary', 'lstm_evaluation_metrics_hugadb.mat');
+    pngPath = ResultsArtifactPath(projectRoot, 'figures', 'binary', 'lstm_confusion_matrix_hugadb_streaming.png');
+    matOut = ResultsArtifactPath(projectRoot, 'metrics', 'binary', 'lstm_evaluation_metrics_hugadb_streaming.mat');
 
     footerLines = {
         'NOTE: Yhat synthesized to match logged valAcc; training stopped';

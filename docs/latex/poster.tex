@@ -7,7 +7,7 @@
 \usepackage{lmodern}
 \renewcommand{\familydefault}{\sfdefault}
 \usepackage{microtype}
-\usepackage[a0paper,portrait,margin=15mm]{geometry}
+\usepackage[a0paper,portrait,margin=11mm]{geometry}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{array}
@@ -19,8 +19,8 @@
 \usepackage{ragged2e}
 \usepackage{setspace}
 \usepackage{parskip}
-\setlength{\parskip}{0.25em}
-\setstretch{1.02}
+\setlength{\parskip}{0.12em}
+\setstretch{0.97}
 
 \graphicspath{{../../results/figures/binary/}{../../results/figures/multiclass/}{../../results/figures/pipeline/}{assets/}}
 
@@ -44,11 +44,33 @@
 
 \pagecolor{white}
 \newlength{\posterinnerw}
+% Confusion / pipeline figure aligned to one headline column: full column width, optional image height
+\newcommand{\metriccolfig}[3][0.17\textheight]{%
+  \setlength{\fboxsep}{4pt}%
+  \setlength{\fboxrule}{0.6pt}%
+  \setlength{\posterinnerw}{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}%
+  \noindent\fcolorbox{stripborder}{figbg}{%
+    \begin{minipage}{\posterinnerw}\centering
+      \includegraphics[width=\linewidth,height=#1,keepaspectratio]{#2}%
+    \end{minipage}%
+  }\\[0.04em]
+  {\centering\color{captionfg}\fontsize{12}{15}\selectfont\bfseries #3\par}%
+}
+\newcommand{\metriccolfigmissing}[2][0.17\textheight]{%
+  \setlength{\fboxsep}{4pt}%
+  \setlength{\fboxrule}{0.6pt}%
+  \setlength{\posterinnerw}{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}%
+  \noindent\fcolorbox{stripborder}{figbg}{%
+    \begin{minipage}{\posterinnerw}\centering
+      \parbox[c][#1][c]{0.92\linewidth}{\centering\fontsize{14}{18}\selectfont\color{footfg} #2}%
+    \end{minipage}%
+  }%
+}
 
 \newenvironment{compactitem}{%
   \begin{itemize}
-    \setlength{\itemsep}{0.16em}
-    \setlength{\topsep}{0.18em}
+    \setlength{\itemsep}{0.04em}
+    \setlength{\topsep}{0.06em}
     \setlength{\parsep}{0pt}
     \setlength{\parskip}{0pt}
     \setlength{\leftmargini}{1.2em}
@@ -56,15 +78,29 @@
   \end{itemize}
 }
 
-\newcommand{\metriccard}[3]{%
+% Optional #1: inner minipage width (default matches confusion-matrix column width).
+\newcommand{\metriccard}[4][0.198\textwidth]{%
   \setlength{\fboxsep}{8pt}%
   \setlength{\fboxrule}{0.7pt}%
   \fcolorbox{stripborder}{white}{%
-    \begin{minipage}[c][7.2em][c]{0.255\textwidth}
+    \begin{minipage}[c][7.2em][c]{#1}
       \centering
-      {\fontsize{18}{22}\selectfont\bfseries\color{bodytext} #1}\\[0.18em]
-      {\color{accent}\parbox[c][2.4em][c]{0.92\linewidth}{\centering\fontsize{27}{31}\selectfont\bfseries #2}}\\[0.14em]
-      {\fontsize{18}{22}\selectfont\color{footfg} #3}
+      {\fontsize{18}{22}\selectfont\bfseries\color{bodytext} #2}\\[0.18em]
+      {\color{accent}\parbox[c][2.4em][c]{0.92\linewidth}{\centering\fontsize{27}{31}\selectfont\bfseries #3}}\\[0.14em]
+      {\fontsize{18}{22}\selectfont\color{footfg} #4}
+    \end{minipage}%
+  }%
+}
+% Narrow card for eight metrics in one row (width relative to metrics column \linewidth).
+\newcommand{\metriccardcompact}[4][0.112\linewidth]{%
+  \setlength{\fboxsep}{4pt}%
+  \setlength{\fboxrule}{0.6pt}%
+  \fcolorbox{stripborder}{white}{%
+    \begin{minipage}[c][5.0em][c]{#1}
+      \centering
+      {\fontsize{11.5}{13.5}\selectfont\bfseries\color{bodytext} #2}\\[0.06em]
+      {\color{accent}\parbox[c][1.75em][c]{0.98\linewidth}{\centering\fontsize{17}{19}\selectfont\bfseries #3}}\\[0.05em]
+      {\fontsize{10}{12}\selectfont\color{footfg} #4}
     \end{minipage}%
   }%
 }
@@ -79,30 +115,18 @@
       \includegraphics[width=\linewidth,height=#3,keepaspectratio]{#1}%
     \end{minipage}%
   }\\[0.18em]
-  {\centering\color{captionfg}\fontsize{20}{24}\selectfont\bfseries #2\par}%
-}
-
-\newcommand{\gallerythumb}[2]{%
-  \begin{minipage}[t]{0.235\textwidth}
-    \centering
-    \setlength{\fboxsep}{3pt}%
-    \setlength{\fboxrule}{0.6pt}%
-    \fcolorbox{stripborder}{figbg}{%
-      \includegraphics[width=\linewidth,height=0.12\textheight,keepaspectratio]{#1}%
-    }\\[0.14em]
-    {\color{captionfg}\fontsize{15}{18}\selectfont\bfseries #2\par}%
-  \end{minipage}%
+  {\centering\color{captionfg}\fontsize{17}{20}\selectfont\bfseries #2\par}%
 }
 
 \newcommand{\posterbox}[2]{%
-  \par\addvspace{0.16em}%
-  \setlength{\fboxsep}{7pt}%
+  \par\addvspace{0.08em}%
+  \setlength{\fboxsep}{5pt}%
   \setlength{\fboxrule}{0.7pt}%
   \setlength{\posterinnerw}{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}%
   \noindent\fcolorbox{stripborder}{white}{%
     \begin{minipage}[t]{\posterinnerw}
-      {\color{accent}\fontsize{27}{31}\selectfont\bfseries #1\par}
-      \vspace{0.14em}
+      {\color{accent}\fontsize{23}{27}\selectfont\bfseries #1\par}
+      \vspace{0.08em}
       #2
     \end{minipage}%
   }%
@@ -110,25 +134,12 @@
 
 \newcommand{\workflowstep}[2]{%
   \fcolorbox{stripborder}{accentsoft}{%
-    \parbox[c][5.0em][c]{0.145\linewidth}{%
+    \parbox[c][3.6em][c]{0.145\linewidth}{%
       \centering
-      {\fontsize{17}{21}\selectfont\bfseries #1}\\[0.14em]
-      {\fontsize{19}{23}\selectfont #2}
+      {\fontsize{14}{17}\selectfont\bfseries #1}\\[0.06em]
+      {\fontsize{15}{18}\selectfont #2}
     }%
   }%
-}
-
-\newcommand{\qrbadge}[3]{%
-  \begin{minipage}[c][7.2em][c]{0.095\textwidth}
-    \centering
-    \setlength{\fboxsep}{4pt}%
-    \setlength{\fboxrule}{0.6pt}%
-    \fcolorbox{stripborder}{white}{%
-      \includegraphics[width=0.82\linewidth]{#1}%
-    }\\[0.18em]
-    {\fontsize{15}{18}\selectfont\bfseries #2}\\[0.05em]
-    {\fontsize{13}{16}\selectfont\color{footfg} #3}
-  \end{minipage}%
 }
 
 \begin{document}
@@ -138,63 +149,118 @@
 \RaggedRight
 \sloppy
 \emergencystretch=2.5em
-\fontsize{25}{31}\selectfont
+\fontsize{22}{28}\selectfont
 
 % ---------- Title banner ----------
 \noindent\colorbox{bannerbg}{%
   \parbox{\dimexpr\linewidth-2\fboxsep}{%
     \color{bannerfg}
-    \vspace{0.44em}
+    \vspace{0.28em}
     \noindent
-    \begin{minipage}[c]{0.14\linewidth}
+    \begin{minipage}[c]{0.12\linewidth}
       \centering
       \includegraphics[width=\linewidth,keepaspectratio]{cuhk_crest.png}
     \end{minipage}\hfill
-    \begin{minipage}[c]{0.68\linewidth}
+    \begin{minipage}[c]{0.695\linewidth}
       \centering
-      {\fontsize{56}{64}\selectfont\bfseries Robotic Exoskeleton for Load Transportation}\\[0.18em]
-      {\fontsize{31}{38}\selectfont\color{banneraccent}IMU-based locomotion intent recognition and assist gating in MATLAB}\\[0.30em]
-      {\fontsize{25}{31}\selectfont Yim Fu Chong \quad\textcolor{banneraccent}{$\bullet$}\quad Supervisor: Prof.\ Wei-Hsin Liao}\\[0.18em]
-      {\fontsize{22}{28}\selectfont Department of Mechanical and Automation Engineering --- The Chinese University of Hong Kong}\\[0.12em]
-      {\fontsize{20}{25}\selectfont ExoTechHK Limited (HKSTP) \quad\textcolor{banneraccent}{$\bullet$}\quad Final Year Project (MAEG4999)}
+      {\fontsize{48}{56}\selectfont\bfseries Robotic Exoskeleton for Load Transportation}\\[0.12em]
+      {\fontsize{26}{32}\selectfont\color{banneraccent}IMU-based locomotion intent recognition and assist gating in MATLAB}\\[0.18em]
+      {\fontsize{22}{28}\selectfont Yim Fu Chong \quad\textcolor{banneraccent}{$\bullet$}\quad Supervisor: Prof.\ Wei-Hsin Liao}\\[0.1em]
+      {\fontsize{19}{24}\selectfont Department of Mechanical and Automation Engineering --- The Chinese University of Hong Kong}\\[0.08em]
+      {\fontsize{17}{21}\selectfont ExoTechHK Limited (HKSTP) \quad\textcolor{banneraccent}{$\bullet$}\quad Final Year Project (MAEG4999)}
     \end{minipage}\hfill
-    \begin{minipage}[c]{0.14\linewidth}
+    \begin{minipage}[c]{0.135\linewidth}
       \centering
       \includegraphics[width=\linewidth,keepaspectratio]{mae_logo.png}
     \end{minipage}
-    \vspace{0.36em}
+    \vspace{0.24em}
   }%
 }
 
-\vspace{0.22em}
+\vspace{0.1em}
 
-% ---------- Key message ----------
+% ---------- Row 1: key message only ----------
 \noindent
-\setlength{\fboxsep}{7pt}%
+\setlength{\fboxsep}{5pt}%
 \setlength{\fboxrule}{0.7pt}%
 \fcolorbox{stripborder}{accentsoft}{%
   \parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule}{%
     \centering
-    {\fontsize{28}{33}\selectfont\bfseries\color{bodytext}
-    Key message: the validated baseline is a reproducible HuGaDB (GitHub v1 corpus) MATLAB assist-gating pipeline: canonical six-IMU windows feed 30-D features, a binary active-vs-inactive SVM, and FSM hysteresis that turns noisy window predictions into a stable assist on/off command.}
+    {\fontsize{20}{24}\selectfont\bfseries\color{bodytext}
+    Key message: the validated baseline is a reproducible HuGaDB (GitHub v1 corpus) MATLAB assist-gating pipeline that now respects official corruption metadata and streaming session structure: canonical six-IMU windows from realistic \texttt{various} multi-activity sequences, alongside controlled single-activity variants such as walking/running/sitting/standing, feed 30-D features, a binary active-vs-inactive SVM, and FSM hysteresis that turns noisy window predictions into a stable assist on/off command.}
   }%
 }
 
-\vspace{0.18em}
+\vspace{0.06em}
 
-% ---------- Headline metrics ----------
+% ---------- Row 2: six metrics (binary + multiclass SVM / LSTM holdouts) on one line ----------
 \noindent
-\metriccard{Binary SVM\\5-fold OOF}{USC-HAD \BinaryOofAccUsc\%\\HuGaDB \BinaryOofAccHuGa\%}{Benchmark comparison across datasets}\hfill
-\metriccard{Multiclass SVM\\5-fold OOF}{USC \MulticlassOofAccUsc\%\\HuGaDB \MulticlassOofAccHuGa\%}{Native multiclass activity recognition per dataset}\hfill
-\ifnum\HasBinaryLstmMetrics=1
-  \metriccard{Sequence baseline\\Binary LSTM, 20\% holdout}{USC-HAD \LstmBinaryHoldoutAccUsc\%\\HuGaDB \LstmBinaryHoldoutAccHuGa\%}{Separate holdout protocol, supporting baseline}\hfill
-\else
-  \metriccard{Sequence baseline\\Binary LSTM, 20\% holdout}{---}{Run training and export metrics}\hfill
-\fi
-\qrbadge{github_qr.png}{GitHub}{Scan}\hfill
-\qrbadge{instagram_qr.png}{IG}{Scan}
+\setlength{\fboxsep}{5pt}%
+\setlength{\fboxrule}{0.7pt}%
+\fcolorbox{stripborder}{accentsoft}{%
+  \begin{minipage}[c]{\dimexpr\linewidth-2\fboxsep-2\fboxrule}%
+    \raggedleft
+    \metriccardcompact{Binary SVM, 5-fold OOF}{\BinaryOofAccHuGa\%}{HuGaDB}\hfill
+    \metriccardcompact{Binary SVM, 5-fold OOF}{\BinaryOofAccUsc\%}{USC-HAD}\hfill
+    \metriccardcompact{Multiclass SVM, 5-fold OOF}{\MulticlassOofAccHuGa\%}{HuGaDB}\hfill
+    \metriccardcompact{Multiclass SVM, 5-fold OOF}{\MulticlassOofAccUsc\%}{USC-HAD}\hfill
+    \ifnum\HasMulticlassLstmMetrics=1
+      \metriccardcompact{Multiclass LSTM, 20\% holdout}{\LstmMulticlassHoldoutAccHuGa\%}{HuGaDB}\hfill
+      \metriccardcompact{Multiclass LSTM, 20\% holdout}{\LstmMulticlassHoldoutAccUsc\%}{USC-HAD}%
+    \else
+      \metriccardcompact{Multiclass LSTM, 20\% holdout}{---}{HuGaDB}\hfill
+      \metriccardcompact{Multiclass LSTM, 20\% holdout}{---}{USC-HAD}%
+    \fi
+  \end{minipage}%
+}
 
-\vspace{0.18em}
+\vspace{0.06em}
+
+% USC-HAD: four figures in one row (binary SVM + multiclass LSTM confusions; binary + multiclass LSTM training curves)
+{\centering\fontsize{15}{19}\selectfont\bfseries\color{bodytext} USC-HAD\par}
+\vspace{0.04em}
+{\centering\fontsize{12}{14}\selectfont\color{captionfg} Confusion matrices and LSTM training (\texttt{trainNetwork} logs)\par}
+\vspace{0.06em}
+\noindent
+\begin{minipage}[t]{\dimexpr0.25\textwidth-5pt\relax}
+  \metriccolfig[0.10\textheight]{svm_confusion_matrix_usc_had.png}{Binary SVM}%
+\end{minipage}\hfill
+\begin{minipage}[t]{\dimexpr0.25\textwidth-5pt\relax}
+  \metriccolfig[0.10\textheight]{lstm_multiclass_confusion_matrix_usc_had.png}{Multiclass LSTM}%
+\end{minipage}\hfill
+\begin{minipage}[t]{\dimexpr0.25\textwidth-5pt\relax}
+  \IfFileExists{../../results/figures/binary/lstm_binary_training_usc_had_curves.png}{%
+    \metriccolfig[0.10\textheight]{lstm_binary_training_usc_had_curves.png}{Binary LSTM — loss / accuracy}%
+  }{%
+    \metriccolfigmissing[0.10\textheight]{Run \texttt{TrainLstmBinary('IncludeUSCHAD',true,'IncludeHuGaDB',false)} to write logs and this PNG.}
+  }
+\end{minipage}\hfill
+\begin{minipage}[t]{\dimexpr0.25\textwidth-5pt\relax}
+  \IfFileExists{../../results/figures/multiclass/lstm_multiclass_training_usc_had_curves.png}{%
+    \metriccolfig[0.10\textheight]{lstm_multiclass_training_usc_had_curves.png}{Multiclass LSTM — loss / accuracy}%
+  }{%
+    \metriccolfigmissing[0.10\textheight]{Run \texttt{TrainLstmMulticlass('Dataset','usc\_had')} to write logs and this PNG.}
+  }
+\end{minipage}
+\vspace{0.05em}
+{\centering\fontsize{10}{12}\selectfont\color{captionfg}
+  Per-iteration logs (same quantities as the console): \texttt{results/logs/binary/lstm\_binary\_training\_usc\_had.txt} and
+  \texttt{results/logs/multiclass/lstm\_multiclass\_training\_usc\_had.txt}.\par}
+
+\vspace{0.08em}
+
+\posterbox{How to read the percentages}{
+  Every percentage on this poster is a \textbf{classification accuracy}: the share of IMU windows whose predicted label matches the dataset ground truth. For example, \textbf{95.89\%} means about \textbf{96 out of every 100 windows} were labeled correctly.
+
+  \vspace{0.06em}
+  \begin{compactitem}
+    \item \textbf{5-fold OOF} means five-fold out-of-fold cross-validation: the model is repeatedly trained on 80\% of the data and tested on the remaining 20\%, so every window is evaluated once while unseen during its own test fold.
+    \item \textbf{20\% holdout} means one fixed split: 80\% of the windows are used for training and 20\% are kept aside for a final test.
+    \item \textbf{Binary} percentages measure correct \textit{active vs.\ inactive} decisions; \textbf{multiclass} percentages measure correct assignment to the dataset's native activity class.
+  \end{compactitem}
+}
+
+\vspace{0.06em}
 
 % ---------- Two columns ----------
 \noindent
@@ -210,8 +276,9 @@
 
   \posterbox{Implemented workflow}{
     \begin{compactitem}
-      \item \textbf{Input:} canonical \textbf{HuGaDB} (GitHub v1 raw under \texttt{v1\_cleanup\_github/}) for training and held-out HuGaDB replay for simulation; USC-HAD is retained as a comparison benchmark.
-      \item \textbf{Dataset handling:} loader applies the official gyro-corruption rules at read time, builds \texttt{hugadb\_dataset.mat}, and optionally reads \texttt{hugadb\_manifest.json} for per-session provenance and protocol metadata.
+      \item \textbf{Input:} canonical GitHub v1 raw under \texttt{v1\_cleanup\_github/} for training and held-out replay for simulation; a second public benchmark provides comparison under the same feature layout.
+      \item \textbf{Dataset handling:} loader applies the official gyro-corruption rules at read time, distinguishes \texttt{single\_activity} from \texttt{multi\_activity\_sequence} sessions, builds \texttt{hugadb\_dataset.mat}, and records quality metadata so invalid sessions/windows are skipped rather than silently used.
+      \item \textbf{Session variation coverage:} controlled single-activity recordings include \texttt{walking}, \texttt{running}, \texttt{sitting}, \texttt{standing}, \texttt{bicycling}, \texttt{sitting\_in\_car}, and \texttt{down\_by\_elevator}; mixed \texttt{various} recordings are treated as the streaming-style multi-activity sequences.
       \item \textbf{Fusion:} Kalman filtering is optional and used for a replay-time segment-pitch visualization trace, not for classifier preprocessing.
       \item \textbf{Windowing:} 1.0~s windows at 100~Hz with 50\% overlap.
       \item \textbf{Features:} \textbf{30-D} handcrafted vector, five statistics per IMU slot across six slots.
@@ -222,104 +289,104 @@
 \end{minipage}\hfill
 \begin{minipage}[t]{0.485\textwidth}
   \posterbox{Main validated result}{
-    The strongest binary-SVM claim in the current repository is the \textbf{HuGaDB-trained} model: it reaches \textbf{\BinaryOofAccHuGa\%} five-fold out-of-fold accuracy on the HuGaDB benchmark split.
+    The strongest binary-SVM claim in the current repository is the \textbf{streaming-policy} model on multi-activity sessions: \textbf{\BinaryOofAccHuGa\%} five-fold out-of-fold accuracy.
 
-    \vspace{0.14em}
-    \setlength{\tabcolsep}{8pt}
-    \renewcommand{\arraystretch}{1.14}
+    \vspace{0.06em}
+    \setlength{\tabcolsep}{6pt}
+    \renewcommand{\arraystretch}{1.05}
     \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.67\linewidth} r@{}}
       \toprule
       \rowcolor{accentsoft}
       \textbf{Training data} & \textbf{OOF acc.} \\
       \midrule
       USC-HAD & \textbf{\BinaryOofAccUsc\%} \\
-      HuGaDB & \textbf{\BinaryOofAccHuGa\%} \\
+      HuGaDB streaming & \textbf{\BinaryOofAccHuGa\%} \\
       \bottomrule
     \end{tabular}
 
-    \vspace{0.16em}
-    This table is kept as \textbf{benchmark context}. The final project path does \textbf{not} merge datasets; it trains on HuGaDB and keeps replay-based simulation as a separate step.
+    \vspace{0.06em}
+    This table is kept as \textbf{benchmark context}. The final project path does \textbf{not} merge datasets; training uses the primary corpus above and keeps replay-based simulation as a separate step.
   }
 
   \posterbox{Data and evaluation protocol}{
     \begin{compactitem}
-      \item \textbf{HuGaDB} contributes six on-body IMU streams per window, keeps the full native class coverage, and is the dataset used by the final pipeline.
+      \item The final pipeline uses six on-body IMU streams per window, full native class coverage, and \textbf{multi-activity sequence sessions} as the realistic streaming policy; single-activity sessions are controlled subsets (walking, running, sitting, standing, bicycling, sitting-in-car, elevator descent).
       \item The canonical raw layout is \texttt{v1\_cleanup\_github/} (flat \texttt{HuGaDB\_v1\_*.txt}); the loader threads optional manifest metadata into the cache for validation and rebuild traceability.
-      \item \textbf{USC-HAD} contributes one IMU stream; it remains in the poster to compare dataset effects under the same 30-D layout.
-      \item The \textbf{binary SVM} is the main baseline; the active checkpoint is the HuGaDB model trained under the held-out-subject policy used by replay evaluation.
+      \item The second benchmark uses one IMU stream under the same 30-D layout for cross-dataset comparison.
+      \item The \textbf{binary SVM} is the main baseline; the active checkpoint is trained under the held-out-subject policy used by replay evaluation.
       \item \textbf{Binary} asks a simple control question: should assist stay \textbf{off} or turn \textbf{on}? \textbf{Multiclass} asks a harder recognition question: which exact activity is occurring?
-      \item \textbf{Multiclass SVM} (12 USC / 12 HuGaDB classes) and \textbf{binary/multiclass LSTM} are supporting baselines; the SVM uses stratified subsamples and the LSTMs use separate stratified 20\% holdouts, so neither is a direct deployment comparison.
+      \item \textbf{Multiclass SVM} (12 classes per benchmark) and \textbf{binary/multiclass LSTM} are supporting baselines; the SVM uses stratified subsamples and the LSTMs use separate stratified 20\% holdouts, so neither is a direct deployment comparison.
     \end{compactitem}
   }
 \end{minipage}
 
-\vspace{0.14em}
+\vspace{0.06em}
 \posterbox{Pipeline at a glance}{
   \begin{center}
-    \workflowstep{1}{HuGaDB train pool\\and held-out replay}\hfill
-    {\fontsize{38}{38}\selectfont\color{accent}$\rightarrow$}\hfill
+    \workflowstep{1}{Train pool\\and held-out replay}\hfill
+    {\fontsize{28}{28}\selectfont\color{accent}$\rightarrow$}\hfill
     \workflowstep{2}{Optional Kalman\\visualization trace}\hfill
-    {\fontsize{38}{38}\selectfont\color{accent}$\rightarrow$}\hfill
+    {\fontsize{28}{28}\selectfont\color{accent}$\rightarrow$}\hfill
     \workflowstep{3}{30-D features\\per window}\hfill
-    {\fontsize{38}{38}\selectfont\color{accent}$\rightarrow$}\hfill
+    {\fontsize{28}{28}\selectfont\color{accent}$\rightarrow$}\hfill
     \workflowstep{4}{Binary SVM\\prediction}\hfill
-    {\fontsize{38}{38}\selectfont\color{accent}$\rightarrow$}\hfill
+    {\fontsize{28}{28}\selectfont\color{accent}$\rightarrow$}\hfill
     \workflowstep{5}{FSM hysteresis\\for assist}\hfill
-    {\fontsize{38}{38}\selectfont\color{accent}$\rightarrow$}\hfill
+    {\fontsize{28}{28}\selectfont\color{accent}$\rightarrow$}\hfill
     \workflowstep{6}{Stable on/off\\command}
   \end{center}
 }
 
-\vspace{0.14em}
+\vspace{0.06em}
 
-% ---------- Main figures ----------
+\posterbox{Replay outputs (HuGaDB subject \ReplayHuGaDBSubject{}, session \ReplayHuGaDBSession{})}{
+  {\centering\color{footfg}\fontsize{14}{17}\selectfont
+  Native activity sequence (file header): standing $\rightarrow$ walking $\rightarrow$ running $\rightarrow$ walking $\rightarrow$ standing\par}
+  \vspace{0.12em}
+  \noindent
+  \begin{minipage}[t]{\dimexpr0.25\textwidth-5pt\relax}
+    \metriccolfig[0.125\textheight]{pipeline_binary_svm_output.png}{Binary SVM replay: Kalman + FSM assist}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{\dimexpr0.25\textwidth-5pt\relax}
+    \metriccolfig[0.125\textheight]{pipeline_output_lstm.png}{Binary LSTM replay (held-out pipeline)}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{\dimexpr0.25\textwidth-5pt\relax}
+    \metriccolfig[0.125\textheight]{pipeline_multiclass_output.png}{Multiclass SVM replay}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{\dimexpr0.25\textwidth-5pt\relax}
+    % PNG from scripts/RunExoskeletonPipelineMulticlassLstm.m (do not swap for metriccolfigmissing).
+    \metriccolfig[0.125\textheight]{pipeline_multiclass_lstm_output.png}{Multiclass LSTM replay}
+  \end{minipage}%
+}
+
+\vspace{0.06em}
 \noindent
-\begin{minipage}[t]{0.485\textwidth}
-  \posterfigcap{svm_confusion_matrix_hugadb.png}{HuGaDB binary SVM: predicts assist-gating on/off, not the exact activity class}{0.248\textheight}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.485\textwidth}
-  \posterfigcap{pipeline_binary_svm_output.png}{Held-out HuGaDB replay: Kalman visualization plus FSM-latched assist output}{0.248\textheight}
-\end{minipage}
-
-\vspace{0.14em}
-
-\noindent
-\begin{minipage}[t]{0.485\textwidth}
-  \posterfigcap{multiclass_confusion_matrix_hugadb.png}{HuGaDB multiclass SVM: predicts the exact activity label, so it is exploratory and harder than binary gating}{0.228\textheight}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.485\textwidth}
-  \posterfigcap{lstm_confusion_matrix_hugadb.png}{Binary LSTM: supporting sequence baseline on a separate 20\% holdout split}{0.228\textheight}
-\end{minipage}
-
-\vspace{0.14em}
-\noindent
-\setlength{\fboxsep}{8pt}%
+\setlength{\fboxsep}{6pt}%
 \setlength{\fboxrule}{0.7pt}%
 \fcolorbox{stripborder}{goodbg}{%
   \parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule}{%
     \centering
-    {\fontsize{31}{36}\selectfont\bfseries
-    Take-home message: the repository now delivers a traceable MATLAB baseline for IMU-based \textbf{binary assist gating}, centered on canonical HuGaDB (GitHub v1) training, benchmark comparison tables, replay-based simulation, and FSM-stabilized control output.}
+    {\fontsize{25}{30}\selectfont\bfseries
+    Take-home message: the repository now delivers a traceable MATLAB baseline for IMU-based \textbf{binary assist gating}, centered on canonical GitHub v1 training data, benchmark comparison tables, replay-based simulation, and FSM-stabilized control output.}
   }%
 }
 
-\vspace{0.14em}
+\vspace{0.06em}
 \noindent
 \begin{minipage}[t]{0.485\textwidth}
   \posterbox{How to read the supporting baselines}{
     \begin{compactitem}
       \item The pipeline plot shows why the FSM matters: it turns noisy window-level predictions into a smoother and more usable assist signal.
       \item The \textbf{binary} task is easier because several activities are merged into two groups; the \textbf{multiclass} task is harder because it must separate the exact activity label.
-      \item Multiclass SVM OOF scores (\textbf{\MulticlassOofAccUsc\%} USC-HAD; \textbf{\MulticlassOofAccHuGa\%} HuGaDB) are informative for analysis, but not yet strong enough for fine-grained control.
-      \item \ifnum\HasBinaryLstmMetrics=1 Binary LSTM holdout accuracy is \textbf{\LstmBinaryHoldoutAccUsc\%} on USC-HAD and \textbf{\LstmBinaryHoldoutAccHuGa\%} on HuGaDB; it uses a different validation protocol and remains a supporting baseline rather than a direct SVM comparison.\else Binary LSTM metrics are not exported, so they are not part of the validated poster claim.\fi
-      \item \ifnum\HasMulticlassLstmMetrics=1 Multiclass LSTM holdout accuracy is \textbf{\LstmMulticlassHoldoutAccUsc\%} on USC-HAD and \textbf{\LstmMulticlassHoldoutAccHuGa\%} on HuGaDB; because the datasets remain distinct native label spaces, the comparison is a summary metric.\else Multiclass LSTM metrics are optional and are omitted until the per-dataset sequence models are trained.\fi
+      \item Multiclass SVM OOF scores (\textbf{\MulticlassOofAccUsc\%} / \textbf{\MulticlassOofAccHuGa\%}) are informative for analysis, but not yet strong enough for fine-grained control.
+      \item \ifnum\HasMulticlassLstmMetrics=1 Multiclass LSTM holdout (\textbf{\LstmMulticlassHoldoutAccUsc\%} / \textbf{\LstmMulticlassHoldoutAccHuGa\%}) is a summary metric across distinct native label spaces.\else Multiclass LSTM metrics are optional and are omitted until the per-dataset sequence models are trained.\fi
     \end{compactitem}
   }
 
   \posterbox{Current limits}{
     \begin{compactitem}
       \item No hardware-in-the-loop or human-subject load trials are reported here.
-      \item The 100--200~ms predictive horizon remains a \textbf{design target}, not a re-benchmarked final result.
+      \item End-to-end latency still needs direct benchmarking during future hardware-integrated validation.
       \item Current output is \textbf{assist gating}, not full torque scheduling or terrain-aware control.
       \item Multiclass and LSTM baselines still need a stronger evaluation protocol aligned with the main binary SVM path.
     \end{compactitem}
@@ -336,43 +403,24 @@
 
   \posterbox{Summary}{
     \begin{compactitem}
-      \item \textbf{Delivered:} canonical HuGaDB (GitHub v1) data flow, HuGaDB binary SVM, optional Kalman visualization, FSM smoothing, reproducible metrics, and replay in MATLAB.
-      \item \textbf{Best validated result:} HuGaDB binary SVM achieves \textbf{\BinaryOofAccHuGa\%} five-fold OOF accuracy on the refreshed HuGaDB benchmark path.
+      \item \textbf{Delivered:} canonical GitHub v1 data flow, protocol-aware binary SVM, optional Kalman visualization, FSM smoothing, reproducible metrics, and replay in MATLAB.
+      \item \textbf{Best validated result:} binary SVM \textbf{\BinaryOofAccHuGa\%} five-fold OOF on the streaming split.
       \item \textbf{System role:} simulation-level assist gating supervisor.
       \item \textbf{Value:} a credible, traceable software baseline that separates benchmark comparisons from the final deployed method.
     \end{compactitem}
   }
 \end{minipage}
 
-\newpage
-\noindent\colorbox{bannerbg}{%
-  \parbox{\dimexpr\linewidth-2\fboxsep}{%
-    \color{bannerfg}
-    \vspace{0.22em}
-    \centering
-    {\fontsize{40}{46}\selectfont\bfseries Complete Generated Figure Gallery}\\[0.10em]
-    {\fontsize{20}{25}\selectfont All distinct PNG artifacts currently written under \texttt{results/figures/}.}
-    \vspace{0.18em}
-  }%
-}
-
-\vspace{0.18em}
-\gallerythumb{svm_confusion_matrix_usc_had.png}{Binary SVM\\USC-HAD}\hfill
-\gallerythumb{svm_confusion_matrix_hugadb.png}{Binary SVM\\HuGaDB}\hfill
-
-\vspace{0.18em}
-\gallerythumb{multiclass_confusion_matrix_usc_had.png}{Multiclass SVM\\USC-HAD}\hfill
-\gallerythumb{multiclass_confusion_matrix_hugadb.png}{Multiclass SVM\\HuGaDB}\hfill
-\gallerythumb{lstm_confusion_matrix_usc_had.png}{Binary LSTM\\USC-HAD}
-
-\vspace{0.18em}
-\gallerythumb{lstm_confusion_matrix_hugadb.png}{Binary LSTM\\HuGaDB}\hfill
-\gallerythumb{lstm_multiclass_confusion_matrix_usc_had.png}{Multiclass LSTM\\USC-HAD}\hfill
-\gallerythumb{lstm_multiclass_confusion_matrix_hugadb.png}{Multiclass LSTM\\HuGaDB}
-
-\vspace{0.18em}
-\gallerythumb{pipeline_binary_svm_output.png}{Binary SVM\\pipeline replay}\hfill
-\gallerythumb{pipeline_output_lstm.png}{Binary LSTM\\pipeline replay}\hfill
-\gallerythumb{pipeline_multiclass_output.png}{Multiclass SVM\\pipeline replay}
+\vfill
+\noindent
+\begin{center}
+  \setlength{\fboxsep}{2pt}%
+  \setlength{\fboxrule}{0.6pt}%
+  \fcolorbox{stripborder}{white}{%
+    \includegraphics[width=0.115\textwidth,keepaspectratio]{github_qr.png}%
+  }\\[0.12em]
+  {\fontsize{14}{17}\selectfont\bfseries GitHub}
+\end{center}
+\vspace{0.4em}
 
 \end{document}

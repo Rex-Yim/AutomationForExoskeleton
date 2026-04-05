@@ -15,7 +15,8 @@ fprintf('===========================================================\n');
 try
     [featuresAll, labelsAll, ModelMetadata] = PrepareTrainingData(cfg, ...
         'IncludeUSCHAD', cfg.TRAINING.DEFAULT_INCLUDE_USCHAD, ...
-        'IncludeHuGaDB', cfg.TRAINING.DEFAULT_INCLUDE_HUGADB);
+        'IncludeHuGaDB', cfg.TRAINING.DEFAULT_INCLUDE_HUGADB, ...
+        'HuGaDBSessionProtocols', cfg.HUGADB.DEFAULT_PROTOCOLS);
 catch ME
     error('Data preparation failed: %s', ME.message);
 end
@@ -31,6 +32,9 @@ end
 if isfield(ModelMetadata, 'excludeHuGaDBSubjects')
     fprintf('Held-out HuGaDB subjects excluded from training: %s\n', ...
         strjoin(ModelMetadata.excludeHuGaDBSubjects, ', '));
+end
+if isfield(ModelMetadata, 'huGaDBProtocolSelection') && ~isempty(ModelMetadata.huGaDBProtocolSelection)
+    fprintf('HuGaDB session protocols used: %s\n', strjoin(ModelMetadata.huGaDBProtocolSelection, ', '));
 end
 
 % --- 2. Train SVM Model ---

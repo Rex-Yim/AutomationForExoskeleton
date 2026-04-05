@@ -11,11 +11,13 @@ function EvaluateLstmMulticlassConfusion(varargin)
     cfg = ExoConfig();
     p = inputParser;
     addParameter(p, 'Dataset', 'hugadb', @(s) ischar(s) || isstring(s));
+    addParameter(p, 'HuGaDBSessionProtocols', cfg.HUGADB.DEFAULT_PROTOCOLS, @(x) isempty(x) || ischar(x) || isstring(x) || iscell(x));
     addParameter(p, 'ModelPath', '', @(s) ischar(s) || isstring(s));
     addParameter(p, 'OutputTag', '', @(s) ischar(s) || isstring(s));
     parse(p, varargin{:});
 
     ds = lower(char(p.Results.Dataset));
+    protocolSelection = NormalizeHuGaDBProtocolSelection(p.Results.HuGaDBSessionProtocols);
     if ~ismember(ds, {'usc_had', 'hugadb'})
         error('Dataset must be ''usc_had'' or ''hugadb''.');
     end
@@ -25,7 +27,13 @@ function EvaluateLstmMulticlassConfusion(varargin)
         defaultTag = 'usc_had';
     else
         defaultModelPath = cfg.FILE.MULTICLASS_LSTM_HUGADB;
-        defaultTag = 'hugadb';
+        if isequal(protocolSelection, {'multi_activity_sequence'})
+            defaultTag = 'hugadb_streaming';
+        elseif isequal(protocolSelection, {'single_activity'})
+            defaultTag = 'hugadb_single_activity';
+        else
+            defaultTag = 'hugadb';
+        end
     end
     modelPath = resolvePath(projectRoot, p.Results.ModelPath, defaultModelPath);
     outTag = char(strtrim(string(p.Results.OutputTag)));
@@ -49,7 +57,11 @@ function EvaluateLstmMulticlassConfusion(varargin)
     L = load(modelPath, 'net', 'ModelMetadata');
     net = L.net;
 
-    [XCell, labelsAll, ModelMetadata] = PrepareTrainingDataSequencesMulticlass(cfg, 'Dataset', ds);
+    [XCell, labelsAll, ModelMetadata] = PrepareTrainingDataSequencesMulticlass(cfg, ...
+        'Dataset', ds, 'HuGaDBSessionProtocols', protocolSelection);
+    if strcmp(ds, 'hugadb') && ~isempty(protocolSelection)
+        fprintf('HuGaDB session protocols used: %s\n', strjoin(protocolSelection, ', '));
+    end
     classNames = ModelMetadata.classNames;
     K = ModelMetadata.nClasses;
 

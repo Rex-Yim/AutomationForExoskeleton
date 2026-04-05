@@ -10,9 +10,11 @@ cfg = ExoConfig();
 
 p = inputParser;
 addParameter(p, 'Dataset', 'hugadb', @(s) ischar(s) || isstring(s));
+addParameter(p, 'HuGaDBSessionProtocols', cfg.HUGADB.DEFAULT_PROTOCOLS, @(x) isempty(x) || ischar(x) || isstring(x) || iscell(x));
 parse(p, varargin{:});
 
 ds = lower(char(p.Results.Dataset));
+protocolSelection = NormalizeHuGaDBProtocolSelection(p.Results.HuGaDBSessionProtocols);
 if ~ismember(ds, {'usc_had', 'hugadb'})
     error('Dataset must be ''usc_had'' or ''hugadb''.');
 end
@@ -32,13 +34,17 @@ fprintf('   Multiclass SVM (ECOC) — %s — %d activities\n', ds, K);
 fprintf('===========================================================\n');
 
 try
-    [featuresAll, labelsAll, ModelMetadata] = PrepareTrainingDataMulticlass(cfg, 'Dataset', ds);
+    [featuresAll, labelsAll, ModelMetadata] = PrepareTrainingDataMulticlass(cfg, ...
+        'Dataset', ds, 'HuGaDBSessionProtocols', protocolSelection);
 catch ME
     error('Multiclass data preparation failed: %s', ME.message);
 end
 
 fprintf('Windows: %d | features: %d | classes present: %s\n', ...
     size(featuresAll, 1), size(featuresAll, 2), mat2str(unique(labelsAll)'));
+if strcmp(ds, 'hugadb') && ~isempty(protocolSelection)
+    fprintf('HuGaDB session protocols used: %s\n', strjoin(protocolSelection, ', '));
+end
 
 for c = 1:K
     fprintf('  Class %2d %-18s : %d windows\n', c, nameAt(c), sum(labelsAll == c));

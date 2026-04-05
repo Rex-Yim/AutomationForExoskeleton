@@ -8,7 +8,7 @@ function ExportMetricsForReport()
     projectRoot = fileparts(here);
     outPath = fullfile(projectRoot, 'docs', 'latex', 'generated_metrics.tex');
 
-    svmTags = {'usc_had', 'hugadb'};
+    svmTags = {'usc_had', 'hugadb_streaming'};
     svmMacros = {'BinaryOofAccUsc', 'BinaryOofAccHuGa'};
     svmVals = zeros(1, numel(svmTags));
 
@@ -22,7 +22,7 @@ function ExportMetricsForReport()
     end
 
     mcUscPath = ResultsArtifactPath(projectRoot, 'metrics', 'multiclass', 'multiclass_evaluation_metrics_usc_had.mat');
-    mcHuPath = ResultsArtifactPath(projectRoot, 'metrics', 'multiclass', 'multiclass_evaluation_metrics_hugadb.mat');
+    mcHuPath = ResultsArtifactPath(projectRoot, 'metrics', 'multiclass', 'multiclass_evaluation_metrics_hugadb_streaming.mat');
     if ~exist(mcUscPath, 'file') || ~exist(mcHuPath, 'file')
         error(['Missing multiclass metrics — run EvaluateMulticlassConfusion for both datasets ', ...
             '(see RunTrainEvalMulticlass). Expected:\n  %s\n  %s'], mcUscPath, mcHuPath);
@@ -60,6 +60,11 @@ function ExportMetricsForReport()
     fprintf(fid, '\\newcommand{\\LstmHoldoutAcc}{%s}\n', formatPct(lstmBinaryAccHu));
     fprintf(fid, '\\newcommand{\\HasLstmMetrics}{%d}\n', hasBinaryLstm);
 
+    [replaySubj, replaySess] = loadReplayPipelineMeta(projectRoot);
+    fprintf(fid, '%% HuGaDB replay identifiers (from results/metrics/pipeline/pipeline_binary_svm_output.mat plotMeta).\n');
+    fprintf(fid, '\\newcommand{\\ReplayHuGaDBSubject}{%s}\n', latexMacroText(replaySubj));
+    fprintf(fid, '\\newcommand{\\ReplayHuGaDBSession}{%s}\n', latexMacroText(replaySess));
+
     fclose(fid);
     fprintf('Wrote %s\n', outPath);
 end
@@ -72,7 +77,7 @@ function [hasMetrics, accUsc, accHu] = loadBinaryLstmMetrics(projectRoot)
     accUsc = 0;
     accHu = 0;
     uscPath = ResultsArtifactPath(projectRoot, 'metrics', 'binary', 'lstm_evaluation_metrics_usc_had.mat');
-    huPath = ResultsArtifactPath(projectRoot, 'metrics', 'binary', 'lstm_evaluation_metrics_hugadb.mat');
+    huPath = ResultsArtifactPath(projectRoot, 'metrics', 'binary', 'lstm_evaluation_metrics_hugadb_streaming.mat');
     hasMetrics = exist(uscPath, 'file') && exist(huPath, 'file');
     if hasMetrics
         Lu = load(uscPath, 'valAcc');
@@ -82,11 +87,46 @@ function [hasMetrics, accUsc, accHu] = loadBinaryLstmMetrics(projectRoot)
     end
 end
 
+function [subj, sess] = loadReplayPipelineMeta(projectRoot)
+    subj = '?';
+    sess = '?';
+    p = ResultsArtifactPath(projectRoot, 'metrics', 'pipeline', 'pipeline_binary_svm_output.mat');
+    if ~exist(p, 'file')
+        return;
+    end
+    S = load(p, 'plotMeta');
+    if ~isfield(S, 'plotMeta')
+        return;
+    end
+    pm = S.plotMeta;
+    if isfield(pm, 'subjectId') && ~isempty(pm.subjectId)
+        subj = char(string(pm.subjectId));
+    end
+    if isfield(pm, 'sessionId') && ~isempty(pm.sessionId)
+        sess = char(string(pm.sessionId));
+    end
+end
+
+function s = latexMacroText(raw)
+    if nargin < 1 || isempty(strtrim(char(string(raw))))
+        s = '?';
+        return;
+    end
+    s = char(string(raw));
+    s = strrep(s, '\', '\textbackslash{}');
+    s = strrep(s, '{', '\{');
+    s = strrep(s, '}', '\}');
+    s = strrep(s, '_', '\_');
+    s = strrep(s, '%', '\%');
+    s = strrep(s, '#', '\#');
+    s = strrep(s, '&', '\&');
+end
+
 function [hasMetrics, accUsc, accHu] = loadMulticlassLstmMetrics(projectRoot)
     accUsc = 0;
     accHu = 0;
     uscPath = ResultsArtifactPath(projectRoot, 'metrics', 'multiclass', 'lstm_multiclass_evaluation_metrics_usc_had.mat');
-    huPath = ResultsArtifactPath(projectRoot, 'metrics', 'multiclass', 'lstm_multiclass_evaluation_metrics_hugadb.mat');
+    huPath = ResultsArtifactPath(projectRoot, 'metrics', 'multiclass', 'lstm_multiclass_evaluation_metrics_hugadb_streaming.mat');
     hasMetrics = exist(uscPath, 'file') && exist(huPath, 'file');
     if hasMetrics
         Lu = load(uscPath, 'valAcc');

@@ -1,38 +1,28 @@
-% Updated abstract: interim MAEG4998/4999 PDF (Jan 2026) + repository updates (2026)
-\subsection*{Main objectives}
-This project aims to develop a software-centric enhancement module for a lower-limb robotic exoskeleton designed to assist workers in heavy load transportation tasks ($>20$~kg) in industrial, logistics, and construction environments. The primary objectives are to enable real-time detection of user locomotion intent (including walking, stair ascent/descent, sit-to-stand transitions, and speed variations), accurately estimate joint kinematics through multi-sensor fusion, and deliver adaptive personalized torque assistance to minimize physical effort and injury risk. To achieve this, the module will incorporate computational techniques to handle variability in user biomechanics and environmental conditions, ensuring robust performance across diverse scenarios.
+\subsection*{Objectives}
+This project develops a software-centric control-supervision module for a lower-limb robotic exoskeleton intended to assist heavy load transportation tasks ($>20$~kg) in industrial, logistics, and construction settings. The focus of the submitted work is real-time locomotion-intent recognition from inertial measurement unit (IMU) data, stable assist gating, and reproducible MATLAB-based evaluation on public datasets.
 
-\subsection*{Planned methods (interim report, Jan 2026 PDF)}
-The proposed system integrates inertial measurement units (IMUs) placed on the lower limbs and back, with data processed through a Kalman filter-based sensor fusion pipeline implemented in MATLAB to achieve robust, low-latency joint angle and velocity estimation. Locomotion mode and transition prediction were planned using machine learning models (Support Vector Machines and Long Short-Term Memory networks) trained on labeled gait datasets, targeting $>90$\% classification accuracy and a 100--200~ms predictive horizon, with performance evaluated via confusion matrices, precision, and recall. Finite state machines were incorporated for locomotion mode transitions. The data collection protocol involves attaching three mobile phones as IMUs to the hips and lower back; performing standardized tasks such as walking 10~m on flat ground, climbing 10 steps, or navigating uneven surfaces at self-selected speeds; and exporting accelerometer, gyroscope, and magnetometer data as CSV files for processing. Joint kinematics information is intended for precise control.
+\subsection*{Methods}
+The validated MATLAB baseline uses overlapping IMU windows of 100 samples at 100~Hz with a 50-sample step. Kalman fusion (\texttt{imufilter}) is included for simulation-side kinematic visualization rather than as mandatory classifier preprocessing.
 
-\subsection*{Implemented methods (repository baseline, updated)}
-The validated MATLAB baseline uses overlapping windows (100 samples at 100~Hz, step 50). Kalman fusion (\texttt{imufilter}) is retained for simulation-side kinematic visualization, not as mandatory preprocessing for the classifier.
+The primary deployment classifier is a binary RBF support vector machine trained on a 30-dimensional handcrafted feature vector: five statistics per IMU slot across six slots. The final pipeline is centered on HuGaDB and uses a protocol-aware streaming policy with quality gating and official gyro-corruption handling. USC-HAD is retained as a separate benchmark dataset under the same feature layout. Binary labels group activities into active movement versus inactive movement for assist gating.
 
-The \textbf{primary deployment classifier} is a \textbf{binary} RBF SVM (\texttt{fitcsvm}, standardized features) with a \textbf{30-dimensional} training vector: five statistics per IMU slot $\times$ six slots (\texttt{Features.m}). The final project pipeline is centered on \textbf{HuGaDB}, while pseudo-real-time replay is kept as a separate simulation workflow. USC-HAD remains in the repository for benchmark comparison under the same feature layout. The positive class groups \textbf{active-movement} activities per dataset-specific label maps.
+For analysis beyond binary gating, the repository also includes dataset-native multiclass ECOC models and optional sequence-based LSTM baselines. Binary and multiclass LSTM models operate on feature-by-time IMU sequences and are evaluated separately from the SVM baselines. Assist decisions in replay are stabilized by a finite-state machine with asymmetric hysteresis: three consecutive active predictions to engage assistance and five consecutive inactive predictions to release it.
 
-A \textbf{multiclass} ECOC ensemble (\texttt{fitcecoc}) provides \textbf{dataset-native} activity labels for analysis (twelve USC-HAD trial classes; twelve HuGaDB sample classes); exoskeleton gating uses the binary model and an asymmetric FSM (3 consecutive active predictions to assist, 5 to release).
-
-An \textbf{optional binary LSTM} (Deep Learning Toolbox) classifies the same active-movement vs.\ inactive task from \textbf{sequence} inputs (raw IMU windows mapped to feature$\times$time matrices) via \texttt{TrainLstmBinary} and \texttt{RunExoskeletonPipelineLstm}; it is an alternative to the RBF SVM, not a hybrid SVM+LSTM fusion stage.
-
-The 100--200~ms horizon remains a \textit{design target}; literature reports comparable latencies for kinematic lift-onset cues~\cite{chen2018}, but the submitted baselines were not benchmarked under that specific end-to-end metric.
-
-\subsection*{Interim results statement (Dec 2025 / Jan 2026 PDF)}
-The interim submission reported: a functional three-phone acquisition prototype; preliminary Kalman filtering and intention-detection algorithms validated on public datasets including HuGaDB and the USC-SIPI gait database; repository setup; real-time visualization; and initial locomotion classification with \textbf{98.88\%} accuracy and a \textbf{150~ms} predictive horizon. \textit{Corrections:} the smartphone gait database used in this project is \textbf{USC-HAD}~\cite{zhang2012}, not USC-SIPI. The 150~ms figure overlapped claims from the literature on hip-based lift detection~\cite{chen2018} and was not rigorously established as an end-to-end latency of the final classifier at submission time.
-
-\subsection*{Updated empirical results (per-dataset public-data metrics)}
-Kalman-filtered visualization and SVM-based intention detection are implemented in MATLAB. \textbf{Binary SVM} five-fold out-of-fold accuracy from the benchmark evaluation files is \textbf{\BinaryOofAccUsc\%} (USC-HAD) and \textbf{\BinaryOofAccHuGa\%} (HuGaDB). Native ECOC multiclass SVM accuracies on stratified subsamples are \textbf{\MulticlassOofAccUsc\%} (USC-HAD) and \textbf{\MulticlassOofAccHuGa\%} (HuGaDB).
+\subsection*{Results}
+Binary SVM five-fold out-of-fold accuracy from the committed evaluation outputs is \textbf{\BinaryOofAccUsc\%} on USC-HAD and \textbf{\BinaryOofAccHuGa\%} on HuGaDB under the multi-activity streaming policy. Native multiclass SVM accuracies on stratified subsamples are \textbf{\MulticlassOofAccUsc\%} on USC-HAD and \textbf{\MulticlassOofAccHuGa\%} on HuGaDB.
 
 \ifnum\HasBinaryLstmMetrics=1
-Binary LSTM holdout accuracies are \textbf{\LstmBinaryHoldoutAccUsc\%} (USC-HAD) and \textbf{\LstmBinaryHoldoutAccHuGa\%} (HuGaDB).
+Binary LSTM holdout accuracy is \textbf{\LstmBinaryHoldoutAccUsc\%} on USC-HAD and \textbf{\LstmBinaryHoldoutAccHuGa\%} on HuGaDB.
 \else
 Binary LSTM metrics are optional and are exported after running the dataset-specific LSTM evaluation scripts.
 \fi
 \ifnum\HasMulticlassLstmMetrics=1
- Native multiclass LSTM holdout accuracies are \textbf{\LstmMulticlassHoldoutAccUsc\%} (USC-HAD) and \textbf{\LstmMulticlassHoldoutAccHuGa\%} (HuGaDB).
+Native multiclass LSTM holdout accuracy is \textbf{\LstmMulticlassHoldoutAccUsc\%} on USC-HAD and \textbf{\LstmMulticlassHoldoutAccHuGa\%} on HuGaDB.
 \else
- Multiclass LSTM metrics are optional and are exported after running the new per-dataset sequence models.
+Multiclass LSTM metrics are optional and are exported after running the dataset-specific sequence-model evaluation scripts.
 \fi
-Real-time pipeline simulation replays held-out HuGaDB sessions directly and shows Kalman-smoothed segment pitch together with FSM-latched assist commands. Scalar accuracies in this report are regenerated into \texttt{docs/latex/generated\_metrics.tex} by \texttt{scripts/ExportMetricsForReport.m}.
 
-\subsection*{Main conclusions}
-This project demonstrates that automation technology, particularly machine-learning-based intention recognition combined with sensor fusion and finite state machines, is applicable to next-generation powered exoskeleton control supervisors. When fully realized, the proposed module has strong potential for integration into industrial platforms (e.g., ExoTechHK Limited), offering a reproducible HuGaDB-based assist-gating baseline while preserving per-dataset comparison evidence in the write-up. This work contributes to workplace ergonomics and provides a reproducible foundation for hardware-in-the-loop studies. The repository now documents both the \textbf{original project plan} (hybrid SVM+LSTM fusion, extended fusion) and the \textbf{delivered MATLAB baseline} (HuGaDB deployment path, supporting per-dataset SVM/LSTM comparisons, optional multiclass SVM, and per-dataset multiclass LSTM sequence baselines).
+Pseudo-real-time replay on held-out HuGaDB sessions shows that the combined classifier and FSM pipeline produces a stable binary assist command alongside IMU magnitude for visualization context.
+
+\subsection*{Conclusions}
+The project delivers a reproducible HuGaDB-centered MATLAB baseline for exoskeleton assist gating, with traceable scripts, saved metrics, evaluation figures, and replay outputs. The strongest validated result is the binary SVM under the HuGaDB streaming policy, while multiclass recognition and LSTM models remain supporting analyses rather than the main deployment claim. The resulting software pipeline provides a solid foundation for future hardware integration, embedded deployment, and controlled experimental studies.

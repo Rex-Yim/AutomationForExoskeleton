@@ -32,7 +32,7 @@ fprintf('Model loaded. Simulating held-out HuGaDB replay.\n');
 
 % --- 3. Load Data ---
 try
-    sim = LoadHuGaDBSimulationData(cfg);
+    sim = LoadHuGaDBSimulationData(cfg, 'HuGaDBSessionProtocols', cfg.HUGADB.DEFAULT_PROTOCOLS);
 catch ME
     error('Simulation data load failed: %s', ME.message);
 end
@@ -40,23 +40,18 @@ end
 n_total_samples = size(sim.acc, 1);
 fprintf('Held-out replay subject %s session %s (%s), %d samples.\n', ...
     sim.subjectId, sim.sessionId, sim.sessionName, n_total_samples);
+fprintf('Replay protocol: %s\n', sim.sessionProtocol);
 
 % --- 4. Initialization ---
 current_fsm_state = cfg.STATE_STANDING;
-kalman_trace = zeros(n_total_samples, 1); 
 fsm_plot = zeros(n_total_samples, 1);
 last_command = 0;
 
-kalmanImuIdx = find(strcmpi(sim.imuOrder, cfg.SIMULATION.KALMAN_IMU_LABEL), 1);
-if isempty(kalmanImuIdx)
-    kalmanImuIdx = size(sim.acc, 3);
+imuMagIdx = find(strcmpi(sim.imuOrder, cfg.SIMULATION.KALMAN_IMU_LABEL), 1);
+if isempty(imuMagIdx)
+    imuMagIdx = size(sim.acc, 3);
 end
-kalmanImuName = sim.imuOrder{kalmanImuIdx};
-if cfg.SIMULATION.KALMAN_ENABLED
-    kalmanFilter = FusionKalman.initializeSingleFilter(FS);
-else
-    kalmanFilter = [];
-end
+imuMagName = sim.imuOrder{imuMagIdx};
 
 % CRITICAL: Reset FSM persistent variables from previous runs
 clear RealtimeFsm; 
@@ -66,15 +61,7 @@ fprintf('Starting simulation loop (%d samples)...\n', n_total_samples);
 % --- 5. Main Real-Time Loop ---
 for i = 1:n_total_samples
 
-    % A. Optional Kalman visualization trace
-    if ~isempty(kalmanFilter)
-        kalmanAcc = reshape(sim.acc(i, :, kalmanImuIdx), 1, []);
-        kalmanGyro = reshape(sim.gyro(i, :, kalmanImuIdx), 1, []);
-        qSeg = kalmanFilter(kalmanAcc, kalmanGyro);
-        kalman_trace(i) = FusionKalman.estimatePitchAngle(qSeg);
-    end
-
-    % B. AI Classification (Periodic)
+    % AI Classification (Periodic)
     if mod(i - 1, STEP_SIZE) == 0 && (i + WINDOW_SIZE - 1) <= n_total_samples
         
         % Extract Window
@@ -99,34 +86,46 @@ end
 
 fprintf('Simulation Complete.\n');
 
-% --- 6. Visualization ---
-figure('Name', 'Exoskeleton Simulation', 'Color', 'w', 'ToolBar', 'none');
-t = (1:n_total_samples) / FS;
+% --- 6. Visualization (match RunExoskeletonPipelineLstm: row 1 = SVM+FSM vs IMU, row 2 = GT) ---
+classNames = ActivityClassRegistry.binaryClassNames();
+inactiveLabel = classNames{1};
+activeLabel = classNames{2};
 
-ax1 = subplot(2,1,1);
-if ~isempty(kalmanFilter)
-    plot(t, kalman_trace, 'LineWidth', 1.5);
-    title(sprintf('Kalman Filter: %s segment pitch', upper(kalmanImuName)));
-    ylabel('Deg');
-else
-    plot(t, zeros(size(t)), 'LineWidth', 1.5);
-    title('Kalman visualization disabled');
-    ylabel('Deg');
-end
+t = (1:n_total_samples) / FS;
+acc_mag = squeeze(vecnorm(sim.acc(:, :, imuMagIdx), 2, 2));
+hasGt = isfield(sim, 'binaryLabel') && ~isempty(sim.binaryLabel);
+nRows = 1 + double(hasGt);
+
+figure('Name', 'Exoskeleton Simulation', 'Color', 'w', 'ToolBar', 'none', ...
+    'Position', [100 100 1000 380 + 160 * double(hasGt)]);
+
+axCmd = subplot(nRows, 1, 1);
+yyaxis(axCmd, 'left');
+hMag = plot(t, acc_mag, 'Color', [0.7 0.7 0.7]);
+ylabel('IMU magnitude');
+yyaxis(axCmd, 'right');
+hCmd = stairs(t, fsm_plot, 'Color', 'r', 'LineWidth', 2);
+ylim([-0.1 1.1]);
+yticks([0 1]);
+yticklabels({'OFF', 'ON'});
+title(axCmd, sprintf('Control command (SVM + FSM) vs %s IMU magnitude', upper(imuMagName)));
+legend([hMag, hCmd], {'IMU magnitude', 'Exo command'}, 'Location', 'northeast');
 grid on;
 
-ax2 = subplot(2,1,2);
-% Plot acceleration magnitude to show activity intensity
-acc_mag = squeeze(vecnorm(sim.acc(:, :, kalmanImuIdx), 2, 2));
-plot(t, acc_mag, 'Color', [0.7 0.7 0.7]); hold on;
-% Overlay Control Command
-stairs(t, fsm_plot * max(acc_mag), 'r', 'LineWidth', 2);
-title('Control Command (Red) vs IMU Magnitude (Gray)');
-legend('IMU magnitude', 'Exo command (ON/OFF)');
-ylabel('Cmd / Mag'); grid on;
-
-linkaxes([ax1, ax2], 'x');
-xlabel('Time (s)');
+if hasGt
+    axGt = subplot(nRows, 1, 2);
+    stairs(t, sim.binaryLabel, 'Color', [0.2 0.75 0.35], 'LineWidth', 1.8);
+    title(sprintf('Ground truth (subject %s, session %s)', sim.subjectId, sim.sessionId));
+    ylabel('State');
+    ylim([-0.1 1.1]);
+    yticks([0 1]);
+    yticklabels({inactiveLabel, activeLabel});
+    grid on;
+    linkaxes([axCmd, axGt], 'x');
+    xlabel(axGt, 'Time (s)');
+else
+    xlabel(axCmd, 'Time (s)');
+end
 
 styleReportFigureColors(gcf);
 
@@ -138,13 +137,20 @@ if exist('exportgraphics', 'file') == 2
 else
     saveas(gcf, resultsFile);
 end
+groundTruth = [];
+if isfield(sim, 'binaryLabel') && ~isempty(sim.binaryLabel)
+    groundTruth = sim.binaryLabel;
+end
 plotMeta = struct( ...
     'subjectId', sim.subjectId, ...
     'sessionId', sim.sessionId, ...
     'sessionName', sim.sessionName, ...
-    'kalmanImuLabel', kalmanImuName, ...
-    'modelPath', model_path);
-save(metricsFile, 't', 'kalman_trace', 'fsm_plot', 'acc_mag', 'plotMeta', ...
+    'sessionProtocol', sim.sessionProtocol, ...
+    'imuMagnitudeLabel', imuMagName, ...
+    'modelPath', model_path, ...
+    'labelNegative', inactiveLabel, ...
+    'labelPositive', activeLabel);
+save(metricsFile, 't', 'fsm_plot', 'acc_mag', 'groundTruth', 'plotMeta', ...
     'FS', 'WINDOW_SIZE', 'STEP_SIZE', '-v7.3');
 fprintf('Plot saved to: %s\n', resultsFile);
 fprintf('Metrics saved to: %s\n', metricsFile);

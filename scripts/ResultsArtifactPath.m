@@ -1,14 +1,14 @@
 function outPath = ResultsArtifactPath(projectRoot, artifactKind, artifactGroup, fileName)
 %% ResultsArtifactPath - Canonical location for saved result artifacts.
 %
-% artifactKind:  'figures' | 'metrics'
+% artifactKind:  'figures' | 'metrics' | 'logs'
 % artifactGroup: 'binary' | 'multiclass' | 'pipeline'
 
     artifactKind = char(string(artifactKind));
     artifactGroup = char(string(artifactGroup));
     fileName = char(string(fileName));
 
-    validKinds = {'figures', 'metrics'};
+    validKinds = {'figures', 'metrics', 'logs'};
     validGroups = {'binary', 'multiclass', 'pipeline'};
 
     if ~ismember(artifactKind, validKinds)

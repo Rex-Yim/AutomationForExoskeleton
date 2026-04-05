@@ -10,9 +10,11 @@ function EvaluateMulticlassConfusion(varargin)
     addParameter(p, 'Dataset', 'hugadb', @(s) ischar(s) || isstring(s));
     addParameter(p, 'MaxWindowsForCV', 20000, @(x) isnumeric(x) && isscalar(x) && x > 0);
     addParameter(p, 'KFolds', 5, @(x) isnumeric(x) && isscalar(x) && x >= 2);
+    addParameter(p, 'HuGaDBSessionProtocols', ExoConfig().HUGADB.DEFAULT_PROTOCOLS, @(x) isempty(x) || ischar(x) || isstring(x) || iscell(x));
     parse(p, varargin{:});
 
     ds = lower(char(p.Results.Dataset));
+    protocolSelection = NormalizeHuGaDBProtocolSelection(p.Results.HuGaDBSessionProtocols);
     if ~ismember(ds, {'usc_had', 'hugadb'})
         error('Dataset must be ''usc_had'' or ''hugadb''.');
     end
@@ -25,14 +27,24 @@ function EvaluateMulticlassConfusion(varargin)
     else
         K = ActivityClassRegistry.HUGADB_N_CLASSES;
         names = ActivityClassRegistry.HUGADB_CLASS_NAMES;
-        tag = 'hugadb';
+        if isequal(protocolSelection, {'multi_activity_sequence'})
+            tag = 'hugadb_streaming';
+        elseif isequal(protocolSelection, {'single_activity'})
+            tag = 'hugadb_single_activity';
+        else
+            tag = 'hugadb';
+        end
     end
 
     fprintf('===========================================================\n');
     fprintf('   Multiclass evaluation (%s, %d-fold OOF)\n', ds, p.Results.KFolds);
     fprintf('===========================================================\n');
 
-    [featuresAll, labelsAll, ModelMetadata] = PrepareTrainingDataMulticlass(cfg, 'Dataset', ds);
+    [featuresAll, labelsAll, ModelMetadata] = PrepareTrainingDataMulticlass(cfg, ...
+        'Dataset', ds, 'HuGaDBSessionProtocols', protocolSelection);
+    if strcmp(ds, 'hugadb') && ~isempty(protocolSelection)
+        fprintf('HuGaDB session protocols used: %s\n', strjoin(protocolSelection, ', '));
+    end
 
     n0 = size(featuresAll, 1);
     usedSubsamp = false;

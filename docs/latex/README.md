@@ -1,6 +1,6 @@
 # Final Report (LaTeX) — MAEG4999 replica
 
-This folder builds a **PDF report** aligned to the **current MATLAB codebase**: per-dataset **USC-HAD** and **HuGaDB** binary SVM comparisons (30-D features), dataset ablation metrics, optional **multiclass ECOC** figures, optional **binary and multiclass LSTM** holdout metrics, Kalman fusion, and FSM.
+This folder builds a **PDF report** aligned to the **current MATLAB codebase**: per-dataset **USC-HAD** and protocol-aware **HuGaDB** binary SVM comparisons (30-D features), dataset ablation metrics, optional **multiclass ECOC** figures, optional **binary and multiclass LSTM** holdout metrics, Kalman fusion, and FSM.
 
 ## Files
 
@@ -31,11 +31,11 @@ Each entry in `references.bib` includes **`url={https://doi.org/...}`** (derived
 
 From the **project root**, run MATLAB so these exist (commit figures if you ship a PDF):
 
-- `results/figures/binary/svm_confusion_matrix_hugadb.png` — HuGaDB binary SVM
-- `results/figures/multiclass/multiclass_confusion_matrix_usc_had.png` / `multiclass_confusion_matrix_hugadb.png` — from `EvaluateMulticlassConfusion` per dataset
+- `results/figures/binary/svm_confusion_matrix_hugadb_streaming.png` — HuGaDB binary SVM under the streaming policy
+- `results/figures/multiclass/multiclass_confusion_matrix_usc_had.png` / `multiclass_confusion_matrix_hugadb_streaming.png` — from `EvaluateMulticlassConfusion` per dataset
 - `results/figures/pipeline/pipeline_binary_svm_output.png` — from `RunExoskeletonPipeline`
 
-**Optional** (for Chapter 4 LSTM subsection): `RunLstmDatasetAblation` → `results/figures/binary/lstm_confusion_matrix_usc_had.png` / `results/figures/binary/lstm_confusion_matrix_hugadb.png`. `RunTrainEvalLstmMulticlass` writes `results/figures/multiclass/lstm_multiclass_confusion_matrix_usc_had.png` / `results/figures/multiclass/lstm_multiclass_confusion_matrix_hugadb.png`.
+**Optional** (for Chapter 4 LSTM subsection): `RunLstmDatasetAblation` → `results/figures/binary/lstm_confusion_matrix_usc_had.png` / `results/figures/binary/lstm_confusion_matrix_hugadb_streaming.png`. `RunTrainEvalLstmMulticlass` writes `results/figures/multiclass/lstm_multiclass_confusion_matrix_usc_had.png` / `results/figures/multiclass/lstm_multiclass_confusion_matrix_hugadb_streaming.png`.
 
 **Before committing a “final” PDF:** run `ExportMetricsForReport` in MATLAB so `generated_metrics.tex` matches the current `results/metrics/*/*_evaluation_metrics_*.mat` files for SVM and LSTM.
 

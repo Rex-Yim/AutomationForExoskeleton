@@ -1,0 +1,140 @@
+% Simulate the real-time pipeline with the multiclass LSTM activity model.
+% Same replay structure as RunExoskeletonPipelineMulticlass.m, but classifies
+% each window with the sequence LSTM (ImuWindowToSequenceMatrix + classify).
+
+clc; clear; close all;
+
+scriptPath = fileparts(mfilename('fullpath'));
+projectRoot = fileparts(scriptPath);
+
+cd(projectRoot);
+addpath(fullfile(projectRoot, 'config'));
+addpath(genpath(fullfile(projectRoot, 'src')));
+addpath(scriptPath);
+
+hasDL = license('test', 'Deep_Learning_Toolbox') || license('test', 'Neural_Network_Toolbox');
+if ~hasDL
+    error(['Deep Learning Toolbox not available. ', ...
+        'Install Deep Learning Toolbox to run multiclass LSTM replay.']);
+end
+
+cfg = ExoConfig();
+FS = cfg.FS;
+WINDOW_SIZE = cfg.WINDOW_SIZE;
+STEP_SIZE = cfg.STEP_SIZE;
+
+model_path = fullfile(projectRoot, cfg.FILE.MULTICLASS_LSTM);
+if ~exist(model_path, 'file')
+    error(['Multiclass LSTM not found: %s\nRun scripts/TrainLstmMulticlass(''Dataset'', ''hugadb'') first.'], model_path);
+end
+
+L = load(model_path, 'net', 'ModelMetadata');
+net = L.net;
+meta = L.ModelMetadata;
+K = meta.nClasses;
+classNames = meta.classNames;
+if isstring(classNames)
+    classNames = cellstr(classNames);
+end
+fprintf('Multiclass LSTM loaded (%s, K=%d). Simulating held-out HuGaDB replay.\n', meta.dataset, K);
+
+try
+    sim = LoadHuGaDBSimulationData(cfg, 'HuGaDBSessionProtocols', cfg.HUGADB.DEFAULT_PROTOCOLS);
+catch ME
+    error('Simulation data load failed: %s', ME.message);
+end
+
+n_total_samples = size(sim.acc, 1);
+fprintf('Held-out replay subject %s session %s (%s), %d samples.\n', ...
+    sim.subjectId, sim.sessionId, sim.sessionName, n_total_samples);
+fprintf('Replay protocol: %s\n', sim.sessionProtocol);
+
+current_fsm_state = cfg.STATE_STANDING;
+fsm_plot = zeros(n_total_samples, 1);
+activity_plot = nan(n_total_samples, 1);
+activity_gt_plot = nan(n_total_samples, 1);
+last_command = 0;
+last_act = nan;
+
+imuMagIdx = find(strcmpi(sim.imuOrder, cfg.SIMULATION.KALMAN_IMU_LABEL), 1);
+if isempty(imuMagIdx)
+    imuMagIdx = size(sim.acc, 3);
+end
+imuMagName = sim.imuOrder{imuMagIdx};
+clear RealtimeFsm;
+
+for i = 1:n_total_samples
+    activity_gt_plot(i) = ActivityClassRegistry.mapHuGaDBNative(sim.label_full(i));
+end
+
+fprintf('Starting multiclass LSTM loop (%d samples)...\n', n_total_samples);
+
+for i = 1:n_total_samples
+    if mod(i - 1, STEP_SIZE) == 0 && (i + WINDOW_SIZE - 1) <= n_total_samples
+        windowAcc = sim.acc(i:i + WINDOW_SIZE - 1, :, :);
+        windowGyro = sim.gyro(i:i + WINDOW_SIZE - 1, :, :);
+        seq = ImuWindowToSequenceMatrix(windowAcc, windowGyro, cfg);
+        predCat = classify(net, {seq});
+        last_act = find(strcmp(classNames, char(predCat)), 1);
+        if isempty(last_act)
+            error('Unexpected LSTM class label: %s', char(predCat));
+        end
+        [exoskeleton_command, current_fsm_state] = RealtimeFsmFromActivityClass(last_act, current_fsm_state, 'hugadb');
+        last_command = exoskeleton_command;
+    end
+
+    fsm_plot(i) = last_command;
+    activity_plot(i) = last_act;
+end
+
+fprintf('Simulation complete.\n');
+
+t = (1:n_total_samples) / FS;
+figure('Name', 'Multiclass LSTM activity pipeline', 'Color', 'w', 'ToolBar', 'none');
+
+ax2 = subplot(2, 1, 1);
+acc_mag = squeeze(vecnorm(sim.acc(:, :, imuMagIdx), 2, 2));
+yyaxis(ax2, 'left');
+hMag = plot(t, acc_mag, 'Color', [0.75 0.75 0.75]);
+ylabel('IMU magnitude');
+yyaxis(ax2, 'right');
+hCmd = stairs(t, fsm_plot, 'Color', 'r', 'LineWidth', 2);
+ylim([-0.1 1.1]);
+yticks([0 1]);
+yticklabels({'OFF', 'ON'});
+title(ax2, sprintf('Exo command (LSTM activity→locomotion FSM) vs %s IMU magnitude', upper(imuMagName)));
+legend([hMag, hCmd], {'IMU magnitude', 'Exo command'}, 'Location', 'northeast');
+grid on;
+
+ax3 = subplot(2, 1, 2);
+stairs(t, activity_gt_plot, 'Color', [0.35 0.35 0.35], 'LineWidth', 1.0); hold on;
+plot(t, activity_plot, 'LineWidth', 1.2, 'Color', [0 0.4470 0.7410]);
+ylim([0.5, K + 0.5]);
+yticks(1:K);
+yticklabels(classNames);
+title('Activity class: prediction vs ground truth');
+xlabel('Time (s)'); grid on;
+legend(ax3, 'Ground truth', 'Predicted', 'Location', 'southoutside', 'Orientation', 'horizontal');
+linkaxes([ax2, ax3], 'x');
+
+styleReportFigureColors(gcf);
+
+resultsFile = ResultsArtifactPath(projectRoot, 'figures', 'pipeline', 'pipeline_multiclass_lstm_output.png');
+metricsFile = ResultsArtifactPath(projectRoot, 'metrics', 'pipeline', 'pipeline_multiclass_lstm_output.mat');
+if exist('exportgraphics', 'file') == 2
+    exportgraphics(gcf, resultsFile, 'Resolution', 200, 'Padding', 'loose');
+else
+    saveas(gcf, resultsFile);
+end
+plotMeta = struct( ...
+    'subjectId', sim.subjectId, ...
+    'sessionId', sim.sessionId, ...
+    'sessionName', sim.sessionName, ...
+    'sessionProtocol', sim.sessionProtocol, ...
+    'imuMagnitudeLabel', imuMagName, ...
+    'modelPath', model_path, ...
+    'classNames', {classNames});
+save(metricsFile, 't', 'fsm_plot', 'activity_plot', 'acc_mag', ...
+    'activity_gt_plot', 'plotMeta', 'FS', 'WINDOW_SIZE', 'STEP_SIZE', '-v7.3');
+fprintf('Plot saved: %s\n', resultsFile);
+fprintf('Metrics saved: %s\n', metricsFile);

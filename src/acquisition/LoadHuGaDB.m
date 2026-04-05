@@ -4,7 +4,8 @@
 %
 % Single source: GitHub v1 corpus under data/HuGaDB/v1_cleanup_github/ (flat .txt; legacy nested paths below).
 % Per-IMU corrupted gyros (official README matrix CSV) are zeroed when loading from raw GitHub v1;
-% applying twice is a no-op. Trials with all six IMUs marked corrupted are skipped.
+% applying twice is a no-op. Sessions with all six IMU gyros marked corrupted are retained so
+% accelerometer-only classes (for example, sitting-in-car) are still available to downstream tasks.
 % Optional hugadb_manifest.json attaches provenance and sessionProtocol.
 
 function hugadb = LoadHuGaDB(rawDir)
@@ -86,8 +87,11 @@ function hugadb = LoadHuGaDB(rawDir)
     corruptCsv = fullfile(hugadbDir, 'hugadb_official_readme_gyro_corruption_matrix.csv');
     corruptMap = HuGaDBGyroCorruptionMatrix('load', corruptCsv);
 
+    cfg = ExoConfig();
     hugadb = struct();
-    minSamples = 100; % align with ExoConfig.WINDOW_SIZE — shorter trials yield no windows
+    hugadb_metadata = struct();
+    hugadb_metadata.qualityReport = HuGaDBInitQualityReport();
+    minSamples = cfg.HUGADB.QUALITY.MIN_VALID_SAMPLES;
 
     fprintf('Loading %d HuGaDB .txt files (recursive) from %s ...\n', numel(files), rawDir);
 
@@ -96,6 +100,7 @@ function hugadb = LoadHuGaDB(rawDir)
             continue;
         end
         fp = fullfile(files(i).folder, files(i).name);
+        hugadb_metadata.qualityReport.nSessionsScanned = hugadb_metadata.qualityReport.nSessionsScanned + 1;
         try
             M = readmatrix(fp, 'FileType', 'text', 'NumHeaderLines', 4, 'Delimiter', '\t', ...
                 'TreatAsMissing', {'na', 'NA', 'NaN'});
@@ -104,27 +109,34 @@ function hugadb = LoadHuGaDB(rawDir)
                 M = dlmread(fp, '\t', 4, 0); %#ok<DLMRD>
             catch ME
                 warning('Skipping %s: %s', files(i).name, ME.message);
+                hugadb_metadata.qualityReport.nSessionsSkipped = hugadb_metadata.qualityReport.nSessionsSkipped + 1;
+                hugadb_metadata.qualityReport = HuGaDBAppendQualityReason(hugadb_metadata.qualityReport, ...
+                    'session', 'read_failure');
                 continue;
             end
         end
 
         if size(M, 2) < 39
             warning('Skipping %s: expected >=39 columns, got %d', files(i).name, size(M, 2));
+            hugadb_metadata.qualityReport.nSessionsSkipped = hugadb_metadata.qualityReport.nSessionsSkipped + 1;
+            hugadb_metadata.qualityReport = HuGaDBAppendQualityReason(hugadb_metadata.qualityReport, ...
+                'session', 'short_column_count');
             continue;
         end
 
         key = lower(files(i).name);
         if isKey(corruptMap, key)
             gmask = corruptMap(key);
-            if all(gmask)
-                warning('Skipping %s: all IMU gyros marked corrupted in official README table.', files(i).name);
-                continue;
-            end
             M = HuGaDBGyroCorruptionMatrix('applyRaw', M, gmask);
+        else
+            gmask = false(1, 6);
         end
 
         n = size(M, 1);
         if n < minSamples
+            hugadb_metadata.qualityReport.nSessionsSkipped = hugadb_metadata.qualityReport.nSessionsSkipped + 1;
+            hugadb_metadata.qualityReport = HuGaDBAppendQualityReason(hugadb_metadata.qualityReport, ...
+                'session', 'too_few_samples');
             continue;
         end
 
@@ -160,11 +172,26 @@ function hugadb = LoadHuGaDB(rawDir)
         else
             hugadb.(key).huGaDBSessionProtocol = inferHuGaDBSessionProtocol(files(i).name);
         end
+        hugadb.(key).huGaDBCorruptedImuMask = logical(gmask);
+        hugadb.(key).huGaDBQuality = struct( ...
+            'isQualityRejected', false, ...
+            'qualityRejectReason', '', ...
+            'nSamplesOriginal', n, ...
+            'corruptedImuMask', logical(gmask), ...
+            'allGyrosCorrupted', all(gmask), ...
+            'qualityCheckedAt', char(datetime('now')), ...
+            'sessionProtocol', hugadb.(key).huGaDBSessionProtocol ...
+        );
+        hugadb_metadata.qualityReport.nSessionsAccepted = hugadb_metadata.qualityReport.nSessionsAccepted + 1;
     end
 
     out = fullfile(hugadbDir, 'hugadb_dataset.mat');
-    save(out, 'hugadb', '-v7.3');
+    save(out, 'hugadb', 'hugadb_metadata', '-v7.3');
     fprintf('HuGaDB saved: %s (%d sessions).\n', out, numel(fieldnames(hugadb)));
+    lines = HuGaDBFormatQualityReport(hugadb_metadata.qualityReport);
+    for i = 1:numel(lines)
+        fprintf('%s\n', lines{i});
+    end
 end
 
 function [provMap, protocolMap] = loadHuGaDBManifestMaps(manifestPath)

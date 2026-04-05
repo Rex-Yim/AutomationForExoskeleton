@@ -109,14 +109,11 @@ Manual load transportation in industrial, construction, and logistics settings f
 \section{Project Goal}
 The primary goal is to develop a software-centric enhancement module for ExoTechHK Limited's existing lower-limb exoskeleton prototype---a local startup incubated at HKSTP and founded by CUHK researchers---to augment human strength and endurance during heavy load-carrying tasks ($>20$~kg) without invasive sensors or lengthy calibration.
 
-\subsection*{Original project goal statement (interim PDF, Jan 2026)}
-The module was specified to integrate: (i)~a \textbf{data acquisition and processing pipeline} using three mobile phones as IMUs, Kalman-based fusion for joint kinematics, and \textit{initial} machine learning (e.g., hybrid SVM+LSTM) for locomotion classification with validation on public datasets; and (ii)~\textbf{proactive real-time locomotion intent recognition} using hip and lower-back IMU data via a hybrid SVM+LSTM model with multi-sensor fusion, targeting $>90$\% intent-detection accuracy and a 100--200~ms predictive horizon, with evaluation through confusion matrices.
-
-\subsection*{Current implementation emphasis (repository)}
+\subsection*{Implemented scope}
 The module integrates two core components as realized in code:
 \begin{itemize}
   \item \textbf{Data acquisition and processing:} \textbf{HuGaDB} deployment path; held-out HuGaDB replay for pseudo-real-time testing; optional Kalman visualization (\texttt{imufilter}); \textbf{binary} RBF SVM on HuGaDB 30-D window features with USC-HAD / HuGaDB benchmark comparisons retained for the paper and poster; optional \textbf{native ECOC} SVMs (twelve USC-HAD / twelve HuGaDB activity classes); optional \textbf{binary and multiclass LSTM} sequence models on per-dataset IMU windows (\texttt{TrainLstmBinary}, \texttt{TrainLstmMulticlass}, \texttt{RunExoskeletonPipelineLstm}). Embedded deployment remains future work.
-  \item \textbf{Binary active-movement intent:} Labels map activity to \textbf{active movement} vs.\ \textbf{inactive}. The final pipeline trains on the HuGaDB binary SVM path, while public-dataset comparison and replay-based simulation remain separate supporting workflows. The optional LSTM uses a 20\% holdout metric (not five-fold OOF). The 100--200~ms horizon is a design target, not re-benchmarked here for the submitted baselines.
+  \item \textbf{Binary active-movement intent:} Labels map activity to \textbf{active movement} vs.\ \textbf{inactive}. The final pipeline trains on the HuGaDB binary SVM path, while public-dataset comparison and replay-based simulation remain separate supporting workflows. The optional LSTM uses a 20\% holdout metric rather than five-fold OOF.
 \end{itemize}
 
 Being entirely software-based, the solution enables seamless integration into existing hardware prototypes, rapid deployment, and scalability across future platforms.

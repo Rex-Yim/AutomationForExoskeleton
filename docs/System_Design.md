@@ -8,7 +8,7 @@
 ## 1. Executive Summary
 This document describes the architecture of the software-centric control module for the ExoTechHK lower-limb exoskeleton. The system integrates inertial measurement units (IMUs), Support Vector Machine (SVM) classification, and optional Kalman Filter visualization to provide real-time, adaptive assistance.
 
-Version 1.3 uses **HuGaDB** from **GitHub v1** only: `LoadHuGaDB.m` reads raw `.txt` files and applies the official gyro corruption matrix (CSV next to the loader). Binary and multiclass HuGaDB training/evaluation default to excluding `ExoConfig.HUGADB.HELDOUT_SUBJECTS` so the policy matches binary LSTM and held-out simulation. The common feature vector remains **30-dimensional** (six IMU slots × five statistics per slot), with **binary** and **multiclass** ECOC SVM paths and the asymmetric finite state machine for assist gating.
+Version 1.3 uses **HuGaDB** from **GitHub v1** only, but now treats it as a protocol-aware and corruption-aware dataset: `LoadHuGaDB.m` reads raw `.txt` files, applies the official gyro corruption matrix (CSV next to the loader), preserves `single_activity` versus `multi_activity_sequence` metadata, and stores quality flags in the cache. Binary and multiclass HuGaDB training/evaluation default to excluding `ExoConfig.HUGADB.HELDOUT_SUBJECTS`, filtering to `ExoConfig.HUGADB.DEFAULT_PROTOCOLS`, and skipping invalid sessions/windows so the policy matches replay simulation. The common feature vector remains **30-dimensional** (six IMU slots × five statistics per slot), with **binary** and **multiclass** ECOC SVM paths and the asymmetric finite state machine for assist gating.
 
 ---
 
@@ -24,7 +24,7 @@ The system is driven by a configuration class that centralizes tuning parameters
 
 ### 2.2 Data Flow Pipeline
 1.  **Input:** Public `.mat` caches via loaders; held-out HuGaDB sessions replay through `LoadHuGaDBSimulationData.m`.
-2.  **Pre-processing:** HuGaDB cache is already normalized to m/s² and rad/s during loading.
+2.  **Pre-processing:** HuGaDB cache is normalized to m/s² and rad/s during loading, tagged by session protocol, and screened by a HuGaDB quality gate before windows are used for training/evaluation.
 3.  **Feature extraction:** Five features per IMU (`Features.m`). HuGaDB uses **six IMUs** per window (`FeaturesFromImuStack`). USC-HAD uses **one IMU + zero padding** (`LocomotionFeatureVector`) for benchmark comparisons.
 4.  **Inference — binary:** RBF SVM (`fitcsvm`) → class 0/1 (inactive vs active movement per dataset label maps).
 5.  **Inference — multiclass (optional):** ECOC SVM (`fitcecoc`) on **native** labels: USC-HAD **12** trial activities or HuGaDB **12** per-sample IDs (`ActivityClassRegistry.m`). Exo assist maps active-movement classes through `RealtimeFsmFromActivityClass.m` (dataset argument: `'usc_had'` / `'hugadb'`).
@@ -64,7 +64,7 @@ Main scripts resolve `projectRoot` locally and add `config/`, the active `script
 
 **USC-HAD:** `LoadUSCHAD.m` → `data/USC-HAD/usc_had_dataset.mat` (recursive raw `.mat` under `USC-HAD_raw/`).
 
-**HuGaDB:** `LoadHuGaDB.m` → `data/HuGaDB/hugadb_dataset.mat` (GitHub v1 under `v1_cleanup_github/` flat layout or legacy nested `v1_raw`/flat paths; official gyro corruption matrix zeroes bad IMU gyros; `readmatrix` treats `na` as missing when present; all-six-corrupt trials skipped; six IMUs per row; optional manifest adds `huGaDBProvenance` / **`huGaDBSessionProtocol`**).
+**HuGaDB:** `LoadHuGaDB.m` → `data/HuGaDB/hugadb_dataset.mat` (GitHub v1 under `v1_cleanup_github/` flat layout or legacy nested `v1_raw`/flat paths; official gyro corruption matrix zeroes bad IMU gyros; `readmatrix` treats `na` as missing when present; all-six-corrupt sessions are retained as accelerometer-only samples so classes such as bicycling / sitting-in-car are not lost; six IMUs per row; optional manifest adds `huGaDBProvenance` / **`huGaDBSessionProtocol`**; accepted sessions carry quality metadata and downstream prep functions skip invalid sessions/windows with logged reasons).
 
 **Binary training / evaluation:** `TrainSvmBinary.m`, `EvaluateSvmConfusion.m`, `RunSvmDatasetAblation.m` (USC-HAD and HuGaDB).
 

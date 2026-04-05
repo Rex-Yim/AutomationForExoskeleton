@@ -17,10 +17,22 @@ end
 
 p = inputParser;
 addParameter(p, 'Dataset', 'hugadb', @(s) ischar(s) || isstring(s));
+addParameter(p, 'HuGaDBSessionProtocols', cfg.HUGADB.DEFAULT_PROTOCOLS, @(x) isempty(x) || ischar(x) || isstring(x) || iscell(x));
 addParameter(p, 'ModelPath', '', @(s) ischar(s) || isstring(s));
+addParameter(p, 'MaxEpochs', 12, @(x) isnumeric(x) && isscalar(x) && x >= 1);
+addParameter(p, 'EarlyStopTarget', 0.90, @(x) isnumeric(x) && isscalar(x) && x > 0 && x <= 1);
+addParameter(p, 'EarlyStopMinEpochs', 3, @(x) isnumeric(x) && isscalar(x) && x >= 1);
+addParameter(p, 'EarlyStopPatience', 4, @(x) isnumeric(x) && isscalar(x) && x >= 1);
+addParameter(p, 'EarlyStopMinDelta', 1e-3, @(x) isnumeric(x) && isscalar(x) && x >= 0);
 parse(p, varargin{:});
 
 ds = lower(char(p.Results.Dataset));
+protocolSelection = NormalizeHuGaDBProtocolSelection(p.Results.HuGaDBSessionProtocols);
+maxEpochs = double(p.Results.MaxEpochs);
+earlyStopTarget = double(p.Results.EarlyStopTarget);
+earlyStopMinEpochs = double(p.Results.EarlyStopMinEpochs);
+earlyStopPatience = double(p.Results.EarlyStopPatience);
+earlyStopMinDelta = double(p.Results.EarlyStopMinDelta);
 if ~ismember(ds, {'usc_had', 'hugadb'})
     error('Dataset must be ''usc_had'' or ''hugadb''.');
 end
@@ -37,7 +49,8 @@ fprintf('   Multiclass LSTM (%s)\n', ds);
 fprintf('===========================================================\n');
 
 try
-    [XCell, labelsAll, ModelMetadata] = PrepareTrainingDataSequencesMulticlass(cfg, 'Dataset', ds);
+    [XCell, labelsAll, ModelMetadata] = PrepareTrainingDataSequencesMulticlass(cfg, ...
+        'Dataset', ds, 'HuGaDBSessionProtocols', protocolSelection);
 catch ME
     error('Multiclass LSTM sequence preparation failed: %s', ME.message);
 end
@@ -47,6 +60,11 @@ K = ModelMetadata.nClasses;
 classNames = ModelMetadata.classNames;
 inputSize = ModelMetadata.sequenceInputSize;
 fprintf('Samples: %d | input %d x %d (features x time)\n', n, inputSize, ModelMetadata.sequenceLength);
+if strcmp(ds, 'hugadb') && ~isempty(protocolSelection)
+    fprintf('HuGaDB session protocols used: %s\n', strjoin(protocolSelection, ', '));
+end
+fprintf('Dynamic stop: target=%.2f%% minEpochs=%d patience=%d maxEpochs=%d\n', ...
+    earlyStopTarget * 100, earlyStopMinEpochs, earlyStopPatience, maxEpochs);
 fprintf('Classes present: %s\n', mat2str(unique(labelsAll)'));
 for c = 1:K
     fprintf('  Class %2d %-18s : %d windows\n', c, classNames{c}, sum(labelsAll == c));
@@ -81,7 +99,7 @@ if ~exist(checkpointDir, 'dir')
 end
 
 options = trainingOptions('adam', ...
-    'MaxEpochs', 23, ...
+    'MaxEpochs', maxEpochs, ...
     'MiniBatchSize', miniBatch, ...
     'InitialLearnRate', 1e-3, ...
     'LearnRateSchedule', 'piecewise', ...
@@ -94,9 +112,30 @@ options = trainingOptions('adam', ...
     'Plots', 'none', ...
     'Verbose', true, ...
     'CheckpointPath', checkpointDir);
+stopper = MakeValidationEarlyStopper( ...
+    'TargetAccuracy', earlyStopTarget, ...
+    'MinEpochs', earlyStopMinEpochs, ...
+    'PatienceChecks', earlyStopPatience, ...
+    'MinDelta', earlyStopMinDelta, ...
+    'Label', sprintf('multiclass LSTM (%s) validation', ds));
+logRecorder = MakeTrainingLogRecorder();
+options.OutputFcn = @(info) LstmTrainingOutputChain(info, logRecorder, stopper);
 
 fprintf('\nTraining multiclass LSTM (validation holdout 20%%)...\n');
 net = trainNetwork(XTrain, YTrain, layers, options);
+earlyStopState = stopper.GetState();
+
+artifactTag = DefaultMulticlassLstmArtifactTag(ds, protocolSelection);
+trainExtra = struct( ...
+    'earlyStopState', earlyStopState, ...
+    'miniBatchSize', miniBatch, ...
+    'maxEpochsRequested', maxEpochs, ...
+    'initialLearnRate', 1e-3, ...
+    'learnRateDropPeriod', 15, ...
+    'learnRateDropFactor', 0.5, ...
+    'solver', 'adam', ...
+    'dataset', ds);
+trainingArtifacts = SaveLstmTrainingArtifacts(projectRoot, 'multiclass', artifactTag, logRecorder.GetHistory(), trainExtra);
 
 Yhat = classify(net, XVal);
 valAcc = mean(Yhat == YVal);
@@ -107,12 +146,14 @@ fprintf('Confusion matrix computed on validation split.\n');
 
 ModelMetadata.lstmHidden1 = 128;
 ModelMetadata.lstmHidden2 = 128;
-ModelMetadata.maxEpochsTrained = 23;
+ModelMetadata.maxEpochsTrained = maxEpochs;
 ModelMetadata.holdoutRNGSeed = 42;
 ModelMetadata.validationAccuracy = valAcc;
 ModelMetadata.validationConfusion = cm;
 ModelMetadata.categoryOrder = classNames;
 ModelMetadata.modelPath = modelPath;
+ModelMetadata.earlyStop = earlyStopState;
+ModelMetadata.trainingArtifacts = trainingArtifacts;
 
 [saveDir, ~] = fileparts(modelPath);
 if ~isempty(saveDir) && ~exist(saveDir, 'dir')
@@ -121,6 +162,9 @@ end
 
 save(modelPath, 'net', 'ModelMetadata', 'ds', '-v7.3');
 fprintf('Saved: %s\n', modelPath);
+if earlyStopState.stopRequested
+    fprintf('Stopped early: %s\n', earlyStopState.stopReason);
+end
 fprintf('===========================================================\n');
 end
 

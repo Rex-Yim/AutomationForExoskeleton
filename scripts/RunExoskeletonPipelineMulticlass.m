@@ -29,7 +29,7 @@ classNames = meta.classNames;
 fprintf('Multiclass ECOC loaded (%s, K=%d). Simulating held-out HuGaDB replay.\n', meta.dataset, K);
 
 try
-    sim = LoadHuGaDBSimulationData(cfg);
+    sim = LoadHuGaDBSimulationData(cfg, 'HuGaDBSessionProtocols', cfg.HUGADB.DEFAULT_PROTOCOLS);
 catch ME
     error('Simulation data load failed: %s', ME.message);
 end
@@ -37,36 +37,29 @@ end
 n_total_samples = size(sim.acc, 1);
 fprintf('Held-out replay subject %s session %s (%s), %d samples.\n', ...
     sim.subjectId, sim.sessionId, sim.sessionName, n_total_samples);
+fprintf('Replay protocol: %s\n', sim.sessionProtocol);
 
 current_fsm_state = cfg.STATE_STANDING;
-kalman_trace = zeros(n_total_samples, 1);
 fsm_plot = zeros(n_total_samples, 1);
 activity_plot = nan(n_total_samples, 1);
+activity_gt_plot = nan(n_total_samples, 1);
 last_command = 0;
 last_act = nan;
 
-kalmanImuIdx = find(strcmpi(sim.imuOrder, cfg.SIMULATION.KALMAN_IMU_LABEL), 1);
-if isempty(kalmanImuIdx)
-    kalmanImuIdx = size(sim.acc, 3);
+imuMagIdx = find(strcmpi(sim.imuOrder, cfg.SIMULATION.KALMAN_IMU_LABEL), 1);
+if isempty(imuMagIdx)
+    imuMagIdx = size(sim.acc, 3);
 end
-kalmanImuName = sim.imuOrder{kalmanImuIdx};
-if cfg.SIMULATION.KALMAN_ENABLED
-    kalmanFilter = FusionKalman.initializeSingleFilter(FS);
-else
-    kalmanFilter = [];
-end
+imuMagName = sim.imuOrder{imuMagIdx};
 clear RealtimeFsm;
+
+for i = 1:n_total_samples
+    activity_gt_plot(i) = ActivityClassRegistry.mapHuGaDBNative(sim.label_full(i));
+end
 
 fprintf('Starting multiclass loop (%d samples)...\n', n_total_samples);
 
 for i = 1:n_total_samples
-    if ~isempty(kalmanFilter)
-        kalmanAcc = reshape(sim.acc(i, :, kalmanImuIdx), 1, []);
-        kalmanGyro = reshape(sim.gyro(i, :, kalmanImuIdx), 1, []);
-        qSeg = kalmanFilter(kalmanAcc, kalmanGyro);
-        kalman_trace(i) = FusionKalman.estimatePitchAngle(qSeg);
-    end
-
     if mod(i - 1, STEP_SIZE) == 0 && (i + WINDOW_SIZE - 1) <= n_total_samples
         windowAcc = sim.acc(i:i + WINDOW_SIZE - 1, :, :);
         windowGyro = sim.gyro(i:i + WINDOW_SIZE - 1, :, :);
@@ -86,33 +79,30 @@ fprintf('Simulation complete.\n');
 t = (1:n_total_samples) / FS;
 figure('Name', 'Multiclass activity pipeline', 'Color', 'w', 'ToolBar', 'none');
 
-ax1 = subplot(3, 1, 1);
-if ~isempty(kalmanFilter)
-    plot(t, kalman_trace, 'LineWidth', 1.5);
-    title(sprintf('Kalman Filter: %s segment pitch', upper(kalmanImuName)));
-    ylabel('Deg');
-else
-    plot(t, zeros(size(t)), 'LineWidth', 1.5);
-    title('Kalman visualization disabled');
-    ylabel('Deg');
-end
+ax2 = subplot(2, 1, 1);
+acc_mag = squeeze(vecnorm(sim.acc(:, :, imuMagIdx), 2, 2));
+yyaxis(ax2, 'left');
+hMag = plot(t, acc_mag, 'Color', [0.75 0.75 0.75]);
+ylabel('IMU magnitude');
+yyaxis(ax2, 'right');
+hCmd = stairs(t, fsm_plot, 'Color', 'r', 'LineWidth', 2);
+ylim([-0.1 1.1]);
+yticks([0 1]);
+yticklabels({'OFF', 'ON'});
+title(ax2, sprintf('Exo command (activity→locomotion FSM) vs %s IMU magnitude', upper(imuMagName)));
+legend([hMag, hCmd], {'IMU magnitude', 'Exo command'}, 'Location', 'northeast');
 grid on;
 
-ax2 = subplot(3, 1, 2);
-acc_mag = squeeze(vecnorm(sim.acc(:, :, kalmanImuIdx), 2, 2));
-plot(t, acc_mag, 'Color', [0.75 0.75 0.75]); hold on;
-stairs(t, fsm_plot * max(acc_mag), 'r', 'LineWidth', 2);
-title('Exo command (from activity→locomotion FSM)');
-legend('Acc mag', 'Cmd'); grid on;
-
-ax3 = subplot(3, 1, 3);
-plot(t, activity_plot, 'LineWidth', 1.2);
+ax3 = subplot(2, 1, 2);
+stairs(t, activity_gt_plot, 'Color', [0.35 0.35 0.35], 'LineWidth', 1.0); hold on;
+plot(t, activity_plot, 'LineWidth', 1.2, 'Color', [0 0.4470 0.7410]);
 ylim([0.5, K + 0.5]);
 yticks(1:K);
 yticklabels(classNames);
-title('Predicted activity class (native, updates each window step)');
+title('Activity class: prediction vs ground truth');
 xlabel('Time (s)'); grid on;
-linkaxes([ax1, ax2, ax3], 'x');
+legend(ax3, 'Ground truth', 'Predicted', 'Location', 'southoutside', 'Orientation', 'horizontal');
+linkaxes([ax2, ax3], 'x');
 
 styleReportFigureColors(gcf);
 
@@ -127,10 +117,11 @@ plotMeta = struct( ...
     'subjectId', sim.subjectId, ...
     'sessionId', sim.sessionId, ...
     'sessionName', sim.sessionName, ...
-    'kalmanImuLabel', kalmanImuName, ...
+    'sessionProtocol', sim.sessionProtocol, ...
+    'imuMagnitudeLabel', imuMagName, ...
     'modelPath', model_path, ...
     'classNames', {classNames});
-save(metricsFile, 't', 'kalman_trace', 'fsm_plot', 'activity_plot', 'acc_mag', ...
-    'plotMeta', 'FS', 'WINDOW_SIZE', 'STEP_SIZE', '-v7.3');
+save(metricsFile, 't', 'fsm_plot', 'activity_plot', 'acc_mag', ...
+    'activity_gt_plot', 'plotMeta', 'FS', 'WINDOW_SIZE', 'STEP_SIZE', '-v7.3');
 fprintf('Plot saved: %s\n', resultsFile);
 fprintf('Metrics saved: %s\n', metricsFile);

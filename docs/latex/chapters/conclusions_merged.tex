@@ -1,57 +1,17 @@
-% Chapter 5: summary + interim future work + timeline + risks + repository status
 \section{Summary of what was delivered}
-This project produced a reproducible MATLAB baseline for lower-limb exoskeleton \emph{assist gating} on public IMU data: a HuGaDB-centered replay path, optional Kalman visualization (\texttt{imufilter}), a 30-dimensional feature pipeline, binary RBF SVM classification with five-fold out-of-fold evaluation, optional native ECOC models (USC-HAD twelve classes; HuGaDB eight classes) for exploratory activity recognition, per-dataset binary LSTM sequence classifiers, per-dataset multiclass LSTM sequence baselines, and finite-state-machine smoothing with asymmetric hysteresis for stable on/off assist commands in simulation. Scalar accuracies and figures are traceable to versioned scripts and \texttt{results/metrics/*/*.mat}, with numbers exported into \texttt{generated\_metrics.tex} via \texttt{ExportMetricsForReport.m}.
+This project delivers a reproducible MATLAB baseline for lower-limb exoskeleton assist gating on public IMU data. The final repository includes a HuGaDB-centered training and replay path, optional Kalman-based segment-pitch visualization, a 30-dimensional handcrafted feature pipeline, binary RBF SVM classification with five-fold out-of-fold evaluation, native multiclass ECOC baselines for per-dataset activity recognition, binary and multiclass LSTM sequence baselines, and finite-state-machine smoothing with asymmetric hysteresis for stable assist on/off behavior in simulation.
 
-The benchmark comparison table still shows that the binary accuracy target ($>90$\%) is met for USC-HAD training, while HuGaDB accuracy is lower, consistent with dataset heterogeneity and label mapping choices. The final repository trains on sixteen HuGaDB subjects and reserves subjects 06 and 08 for simulation. Multiclass accuracy remains modest and is not proposed as a deployable control layer without further work. End-to-end hardware trials, embedded deployment, hybrid SVM--LSTM fusion as in the original pseudocode, and the full predictive-horizon benchmark were not completed in software; the sections below preserve interim future-work bullets, timeline, risks, and repository status so planned scope stays distinguishable from the validated repository.
+The strongest validated result is the HuGaDB streaming-policy binary SVM, which serves as the main deployment-oriented software baseline. USC-HAD remains useful as a benchmark comparison dataset under the same feature layout, while multiclass recognition and sequence models provide supporting analysis rather than the primary control claim. Metrics and figures are traceable to versioned scripts and saved outputs under \texttt{results/metrics/*/*.mat}, with report values exported through \texttt{ExportMetricsForReport.m}.
 
-\section{Future work beyond the FYP (interim PDF)}
+\section{Key limitations}
+The submitted repository remains a software baseline rather than a full exoskeleton controller. Kalman fusion is used for visualization rather than mandatory classifier preprocessing. The implemented output is a stable binary assist command, not a torque-generation stack. Hardware integration, embedded deployment, controlled user trials, and latency benchmarking under real hardware conditions remain outside the validated scope of this report.
+
+In addition, the binary SVM results use five-fold out-of-fold evaluation, whereas the LSTM baselines currently use separate stratified holdout splits. Those protocols are both useful, but they are not directly interchangeable, so the SVM path remains the clearest headline result. Multiclass accuracy is informative for analysis but is not yet strong enough to justify direct activity-dependent assistance scheduling.
+
+\section{Future work}
 \begin{itemize}
-  \item \textbf{Personalization:} Short calibration walks with transfer learning and lightweight RL (e.g., PPO/SAC) to tune assistance.
-  \item \textbf{Injury-risk assessment:} Integrate ergonomic risk frameworks such as Zelik et al.~\cite{zelik2022} into user trials.
+  \item Integrate the assist-gating supervisor with the exoskeleton hardware control stack and measure end-to-end latency under realistic load-transport tasks.
+  \item Add embedded deployment and controller-side communication for real-time on-device execution.
+  \item Extend validation with user studies, subject-specific calibration, and stronger personalization methods.
+  \item Improve multiclass recognition and sequence-model evaluation with more stringent subject-wise validation and class-balancing strategies.
 \end{itemize}
-
-\section{Project timeline (interim PDF)}
-Table~\ref{tab:timeline} reproduces the phased plan from the Jan 2026 report (notional dates; confirm with your advisor).
-
-\begin{table}[htbp]
-  \centering
-  \small
-  \caption{Phased development plan (interim submission).}
-  \label{tab:timeline}
-  \begin{tabular}{@{}p{2.7cm}p{2.3cm}p{4.4cm}p{4.4cm}@{}}
-    \toprule
-    \textbf{Phase} & \textbf{Duration} & \textbf{Key activities} & \textbf{Milestones} \\
-    \midrule
-    ML training \& simulation integration & Jan -- Feb 2026 (2 months) & Train/deploy ML; Simulink HIL-style virtual tests; locomotion modes under load & Validated models ($\geq 90$\% target); simulation demo \\
-    Hardware integration \& testing & Mar -- Apr 15, 2026 (1.5 months) & Software--hardware integration; bench and limited treadmill tests (5--10 trials); ethics & Logs with latency/error metrics \\
-    Optimization, documentation, finalization & Apr 16 -- May 2026 (1.5 months) & Refine from tests; compile report; presentation & Submitted report; presentation; archived repository \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\section{Risk assessment (interim PDF)}
-Table~\ref{tab:risks} summarizes risks and mitigations from the Jan 2026 report.
-
-\begin{table}[htbp]
-  \centering
-  \small
-  \caption{Risks and mitigations (interim submission).}
-  \label{tab:risks}
-  \begin{tabular}{@{}p{3.6cm}ccp{5.5cm}@{}}
-    \toprule
-    \textbf{Risk} & \textbf{Like.} & \textbf{Imp.} & \textbf{Mitigation} \\
-    \midrule
-    Hardware integration delays (e.g., actuator vs.\ ExoTechHK frame) & M & H & Modular COTS parts; parallel software; early prototype access \\
-    ML underperformance ($<85$\% accuracy) & L & M & Rule/ML hybrid fallback; partner datasets; cross-validation / RL tuning \\
-    Trial delays & M & H & Public/simulated data interim; limit volunteers; secure IRB early \\
-    Budget overrun & L & L & University funding; HKSTP supplements \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\section{Repository status (consolidated, 2026)}\label{sec:repo_status}
-Relative to the interim plan, the following are \textbf{delivered in software}: HuGaDB-based binary RBF SVM training; dataset ablation scripts that preserve USC-HAD / HuGaDB comparison runs; optional Kalman visualization baseline; optional native ECOC SVMs per public dataset; binary and multiclass LSTM sequence classifiers per dataset (\texttt{TrainLstmBinary}, \texttt{EvaluateLstmConfusion}, \texttt{TrainLstmMulticlass}, \texttt{EvaluateLstmMulticlassConfusion}, \texttt{RunExoskeletonPipelineLstm}); asymmetric FSM; documentation and evaluation figures.
-
-\textbf{Not delivered:} hybrid SVM+LSTM fusion as in the original pseudocode, MATLAB Coder deployment, ROS/PID torque layer, hardware controller integration, and prospective user trials---these remain aligned with the roadmap and risk tables above.
-
-\textbf{Synthesis:} The LaTeX report intentionally preserves the \textbf{full interim narrative} (objectives, proposed LSTM/EKF/ROS extensions, timeline, risks) while adding a \textbf{faithful description of the implemented repository}, so readers can distinguish planned scope from validated baseline.

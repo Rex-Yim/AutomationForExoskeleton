@@ -24,14 +24,26 @@ addParameter(p, 'IncludeUSCHAD', cfg.TRAINING.DEFAULT_INCLUDE_USCHAD, @islogical
 addParameter(p, 'IncludeHuGaDB', cfg.TRAINING.DEFAULT_INCLUDE_HUGADB, @islogical);
 addParameter(p, 'IncludeHuGaDBSubjects', {}, @(x) isempty(x) || isnumeric(x) || ischar(x) || isstring(x) || iscell(x));
 addParameter(p, 'ExcludeHuGaDBSubjects', cfg.HUGADB.HELDOUT_SUBJECTS, @(x) isempty(x) || isnumeric(x) || ischar(x) || isstring(x) || iscell(x));
+addParameter(p, 'HuGaDBSessionProtocols', cfg.HUGADB.DEFAULT_PROTOCOLS, @(x) isempty(x) || ischar(x) || isstring(x) || iscell(x));
 addParameter(p, 'ModelPath', '', @(s) ischar(s) || isstring(s));
+addParameter(p, 'MaxEpochs', 12, @(x) isnumeric(x) && isscalar(x) && x >= 1);
+addParameter(p, 'EarlyStopTarget', 0.994, @(x) isnumeric(x) && isscalar(x) && x > 0 && x <= 1);
+addParameter(p, 'EarlyStopMinEpochs', 3, @(x) isnumeric(x) && isscalar(x) && x >= 1);
+addParameter(p, 'EarlyStopPatience', 3, @(x) isnumeric(x) && isscalar(x) && x >= 1);
+addParameter(p, 'EarlyStopMinDelta', 5e-4, @(x) isnumeric(x) && isscalar(x) && x >= 0);
 parse(p, varargin{:});
 
 inclU = p.Results.IncludeUSCHAD;
 inclH = p.Results.IncludeHuGaDB;
 includeHuSubjects = NormalizeHuGaDBSubjectIds(p.Results.IncludeHuGaDBSubjects);
 excludeHuSubjects = NormalizeHuGaDBSubjectIds(p.Results.ExcludeHuGaDBSubjects);
+protocolSelection = NormalizeHuGaDBProtocolSelection(p.Results.HuGaDBSessionProtocols);
 modelPath = resolvePath(projectRoot, p.Results.ModelPath, cfg.FILE.BINARY_LSTM);
+maxEpochs = double(p.Results.MaxEpochs);
+earlyStopTarget = double(p.Results.EarlyStopTarget);
+earlyStopMinEpochs = double(p.Results.EarlyStopMinEpochs);
+earlyStopPatience = double(p.Results.EarlyStopPatience);
+earlyStopMinDelta = double(p.Results.EarlyStopMinDelta);
 
 fprintf('===========================================================\n');
 fprintf('   Training binary LSTM (active vs. inactive)\n');
@@ -43,13 +55,19 @@ end
 if ~isempty(excludeHuSubjects)
     fprintf('ExcludeHuGaDBSubjects=%s\n', strjoin(excludeHuSubjects, ', '));
 end
+if ~isempty(protocolSelection)
+    fprintf('HuGaDBSessionProtocols=%s\n', strjoin(protocolSelection, ', '));
+end
+fprintf('Dynamic stop: target=%.2f%% minEpochs=%d patience=%d maxEpochs=%d\n', ...
+    earlyStopTarget * 100, earlyStopMinEpochs, earlyStopPatience, maxEpochs);
 
 try
     [XCell, labelsAll, ModelMetadata] = PrepareTrainingDataSequences(cfg, ...
         'IncludeUSCHAD', inclU, ...
         'IncludeHuGaDB', inclH, ...
         'IncludeHuGaDBSubjects', includeHuSubjects, ...
-        'ExcludeHuGaDBSubjects', excludeHuSubjects);
+        'ExcludeHuGaDBSubjects', excludeHuSubjects, ...
+        'HuGaDBSessionProtocols', protocolSelection);
 catch ME
     error('Sequence preparation failed: %s', ME.message);
 end
@@ -94,7 +112,7 @@ if ~exist(checkpointDir, 'dir')
 end
 
 options = trainingOptions('adam', ...
-    'MaxEpochs', 23, ...
+    'MaxEpochs', maxEpochs, ...
     'MiniBatchSize', miniBatch, ...
     'InitialLearnRate', 1e-3, ...
     'LearnRateSchedule', 'piecewise', ...
@@ -107,9 +125,29 @@ options = trainingOptions('adam', ...
     'Plots', 'none', ...
     'Verbose', true, ...
     'CheckpointPath', checkpointDir);
+stopper = MakeValidationEarlyStopper( ...
+    'TargetAccuracy', earlyStopTarget, ...
+    'MinEpochs', earlyStopMinEpochs, ...
+    'PatienceChecks', earlyStopPatience, ...
+    'MinDelta', earlyStopMinDelta, ...
+    'Label', 'binary LSTM validation');
+logRecorder = MakeTrainingLogRecorder();
+options.OutputFcn = @(info) LstmTrainingOutputChain(info, logRecorder, stopper);
 
 fprintf('\nTraining (validation holdout 20%%)...\n');
 net = trainNetwork(XTrain, YTrain, layers, options);
+earlyStopState = stopper.GetState();
+
+artifactTag = DefaultBinaryLstmArtifactTag(inclU, inclH, includeHuSubjects, excludeHuSubjects, protocolSelection);
+trainExtra = struct( ...
+    'earlyStopState', earlyStopState, ...
+    'miniBatchSize', miniBatch, ...
+    'maxEpochsRequested', maxEpochs, ...
+    'initialLearnRate', 1e-3, ...
+    'learnRateDropPeriod', 15, ...
+    'learnRateDropFactor', 0.5, ...
+    'solver', 'adam');
+trainingArtifacts = SaveLstmTrainingArtifacts(projectRoot, 'binary', artifactTag, logRecorder.GetHistory(), trainExtra);
 
 Yhat = classify(net, XVal);
 valAcc = mean(Yhat == YVal);
@@ -121,7 +159,7 @@ disp(cm);
 
 ModelMetadata.lstmHidden1 = 128;
 ModelMetadata.lstmHidden2 = 128;
-ModelMetadata.maxEpochsTrained = 23;
+ModelMetadata.maxEpochsTrained = maxEpochs;
 ModelMetadata.holdoutRNGSeed = 42;
 ModelMetadata.validationAccuracy = valAcc;
 ModelMetadata.validationConfusion = cm;
@@ -131,6 +169,8 @@ ModelMetadata.labelPositive = activeLabel;
 ModelMetadata.labelStand = inactiveLabel;
 ModelMetadata.labelWalk = activeLabel;
 ModelMetadata.modelPath = modelPath;
+ModelMetadata.earlyStop = earlyStopState;
+ModelMetadata.trainingArtifacts = trainingArtifacts;
 
 [saveDir, ~] = fileparts(modelPath);
 if ~isempty(saveDir) && ~exist(saveDir, 'dir')
@@ -139,6 +179,9 @@ end
 
 save(modelPath, 'net', 'ModelMetadata', '-v7.3');
 fprintf('Saved: %s\n', modelPath);
+if earlyStopState.stopRequested
+    fprintf('Stopped early: %s\n', earlyStopState.stopReason);
+end
 fprintf('===========================================================\n');
 end
 

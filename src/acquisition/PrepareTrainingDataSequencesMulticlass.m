@@ -16,11 +16,13 @@ function [XCell, labelsClass, ModelMetadata] = PrepareTrainingDataSequencesMulti
     addParameter(p, 'Dataset', 'hugadb', @(s) ischar(s) || isstring(s));
     addParameter(p, 'IncludeHuGaDBSubjects', {}, @(x) isempty(x) || isnumeric(x) || ischar(x) || isstring(x) || iscell(x));
     addParameter(p, 'ExcludeHuGaDBSubjects', defaultExcludedSubjects, @(x) isempty(x) || isnumeric(x) || ischar(x) || isstring(x) || iscell(x));
+    addParameter(p, 'HuGaDBSessionProtocols', cfg.HUGADB.DEFAULT_PROTOCOLS, @(x) isempty(x) || ischar(x) || isstring(x) || iscell(x));
     parse(p, varargin{:});
 
     ds = lower(char(p.Results.Dataset));
     includeHuSubjects = NormalizeHuGaDBSubjectIds(p.Results.IncludeHuGaDBSubjects);
     excludeHuSubjects = NormalizeHuGaDBSubjectIds(p.Results.ExcludeHuGaDBSubjects);
+    protocolSelection = NormalizeHuGaDBProtocolSelection(p.Results.HuGaDBSessionProtocols);
     if ~ismember(ds, {'usc_had', 'hugadb'})
         error('AutomationForExoskeleton:PrepareTrainingDataSequencesMulticlass:Dataset', ...
             'Dataset must be ''usc_had'' or ''hugadb''.');
@@ -31,6 +33,8 @@ function [XCell, labelsClass, ModelMetadata] = PrepareTrainingDataSequencesMulti
     nUsc = 0;
     nHu = 0;
     nCh = cfg.LOCOMOTION.N_IMU_SLOTS * 6;
+    usedHuProtocols = {};
+    huQualityReport = HuGaDBInitQualityReport();
 
     if strcmp(ds, 'usc_had')
         if ~exist(cfg.FILE.USCHAD_DATA, 'file')
@@ -85,9 +89,20 @@ function [XCell, labelsClass, ModelMetadata] = PrepareTrainingDataSequencesMulti
         for i = 1:numel(hnames)
             trial = hug.(hnames{i});
             meta = ResolveHuGaDBTrialMetadata(hnames{i}, trial);
+            huQualityReport.nSessionsScanned = huQualityReport.nSessionsScanned + 1;
             if ~shouldIncludeHuGaDBTrialSeqMc(meta.subjectId, includeHuSubjects, excludeHuSubjects)
+                huQualityReport.nSessionsSkipped = huQualityReport.nSessionsSkipped + 1;
+                huQualityReport = HuGaDBAppendQualityReason(huQualityReport, 'session', 'subject_filtered_out');
                 continue;
             end
+            [isValidTrial, trialInfo] = HuGaDBEvaluateTrialQuality(trial, cfg, ...
+                'TrialName', hnames{i}, 'SessionMeta', meta, 'AllowedProtocols', protocolSelection);
+            if ~isValidTrial
+                huQualityReport.nSessionsSkipped = huQualityReport.nSessionsSkipped + 1;
+                huQualityReport = HuGaDBAppendQualityReason(huQualityReport, 'session', trialInfo.reason);
+                continue;
+            end
+            huQualityReport.nSessionsAccepted = huQualityReport.nSessionsAccepted + 1;
 
             acc = trial.acc;
             gyro = trial.gyro;
@@ -101,8 +116,11 @@ function [XCell, labelsClass, ModelMetadata] = PrepareTrainingDataSequencesMulti
             for k = 1:cfg.STEP_SIZE:(nSamples - cfg.WINDOW_SIZE + 1)
                 ws = k;
                 we = k + cfg.WINDOW_SIZE - 1;
+                huQualityReport.nWindowsScanned = huQualityReport.nWindowsScanned + 1;
                 classId = ActivityClassRegistry.hugadbNativeWindowClass(lf(ws:we));
                 if classId < 1
+                    huQualityReport.nWindowsSkipped = huQualityReport.nWindowsSkipped + 1;
+                    huQualityReport = HuGaDBAppendQualityReason(huQualityReport, 'window', 'invalid_native_class');
                     continue;
                 end
 
@@ -116,12 +134,20 @@ function [XCell, labelsClass, ModelMetadata] = PrepareTrainingDataSequencesMulti
                     error('AutomationForExoskeleton:PrepareTrainingDataSequencesMulticlass:HuGaDBShape', ...
                         'Unexpected HuGaDB acc size: %s.', mat2str(size(acc)));
                 end
+                [isValidWindow, windowReason] = HuGaDBEvaluateWindowQuality(windowAcc, windowGyro, lf(ws:we));
+                if ~isValidWindow
+                    huQualityReport.nWindowsSkipped = huQualityReport.nWindowsSkipped + 1;
+                    huQualityReport = HuGaDBAppendQualityReason(huQualityReport, 'window', windowReason);
+                    continue;
+                end
 
                 seq = ImuWindowToSequenceMatrix(windowAcc, windowGyro, cfg);
                 XCell{end + 1, 1} = seq; %#ok<AGROW>
                 labelsClass = [labelsClass; classId]; %#ok<AGROW>
                 nHu = nHu + 1;
+                huQualityReport.nWindowsAccepted = huQualityReport.nWindowsAccepted + 1;
             end
+            usedHuProtocols{end + 1} = trialInfo.protocol; %#ok<AGROW>
         end
 
         classNames = ActivityClassRegistry.HUGADB_CLASS_NAMES;
@@ -146,9 +172,18 @@ function [XCell, labelsClass, ModelMetadata] = PrepareTrainingDataSequencesMulti
     ModelMetadata.dateTrained = char(datetime('now'));
     ModelMetadata.includeHuGaDBSubjects = includeHuSubjects;
     ModelMetadata.excludeHuGaDBSubjects = excludeHuSubjects;
+    ModelMetadata.huGaDBProtocolSelection = protocolSelection;
+    ModelMetadata.usedHuGaDBProtocols = unique(usedHuProtocols, 'stable');
+    ModelMetadata.huGaDBQualityReport = huQualityReport;
 
     fprintf(['Multiclass sequence extraction complete. Total %d windows (%d x %d each). ', ...
         'USC-HAD: %d | HuGaDB: %d\n'], numel(XCell), nCh, cfg.WINDOW_SIZE, nUsc, nHu);
+    if strcmp(ds, 'hugadb')
+        lines = HuGaDBFormatQualityReport(huQualityReport);
+        for i = 1:numel(lines)
+            fprintf('%s\n', lines{i});
+        end
+    end
 end
 
 function tf = shouldIncludeHuGaDBTrialSeqMc(subjectId, includeSubjects, excludeSubjects)

@@ -36,6 +36,7 @@ function EvaluateSvmConfusion(varargin)
     addParameter(p, 'IncludeHuGaDB', cfg.TRAINING.DEFAULT_INCLUDE_HUGADB, @islogical);
     addParameter(p, 'IncludeHuGaDBSubjects', {}, @(x) isempty(x) || isnumeric(x) || ischar(x) || isstring(x) || iscell(x));
     addParameter(p, 'ExcludeHuGaDBSubjects', defaultExcludedSubjects, @(x) isempty(x) || isnumeric(x) || ischar(x) || isstring(x) || iscell(x));
+    addParameter(p, 'HuGaDBSessionProtocols', cfg.HUGADB.DEFAULT_PROTOCOLS, @(x) isempty(x) || ischar(x) || isstring(x) || iscell(x));
     addParameter(p, 'OutputTag', '', @(s) ischar(s) || isstring(s));
     addParameter(p, 'SaveModelPath', '', @(s) ischar(s) || isstring(s));
     parse(p, varargin{:});
@@ -44,6 +45,7 @@ function EvaluateSvmConfusion(varargin)
     inclH = p.Results.IncludeHuGaDB;
     includeHuSubjects = NormalizeHuGaDBSubjectIds(p.Results.IncludeHuGaDBSubjects);
     excludeHuSubjects = NormalizeHuGaDBSubjectIds(p.Results.ExcludeHuGaDBSubjects);
+    protocolSelection = NormalizeHuGaDBProtocolSelection(p.Results.HuGaDBSessionProtocols);
     outTag = char(strtrim(string(p.Results.OutputTag)));
     modelPathOut = char(strtrim(string(p.Results.SaveModelPath)));
 
@@ -57,6 +59,9 @@ function EvaluateSvmConfusion(varargin)
     if ~isempty(excludeHuSubjects)
         fprintf('ExcludeHuGaDBSubjects=%s\n', strjoin(excludeHuSubjects, ', '));
     end
+    if ~isempty(protocolSelection)
+        fprintf('HuGaDBSessionProtocols=%s\n', strjoin(protocolSelection, ', '));
+    end
 
     %% 1. Features (same flags as training)
     try
@@ -64,7 +69,8 @@ function EvaluateSvmConfusion(varargin)
             'IncludeUSCHAD', inclU, ...
             'IncludeHuGaDB', inclH, ...
             'IncludeHuGaDBSubjects', includeHuSubjects, ...
-            'ExcludeHuGaDBSubjects', excludeHuSubjects);
+            'ExcludeHuGaDBSubjects', excludeHuSubjects, ...
+            'HuGaDBSessionProtocols', protocolSelection);
     catch ME
         error('Data preparation failed: %s', ME.message);
     end
@@ -81,7 +87,7 @@ function EvaluateSvmConfusion(varargin)
         error('Need both classes in the dataset for a binary confusion matrix.');
     end
 
-    poolLabel = datasetPoolLabel(inclU, inclH, includeHuSubjects, excludeHuSubjects);
+    poolLabel = datasetPoolLabel(inclU, inclH, includeHuSubjects, excludeHuSubjects, protocolSelection);
 
     %% 2. Same SVM as TrainSvmBinary
     SVMModel = fitcsvm(featuresAll, labelsAll, ...
@@ -131,7 +137,7 @@ function EvaluateSvmConfusion(varargin)
 
     %% 4. Figure (see exportSvmConfusionMatrixPng.m; RedrawSvmConfusionFromMetrics for PNG refresh)
     if strlength(outTag) == 0
-        outTag = defaultOutputTag(inclU, inclH, includeHuSubjects, excludeHuSubjects, cfg);
+        outTag = defaultOutputTag(inclU, inclH, includeHuSubjects, excludeHuSubjects, protocolSelection, cfg);
     end
     pngPath = ResultsArtifactPath(projectRoot, 'figures', 'binary', ['svm_confusion_matrix_' outTag '.png']);
     matPath = ResultsArtifactPath(projectRoot, 'metrics', 'binary', ['svm_evaluation_metrics_' outTag '.mat']);
@@ -147,7 +153,7 @@ function EvaluateSvmConfusion(varargin)
     fprintf('===========================================================\n');
 end
 
-function s = datasetPoolLabel(inclU, inclH, includeHuSubjects, excludeHuSubjects)
+function s = datasetPoolLabel(inclU, inclH, includeHuSubjects, excludeHuSubjects, protocolSelection)
     if inclU && inclH
         error('Combined USC-HAD + HuGaDB evaluation has been removed.');
     elseif inclU
@@ -161,22 +167,29 @@ function s = datasetPoolLabel(inclU, inclH, includeHuSubjects, excludeHuSubjects
     elseif ~isempty(excludeHuSubjects) && ~inclU && inclH
         s = sprintf('%s (excluding subjects %s)', s, strjoin(excludeHuSubjects, ', '));
     end
+    if ~inclU && inclH && ~isempty(protocolSelection)
+        s = sprintf('%s | protocols: %s', s, strjoin(protocolSelection, ', '));
+    end
 end
 
-function tag = defaultOutputTag(inclU, inclH, includeHuSubjects, excludeHuSubjects, cfg)
+function tag = defaultOutputTag(inclU, inclH, includeHuSubjects, excludeHuSubjects, protocolSelection, cfg)
     if inclU && ~inclH
         tag = 'usc_had';
         return;
     end
 
     if ~inclU && inclH
-        if isempty(includeHuSubjects) && isempty(excludeHuSubjects)
-            tag = 'hugadb';
+        if isempty(includeHuSubjects) && isempty(excludeHuSubjects) && isequal(protocolSelection, {'multi_activity_sequence'})
+            tag = 'hugadb_streaming';
+            return;
+        end
+        if isempty(includeHuSubjects) && isempty(excludeHuSubjects) && isequal(protocolSelection, {'single_activity'})
+            tag = 'hugadb_single_activity';
             return;
         end
     end
 
-    tag = sanitizeTag(datasetPoolLabel(inclU, inclH, includeHuSubjects, excludeHuSubjects));
+    tag = sanitizeTag(datasetPoolLabel(inclU, inclH, includeHuSubjects, excludeHuSubjects, protocolSelection));
 end
 
 function out = sanitizeTag(label)
