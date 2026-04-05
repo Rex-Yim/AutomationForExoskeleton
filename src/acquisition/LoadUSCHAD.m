@@ -4,12 +4,12 @@
 % and discovered recursively from the subject subfolders.
 
 function usc = LoadUSCHAD(rawDir)
-    % Directory containing this file (.../data/public/USC-HAD/)
-    loaderDir = fileparts(mfilename('fullpath'));
+    here = fileparts(mfilename('fullpath'));
+    repoRoot = fileparts(fileparts(here));
+    uscDir = fullfile(repoRoot, 'data', 'USC-HAD');
 
     if nargin < 1 || isempty(rawDir)
-        % Default: raw .mat trials live next to this script in USC-HAD_raw/
-        rawDir = fullfile(loaderDir, 'USC-HAD_raw');
+        rawDir = fullfile(uscDir, 'USC-HAD_raw');
     end
 
     if ~isfolder(rawDir)
@@ -100,8 +100,7 @@ function usc = LoadUSCHAD(rawDir)
         usc.(usc_field).fs = 100;  % USC-HAD is 100 Hz
     end
 
-    % Always write next to this script so PrepareTrainingData finds it when cwd = project root
-    outputFile = fullfile(loaderDir, 'usc_had_dataset.mat');
+    outputFile = fullfile(uscDir, 'usc_had_dataset.mat');
     save(outputFile, 'usc', '-v7.3');
     fprintf('USC-HAD saved as %s (%d trials loaded, %d skipped).\n', outputFile, length(files) - skipped, skipped);
 end
