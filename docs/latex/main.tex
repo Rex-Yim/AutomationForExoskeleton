@@ -26,8 +26,9 @@
 % Allow line breaks in long DOI URLs (references.bib url={https://doi.org/...})
 \usepackage[hyphens]{url}
 \usepackage[hidelinks]{hyperref}
+\usepackage{pdfpages}
 
-% Figure path: project results folders. Build: docs/latex/compile.sh → docs/final_report.pdf
+% Figure path: project results folders. Build: docs/latex/compile.sh → docs/reports/final_report.pdf
 \graphicspath{{../../results/figures/binary/}{../../results/figures/multiclass/}{../../results/figures/pipeline/}}
 % Tall MATLAB figures (confusion + pipeline): cap height so nothing is clipped at page bottom
 \newcommand{\includegraphicsresult}[1]{%
@@ -136,5 +137,19 @@ Conducted in close collaboration with ExoTechHK Limited under the HKSTP incubati
 
 \clearpage
 \input{chapters/references}
+
+% ---------- Appendices (external PDFs; paths relative to docs/latex/) ----------
+\appendix
+\chapter{HuGaDB GitHub v1 Corpora}
+\includepdf[pages=-]{../reports/hugadb_github_v1_corpora.pdf}
+
+\chapter{Pipeline Gallery (Full)}
+\includepdf[pages=-]{../reports/pipeline_gallery_full.pdf}
+
+\chapter{Poster}
+\includepdf[pages=-]{../reports/poster.pdf}
+
+\chapter{System Design}
+\includepdf[pages=-]{../reports/System_Design.pdf}
 
 \end{document}

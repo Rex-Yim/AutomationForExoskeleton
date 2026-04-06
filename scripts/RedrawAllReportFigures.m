@@ -2,7 +2,7 @@ function RedrawAllReportFigures()
 %% RedrawAllReportFigures — regenerate PNGs from saved metrics and training histories (no model training).
 %
 % Updates confusion matrices and LSTM training curve PNGs using results/metrics/*.mat.
-% Pipeline time-series figures (results/figures/pipeline/*.png) require running the
+% Pipeline time-series figures (results/figures/pipeline/<subject_session>/replay_*.png) require running the
 % RunExoskeletonPipeline*.m scripts separately; they load pretrained models and replay data.
 
     here = fileparts(mfilename('fullpath'));

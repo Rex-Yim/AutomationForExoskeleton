@@ -129,9 +129,12 @@ end
 
 styleReportFigureColors(gcf);
 
-% Save Result
-resultsFile = ResultsArtifactPath(projectRoot, 'figures', 'pipeline', 'pipeline_binary_svm_output.png');
-metricsFile = ResultsArtifactPath(projectRoot, 'metrics', 'pipeline', 'pipeline_binary_svm_output.mat');
+% Save Result (same path convention as RunReplayGalleryBatch — no duplicate root pipeline_*.png)
+fileTag = sprintf('subject%s_session%s', sim.subjectId, sim.sessionId);
+pngName = sprintf('replay_binary_svm_%s.png', fileTag);
+matName = sprintf('replay_binary_svm_%s.mat', fileTag);
+resultsFile = ResultsArtifactPath(projectRoot, 'figures', 'pipeline', pngName, fileTag);
+metricsFile = ResultsArtifactPath(projectRoot, 'metrics', 'pipeline', matName, fileTag);
 if exist('exportgraphics', 'file') == 2
     exportgraphics(gcf, resultsFile, 'Resolution', 200, 'Padding', 'loose');
 else

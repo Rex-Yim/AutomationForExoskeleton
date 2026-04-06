@@ -59,11 +59,11 @@ No global setup step is required for the main train/eval/simulation scripts; the
    - `RunExoskeletonPipelineMulticlass` — sim with HuGaDB 12-class model + FSM  
 
 4. **Simulation**  
-   - `RunExoskeletonPipeline` — binary SVM → `results/figures/pipeline/pipeline_binary_svm_output.png`  
-   - `RunExoskeletonPipelineLstm` — binary LSTM (after `TrainLstmBinary`) → `results/figures/pipeline/pipeline_output_lstm.png`  
+   - `RunExoskeletonPipeline` — binary SVM → `results/figures/pipeline/subjectXX_sessionYY/replay_binary_svm_subjectXX_sessionYY.png` (default held-out session from `ExoConfig`; same layout as `RunReplayGalleryBatch`)  
+   - `RunExoskeletonPipelineLstm` — binary LSTM (after `TrainLstmBinary`) → matching `replay_binary_lstm_*.png` under the same folder  
 
 ## Report / LaTeX
-Sources under `docs/latex/`; compiled PDFs: **`docs/final_report.pdf`** (`docs/latex/compile.sh`) and **`docs/poster.pdf`** (`docs/latex/compile_poster.sh`). Report-facing streaming artifacts now use tags such as `binary/svm_confusion_matrix_hugadb_streaming.png`, `multiclass/multiclass_confusion_matrix_hugadb_streaming.png`, and `binary/lstm_confusion_matrix_hugadb_streaming.png`, alongside `pipeline/pipeline_binary_svm_output.png`. See `docs/latex/README.md`.
+Sources under `docs/latex/`; compiled PDFs live in **`docs/reports/`** (e.g. **`final_report.pdf`** via `docs/latex/compile.sh`, **`poster.pdf`** via `docs/latex/compile_poster.sh`). Report-facing streaming artifacts use tags such as `binary/svm_confusion_matrix_hugadb_streaming.png`, `multiclass/multiclass_confusion_matrix_hugadb_streaming.png`, and `binary/lstm_confusion_matrix_hugadb_streaming.png`, alongside per-session pipeline replays under `pipeline/subjectXX_sessionYY/replay_*.png` (paths exported in `generated_metrics.tex`). See `docs/latex/README.md`.
 
 ## Acknowledgments
 - **ExoTechHK Limited**, **HKSTP**, **Prof. Wei-Hsin Liao** (CUHK).  

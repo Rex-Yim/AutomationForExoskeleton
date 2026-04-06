@@ -7,8 +7,8 @@ This folder builds a **PDF report** aligned to the **current MATLAB codebase**: 
 | File | Role |
 |------|------|
 | `main.tex` | Title page, Ch.1--2 inputs, Ch.3--5 chapter headings + chapter bodies |
-| `../final_report.pdf` | **Built report** at `docs/final_report.pdf` (see `compile.sh` below) |
-| `poster.tex` / `../poster.pdf` | Poster source; built PDF copied to **`docs/poster.pdf`** via `compile_poster.sh` |
+| `../reports/final_report.pdf` | **Built report** at `docs/reports/final_report.pdf` (see `compile.sh` below) |
+| `poster.tex` / `../reports/poster.pdf` | Poster source; built PDF copied to **`docs/reports/poster.pdf`** via `compile_poster.sh` |
 | `chapters/abstract_merged.tex` | Abstract: interim PDF + repository corrections/updates |
 | `chapters/methods_merged.tex` | Ch.3: planned (PDF) vs implemented methods |
 | `chapters/results_merged.tex` | Ch.4: interim narrative + updated metrics/figures |
@@ -18,6 +18,7 @@ This folder builds a **PDF report** aligned to the **current MATLAB codebase**: 
 | `IEEEtran.bst` | IEEE bibliography style (bundled for BasicTeX / CI; same as CTAN) |
 | `chapters/references.tex` | Invokes `\bibliographystyle{IEEEtran}` + `\bibliography{references}` |
 | `generated_metrics.tex` | **Auto-generated** SVM/LSTM accuracies for tables/abstract (`scripts/ExportMetricsForReport.m`) |
+| `system_design.tex` / `../reports/System_Design.pdf` | Architecture / system design doc; build with `./compile_system_design.sh` |
 
 ## References (IEEE style)
 
@@ -33,11 +34,15 @@ From the **project root**, run MATLAB so these exist (commit figures if you ship
 
 - `results/figures/binary/svm_confusion_matrix_hugadb_streaming.png` — HuGaDB binary SVM under the streaming policy
 - `results/figures/multiclass/multiclass_confusion_matrix_usc_had.png` / `multiclass_confusion_matrix_hugadb_streaming.png` — from `EvaluateMulticlassConfusion` per dataset
-- `results/figures/pipeline/pipeline_binary_svm_output.png` — from `RunExoskeletonPipeline`
+- `results/figures/pipeline/subjectXX_sessionYY/replay_binary_svm_subjectXX_sessionYY.png` — from `RunExoskeletonPipeline` (same canonical files as `RunReplayGalleryBatch` for that session)
 
 **Optional** (for Chapter 4 LSTM subsection): `RunLstmDatasetAblation` → `results/figures/binary/lstm_confusion_matrix_usc_had.png` / `results/figures/binary/lstm_confusion_matrix_hugadb_streaming.png`. `RunTrainEvalLstmMulticlass` writes `results/figures/multiclass/lstm_multiclass_confusion_matrix_usc_had.png` / `results/figures/multiclass/lstm_multiclass_confusion_matrix_hugadb_streaming.png`.
 
 **Before committing a “final” PDF:** run `ExportMetricsForReport` in MATLAB so `generated_metrics.tex` matches the current `results/metrics/*/*_evaluation_metrics_*.mat` files for SVM and LSTM.
+
+**Pipeline replay gallery (36 PNGs):** after `RunReplayGalleryBatch`, build `docs/reports/pipeline_gallery_full.pdf` with `./compile_pipeline_gallery.sh` from `docs/latex/`.
+
+**System design PDF:** `./compile_system_design.sh` → `docs/reports/System_Design.pdf`.
 
 ## Install LaTeX on macOS
 
@@ -70,25 +75,26 @@ From `docs/latex/`:
 ./compile.sh
 ```
 
-Or manually: compile here, then **`cp main.pdf ../final_report.pdf`**.
+Or manually: compile here, then **`mkdir -p ../reports && cp -f main.pdf ../reports/final_report.pdf`** (and remove `main.pdf` from this folder if you want no PDFs under `docs/latex/`).
 
 ```bash
 cd /path/to/AutomationForExoskeleton/docs/latex
+mkdir -p ../reports
 pdflatex -interaction=nonstopmode main.tex
 bibtex main
 pdflatex -interaction=nonstopmode main.tex
 pdflatex -interaction=nonstopmode main.tex
-cp -f main.pdf ../final_report.pdf
+cp -f main.pdf ../reports/final_report.pdf
 ```
 
-**Poster:** `./compile_poster.sh` or `pdflatex poster.tex` then **`cp poster.pdf ../poster.pdf`**.
+**Poster:** `./compile_poster.sh` or `pdflatex poster.tex` then **`cp poster.pdf ../reports/poster.pdf`**.
 
-Alternative (Homebrew `tectonic`): compile in this folder, then copy outputs to `../final_report.pdf` / `../poster.pdf` as above.
+Alternative (Homebrew `tectonic`): compile in this folder, then copy outputs to `../reports/final_report.pdf` / `../reports/poster.pdf` as above.
 
 Optional:
 
 ```bash
-latexmk -pdf -interaction=nonstopmode main.tex && cp -f main.pdf ../final_report.pdf
+latexmk -pdf -interaction=nonstopmode main.tex && mkdir -p ../reports && cp -f main.pdf ../reports/final_report.pdf
 ```
 
 ## Note on `WHL3.`

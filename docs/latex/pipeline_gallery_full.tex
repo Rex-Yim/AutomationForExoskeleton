@@ -1,0 +1,95 @@
+% Standalone PDF: all 36 HuGaDB pipeline replay figures (9 sessions x 4 models).
+% Build: docs/latex/compile_pipeline_gallery.sh → docs/reports/pipeline_gallery_full.pdf
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=0.75in]{geometry}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{parskip}
+\usepackage[hidelinks]{hyperref}
+
+\graphicspath{{../../results/figures/pipeline/}}
+
+\title{HuGaDB pipeline replay gallery\\\large 36 figures (nine sessions $\times$ four models)}
+\author{AutomationForExoskeleton}
+\date{\today}
+
+% #1 = subject id (e.g. 06), #2 = session id (e.g. 02) → folder subject06_session02
+% No leading \clearpage so each \section* stays with the first \subsection* in that group.
+% Call \clearpage between sessions (not after the last) to avoid a blank final page.
+\newcommand{\GallerySession}[2]{%
+  \subsection*{Subject #1, session #2}
+  \noindent\texttt{subject#1\_session#2} --- binary SVM, binary LSTM, multiclass ECOC SVM, multiclass LSTM (same sliding-window + FSM structure as \texttt{RunReplayGalleryBatch}).
+  \vspace{0.6em}
+  \begin{center}
+  \begin{tabular}{@{}c@{\hspace{0.35em}}c@{}}
+    \includegraphics[width=0.46\linewidth]{subject#1_session#2/replay_binary_svm_subject#1_session#2.png} &
+    \includegraphics[width=0.46\linewidth]{subject#1_session#2/replay_binary_lstm_subject#1_session#2.png} \\[0.25em]
+    \small Binary SVM + FSM & \small Binary LSTM + FSM \\[0.9em]
+    \includegraphics[width=0.46\linewidth]{subject#1_session#2/replay_multiclass_svm_subject#1_session#2.png} &
+    \includegraphics[width=0.46\linewidth]{subject#1_session#2/replay_multiclass_lstm_subject#1_session#2.png} \\[0.25em]
+    \small Multiclass ECOC SVM + FSM & \small Multiclass LSTM + FSM \\
+  \end{tabular}
+  \end{center}
+}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Four pipeline replay variants.}
+Each session page below arranges the same four plots in a $2\times2$ grid (top: binary path; bottom: multiclass path; left: SVM; right: LSTM).
+\begin{center}
+\footnotesize
+\setlength{\tabcolsep}{0.6em}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.47\linewidth}>{\raggedright\arraybackslash}p{0.47\linewidth}@{}}
+\multicolumn{2}{@{}c@{}}{\textit{Top row --- binary locomotion (assist vs.\ not), then FSM}} \\[0.35em]
+\textbf{Binary SVM + FSM} &
+\textbf{Binary LSTM + FSM} \\
+Sliding-window IMU features feed a trained RBF SVM; the predicted binary class drives \texttt{RealtimeFsm} pseudo-real-time assist gating and the replay time series (vs.\ ground truth and IMU). &
+Same windowing and binary labels as the SVM path, but a trained LSTM outputs the binary class each step; FSM loop and plot layout match the SVM replay for direct comparison. \\[0.65em]
+\multicolumn{2}{@{}c@{}}{\textit{Bottom row --- twelve activity classes, mapped to locomotion FSM}} \\[0.35em]
+\textbf{Multiclass ECOC SVM + FSM} &
+\textbf{Multiclass LSTM + FSM} \\
+ECOC SVM predicts twelve HuGaDB activity classes per window; class $\rightarrow$ locomotion mapping feeds the multiclass FSM and exo-command replay (with activity traces vs.\ ground truth where available). &
+Twelve-class LSTM replaces the ECOC head; same activity names, FSM mapping, and replay figure structure as the multiclass SVM pipeline. \\
+\end{tabular}
+\end{center}
+\vspace{0.5em}
+
+\begin{abstract}
+\noindent
+This document collects every pseudo-real-time pipeline PNG for the nine HuGaDB
+\texttt{multi\_activity\_sequence} sessions used in \texttt{RunReplayGalleryBatch}.
+Each session folder under \texttt{results/figures/pipeline/} holds four plots:
+binary RBF SVM, binary LSTM, native twelve-class ECOC SVM, and native twelve-class LSTM,
+with the same FSM assist gating (binary path) or activity-to-locomotion mapping (multiclass path).
+Regenerate assets with \texttt{RunReplayGalleryBatch} from the MATLAB project root.
+\end{abstract}
+
+\clearpage
+\section*{Held-out subjects 06 and 08 (three sessions each)}
+\GallerySession{06}{02}
+\clearpage
+\GallerySession{06}{08}
+\clearpage
+\GallerySession{06}{25}
+\clearpage
+\GallerySession{08}{14}
+\clearpage
+\GallerySession{08}{19}
+\clearpage
+\GallerySession{08}{25}
+
+\clearpage
+\section*{Additional subjects 01 and 02}
+\GallerySession{01}{02}
+\clearpage
+\GallerySession{01}{13}
+\clearpage
+\GallerySession{02}{03}
+
+\end{document}

@@ -61,9 +61,24 @@ function ExportMetricsForReport()
     fprintf(fid, '\\newcommand{\\HasLstmMetrics}{%d}\n', hasBinaryLstm);
 
     [replaySubj, replaySess] = loadReplayPipelineMeta(projectRoot);
-    fprintf(fid, '%% HuGaDB replay identifiers (from results/metrics/pipeline/pipeline_binary_svm_output.mat plotMeta).\n');
+    fprintf(fid, '%% HuGaDB replay identifiers (from replay_binary_svm metrics plotMeta under results/metrics/pipeline/<subject_session>/).\n');
     fprintf(fid, '\\newcommand{\\ReplayHuGaDBSubject}{%s}\n', latexMacroText(replaySubj));
     fprintf(fid, '\\newcommand{\\ReplayHuGaDBSession}{%s}\n', latexMacroText(replaySess));
+
+    if ~isequal(replaySubj, '?') && ~isequal(replaySess, '?')
+        tag = sprintf('subject%s_session%s', replaySubj, replaySess);
+        fprintf(fid, '%% Canonical replay PNG paths (same files as RunReplayGalleryBatch for this session).\n');
+        fprintf(fid, '\\newcommand{\\ReplayPipelineFigBinarySvm}{%s/replay_binary_svm_%s.png}\n', tag, tag);
+        fprintf(fid, '\\newcommand{\\ReplayPipelineFigBinaryLstm}{%s/replay_binary_lstm_%s.png}\n', tag, tag);
+        fprintf(fid, '\\newcommand{\\ReplayPipelineFigMulticlassSvm}{%s/replay_multiclass_svm_%s.png}\n', tag, tag);
+        fprintf(fid, '\\newcommand{\\ReplayPipelineFigMulticlassLstm}{%s/replay_multiclass_lstm_%s.png}\n', tag, tag);
+    else
+        fprintf(fid, '%% Replay pipeline figure paths unknown — run RunExoskeletonPipeline then ExportMetricsForReport.\n');
+        fprintf(fid, '\\newcommand{\\ReplayPipelineFigBinarySvm}{?}\n');
+        fprintf(fid, '\\newcommand{\\ReplayPipelineFigBinaryLstm}{?}\n');
+        fprintf(fid, '\\newcommand{\\ReplayPipelineFigMulticlassSvm}{?}\n');
+        fprintf(fid, '\\newcommand{\\ReplayPipelineFigMulticlassLstm}{?}\n');
+    end
 
     fclose(fid);
     fprintf('Wrote %s\n', outPath);
@@ -90,8 +105,17 @@ end
 function [subj, sess] = loadReplayPipelineMeta(projectRoot)
     subj = '?';
     sess = '?';
-    p = ResultsArtifactPath(projectRoot, 'metrics', 'pipeline', 'pipeline_binary_svm_output.mat');
-    if ~exist(p, 'file')
+    addpath(fullfile(projectRoot, 'config'));
+    addpath(fullfile(projectRoot, 'scripts'));
+    cfg = ExoConfig();
+    tag = sprintf('subject%s_session%s', cfg.HUGADB.DEFAULT_SIM_SUBJECT, cfg.HUGADB.DEFAULT_SIM_SESSION);
+    pNew = ResultsArtifactPath(projectRoot, 'metrics', 'pipeline', sprintf('replay_binary_svm_%s.mat', tag), tag);
+    pOld = ResultsArtifactPath(projectRoot, 'metrics', 'pipeline', 'pipeline_binary_svm_output.mat');
+    if exist(pNew, 'file')
+        p = pNew;
+    elseif exist(pOld, 'file')
+        p = pOld;
+    else
         return;
     end
     S = load(p, 'plotMeta');

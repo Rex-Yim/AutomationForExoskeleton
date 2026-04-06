@@ -17,6 +17,7 @@ models/lstm_checkpoints/
 models/lstm_multiclass_checkpoints/
 
 # LaTeX build artifacts (sources under docs/latex/ are tracked)
+docs/latex/*.pdf
 docs/latex/*.aux
 docs/latex/*.bbl
 docs/latex/*.blg

@@ -119,8 +119,11 @@ linkaxes([ax2, ax3], 'x');
 
 styleReportFigureColors(gcf);
 
-resultsFile = ResultsArtifactPath(projectRoot, 'figures', 'pipeline', 'pipeline_multiclass_lstm_output.png');
-metricsFile = ResultsArtifactPath(projectRoot, 'metrics', 'pipeline', 'pipeline_multiclass_lstm_output.mat');
+fileTag = sprintf('subject%s_session%s', sim.subjectId, sim.sessionId);
+pngName = sprintf('replay_multiclass_lstm_%s.png', fileTag);
+matName = sprintf('replay_multiclass_lstm_%s.mat', fileTag);
+resultsFile = ResultsArtifactPath(projectRoot, 'figures', 'pipeline', pngName, fileTag);
+metricsFile = ResultsArtifactPath(projectRoot, 'metrics', 'pipeline', matName, fileTag);
 if exist('exportgraphics', 'file') == 2
     exportgraphics(gcf, resultsFile, 'Resolution', 200, 'Padding', 'loose');
 else

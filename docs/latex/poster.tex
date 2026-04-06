@@ -1,5 +1,5 @@
 % A0 portrait poster — MAEG4999 / AutomationForExoskeleton
-% Build: docs/latex/compile_poster.sh → docs/poster.pdf
+% Build: docs/latex/compile_poster.sh → docs/reports/poster.pdf
 \documentclass[20pt]{extarticle}
 
 \usepackage[utf8]{inputenc}
@@ -345,17 +345,17 @@
   \vspace{0.12em}
   \noindent
   \begin{minipage}[t]{\dimexpr0.25\textwidth-5pt\relax}
-    \metriccolfig[0.125\textheight]{pipeline_binary_svm_output.png}{Binary SVM replay: Kalman + FSM assist}
+    \metriccolfig[0.125\textheight]{\ReplayPipelineFigBinarySvm}{Binary SVM replay: Kalman + FSM assist}
   \end{minipage}\hfill
   \begin{minipage}[t]{\dimexpr0.25\textwidth-5pt\relax}
-    \metriccolfig[0.125\textheight]{pipeline_output_lstm.png}{Binary LSTM replay (held-out pipeline)}
+    \metriccolfig[0.125\textheight]{\ReplayPipelineFigBinaryLstm}{Binary LSTM replay (held-out pipeline)}
   \end{minipage}\hfill
   \begin{minipage}[t]{\dimexpr0.25\textwidth-5pt\relax}
-    \metriccolfig[0.125\textheight]{pipeline_multiclass_output.png}{Multiclass SVM replay}
+    \metriccolfig[0.125\textheight]{\ReplayPipelineFigMulticlassSvm}{Multiclass SVM replay}
   \end{minipage}\hfill
   \begin{minipage}[t]{\dimexpr0.25\textwidth-5pt\relax}
-    % PNG from scripts/RunExoskeletonPipelineMulticlassLstm.m (do not swap for metriccolfigmissing).
-    \metriccolfig[0.125\textheight]{pipeline_multiclass_lstm_output.png}{Multiclass LSTM replay}
+    % PNG from scripts/RunExoskeletonPipelineMulticlassLstm.m (same canonical path as RunReplayGalleryBatch).
+    \metriccolfig[0.125\textheight]{\ReplayPipelineFigMulticlassLstm}{Multiclass LSTM replay}
   \end{minipage}%
 }
 
