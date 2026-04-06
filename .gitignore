@@ -6,8 +6,11 @@ __pycache__/
 **/__pycache__/
 *.pyc
 
-# Datasets and generated caches (populate locally or unzip release bundle under data/)
-/data/
+# Large / local-only assets under data/ (other paths under data/ are tracked)
+data/USC-HAD/USC-HAD_raw/
+data/USC-HAD/usc_had_dataset.mat
+data/HuGaDB/hugadb_dataset.mat
+data/HuGaDB/v1_cleanup_github/
 
 # Release bundle built locally — attach to GitHub Releases instead of committing
 AutomationForExoskeleton_data.zip
