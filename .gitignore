@@ -12,9 +12,6 @@ data/USC-HAD/usc_had_dataset.mat
 data/HuGaDB/hugadb_dataset.mat
 data/HuGaDB/v1_cleanup_github/
 
-# Release bundle built locally — attach to GitHub Releases instead of committing
-AutomationForExoskeleton_data.zip
-
 # LSTM training checkpoints (many files, regenerable; final nets live in models/*.mat)
 models/lstm_checkpoints/
 models/lstm_multiclass_checkpoints/
